@@ -1056,7 +1056,13 @@ export default function EnhancedGraphPaper() {
 
       <div
         className={`absolute z-10 transition-all duration-700 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"} ${
+        zame3p-codex/revamp-mobile-ui-design
+          isMobile
+            ? "bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-1/2 -translate-x-1/2"
+            : "top-6 right-6"
+
           isMobile ? "bottom-8 left-1/2 -translate-x-1/2" : "top-6 right-6"
+        main
         }`}
       >
         {isMobile && !isToolMenuOpen ? (
@@ -1367,7 +1373,11 @@ export default function EnhancedGraphPaper() {
       </div>
 
       <div
+        zame3p-codex/revamp-mobile-ui-design
+        className={`absolute ${isMobile ? "bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-6" : "bottom-6 right-6"} z-10 transition-all duration-700 delay-300 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
+
         className={`absolute ${isMobile ? "bottom-8 left-6" : "bottom-6 right-6"} z-10 transition-all duration-700 delay-300 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
+        main
       >
         <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
           <CardContent className="p-1 flex flex-col gap-1">
@@ -1442,7 +1452,11 @@ export default function EnhancedGraphPaper() {
       </div>
 
       {statusMessage && (
+        zame3p-codex/revamp-mobile-ui-design
+        <div className={`absolute ${isMobile ? "top-[calc(env(safe-area-inset-top)+1.5rem)]" : "bottom-6"} left-1/2 -translate-x-1/2 z-10`}>
+
         <div className={`absolute ${isMobile ? "top-6" : "bottom-6"} left-1/2 -translate-x-1/2 z-10`}>
+         main
           <Card className="shadow-lg border-0 bg-gray-900 text-white">
             <CardContent className={`${isMobile ? "px-3 py-2" : "px-4 py-2"}`}>
               <p className={`${isMobile ? "text-xs" : "text-sm"} font-medium`}>{statusMessage}</p>
