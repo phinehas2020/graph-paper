@@ -889,9 +889,11 @@ export default function EnhancedGraphPaper() {
   }, [tool, activeShapeStartPoint, arcPoints, eraserMode])
 
   useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
     const preventDefault = (e: TouchEvent) => e.preventDefault()
-    document.addEventListener("touchmove", preventDefault, { passive: false })
-    return () => document.removeEventListener("touchmove", preventDefault)
+    canvas.addEventListener("touchmove", preventDefault, { passive: false })
+    return () => canvas.removeEventListener("touchmove", preventDefault)
   }, [])
 
   const handleDownload = useCallback(() => {
