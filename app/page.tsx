@@ -28,6 +28,8 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  Menu,
+  X,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -121,6 +123,7 @@ export default function EnhancedGraphPaper() {
   const isMobile = useIsMobile()
   const coreToolNames: Tool[] = ["select", "line", "rectangle", "eraser", "pan"];
   const [showAllMobileTools, setShowAllMobileTools] = useState(false);
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [tool, setTool] = useState<Tool>("line")
   const [eraserMode, setEraserMode] = useState<EraserMode>("partial") // Default to partial
   const [currentColor, setCurrentColor] = useState("#000000")
@@ -1049,7 +1052,7 @@ export default function EnhancedGraphPaper() {
       </div>
 
       <div
-        className={`absolute ${isMobile ? "top-6 left-1/2 -translate-x-1/2" : "top-6 left-6"} z-10 transition-all duration-700 delay-100 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
+        className={`absolute ${isMobile ? "top-6 left-6" : "top-6 left-6"} z-10 transition-all duration-700 delay-100 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
       >
         <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
           <CardContent className={isMobile ? "p-1.5" : "p-2"}>
@@ -1074,7 +1077,7 @@ export default function EnhancedGraphPaper() {
       </div>
 
       <div
-        className={`absolute ${isMobile ? "top-20 left-1/2 -translate-x-1/2" : "top-20 left-6"} z-10 transition-all duration-700 delay-150 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
+        className={`absolute ${isMobile ? "top-24 left-6" : "top-20 left-6"} z-10 transition-all duration-700 delay-150 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
       >
         <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
           <CardContent className={isMobile ? "p-1.5" : "p-2"}>
@@ -1103,111 +1106,114 @@ export default function EnhancedGraphPaper() {
         className={`absolute ${isMobile ? "top-6 right-6" : "bottom-6 left-6"} ${isMobile ? "" : "flex gap-2"} z-10 transition-all duration-700 delay-200 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
       >
         <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-          <CardContent className={`p-1 ${isMobile ? "flex flex-col gap-1" : "flex gap-1"}`}>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={undo}
-                    disabled={historyIndex === 0}
-                    className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 disabled:opacity-50 active:scale-95`}
-                  >
-                    <Undo className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Undo (Ctrl+Z)</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={redo}
-                    disabled={historyIndex === history.length - 1}
-                    className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 disabled:opacity-50 active:scale-95`}
-                  >
-                    <Redo className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Redo (Ctrl+Shift+Z)</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setShowGrid(!showGrid)
-                      triggerFeedback()
-                    }}
-                    className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 ${showGrid ? "bg-blue-50 text-blue-700" : ""}`}
-                  >
-                    <Grid3X3 className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Toggle Grid (G)</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleDownload}
-                    className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95`}
-                  >
-                    <Download className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Download PNG</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setEraserMode(eraserMode === "partial" ? "whole" : "partial")
-                      triggerFeedback()
-                    }}
-                    className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 ${tool === "eraser" ? (eraserMode === "partial" ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700") : "text-gray-500"}`}
-                    disabled={tool !== "eraser"}
-                  >
-                    {eraserMode === "partial" ? (
-                      <Scissors className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
-                    ) : (
-                      <Trash2 className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Eraser: {eraserMode === "partial" ? "Partial (Lines Only)" : "Whole Element"}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          <CardContent className={`p-1 ${isMobile ? "flex flex-col items-end gap-1" : "flex gap-1"}`}>
+            {isMobile ? (
+              <>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setIsActionMenuOpen(prev => !prev);
+                          triggerFeedback();
+                        }}
+                        className="w-10 h-10 hover:bg-gray-100 active:scale-95"
+                      >
+                        {isActionMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                      <p>{isActionMenuOpen ? "Close Menu" : "Open Menu"}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                {isActionMenuOpen && (
+                  <>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={undo} disabled={historyIndex === 0} className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 disabled:opacity-50 active:scale-95`}>
+                            <Undo className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <p>Undo (Ctrl+Z)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={redo} disabled={historyIndex === history.length - 1} className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 disabled:opacity-50 active:scale-95`}>
+                            <Redo className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <p>Redo (Ctrl+Shift+Z)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => { setShowGrid(!showGrid); triggerFeedback(); }} className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 ${showGrid ? "bg-blue-50 text-blue-700" : ""}`}>
+                            <Grid3X3 className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <p>Toggle Grid (G)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={handleDownload} className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95`}>
+                            <Download className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <p>Download PNG</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => { setEraserMode(eraserMode === "partial" ? "whole" : "partial"); triggerFeedback(); }} className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 ${tool === "eraser" ? (eraserMode === "partial" ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700") : "text-gray-500"}`} disabled={tool !== "eraser"}>
+                            {eraserMode === "partial" ? <Scissors className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} /> : <Trash2 className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <p>Eraser: {eraserMode === "partial" ? "Partial (Lines Only)" : "Whole Element"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <TooltipProvider> <Tooltip> <TooltipTrigger asChild> <Button variant="ghost" size="icon" onClick={undo} disabled={historyIndex === 0} className="w-9 h-9 hover:bg-gray-100 disabled:opacity-50 active:scale-95"> <Undo className="w-5 h-5" /> </Button></TooltipTrigger><TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent></Tooltip></TooltipProvider>
+                <TooltipProvider> <Tooltip> <TooltipTrigger asChild> <Button variant="ghost" size="icon" onClick={redo} disabled={historyIndex === history.length - 1} className="w-9 h-9 hover:bg-gray-100 disabled:opacity-50 active:scale-95"> <Redo className="w-5 h-5" /> </Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Shift+Z)</p></TooltipContent></Tooltip></TooltipProvider>
+                <TooltipProvider> <Tooltip> <TooltipTrigger asChild> <Button variant="ghost" size="icon" onClick={() => { setShowGrid(!showGrid); triggerFeedback(); }} className={`w-9 h-9 hover:bg-gray-100 active:scale-95 ${showGrid ? "bg-blue-50 text-blue-700" : ""}`}> <Grid3X3 className="w-5 h-5" /> </Button></TooltipTrigger><TooltipContent><p>Toggle Grid (G)</p></TooltipContent></Tooltip></TooltipProvider>
+                <TooltipProvider> <Tooltip> <TooltipTrigger asChild> <Button variant="ghost" size="icon" onClick={handleDownload} className="w-9 h-9 hover:bg-gray-100 active:scale-95"> <Download className="w-5 h-5" /> </Button></TooltipTrigger><TooltipContent><p>Download PNG</p></TooltipContent></Tooltip></TooltipProvider>
+                <TooltipProvider> <Tooltip> <TooltipTrigger asChild> <Button variant="ghost" size="icon" onClick={() => { setEraserMode(eraserMode === "partial" ? "whole" : "partial"); triggerFeedback(); }} className={`w-9 h-9 hover:bg-gray-100 active:scale-95 ${tool === "eraser" ? (eraserMode === "partial" ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700") : "text-gray-500"}`} disabled={tool !== "eraser"}> {eraserMode === "partial" ? <Scissors className="w-5 h-5" /> : <Trash2 className="w-5 h-5" />} </Button></TooltipTrigger><TooltipContent><p>Eraser: {eraserMode === "partial" ? "Partial (Lines Only)" : "Whole Element"}</p></TooltipContent></Tooltip></TooltipProvider>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
 
       <div
-        className={`absolute ${isMobile ? "bottom-6 right-6" : "bottom-6 right-6"} z-10 transition-all duration-700 delay-300 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
+        className={`absolute ${isMobile ? "bottom-6 left-6" : "bottom-6 right-6"} z-10 transition-all duration-700 delay-300 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
       >
         <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
           <CardContent className="p-1 flex flex-col gap-1">
@@ -1226,7 +1232,7 @@ export default function EnhancedGraphPaper() {
                     <ZoomIn className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="left">
+                <TooltipContent side={isMobile ? "right" : "left"}>
                   <p>Zoom In</p>
                 </TooltipContent>
               </Tooltip>
@@ -1251,7 +1257,7 @@ export default function EnhancedGraphPaper() {
                     <ZoomOut className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="left">
+                <TooltipContent side={isMobile ? "right" : "left"}>
                   <p>Zoom Out</p>
                 </TooltipContent>
               </Tooltip>
@@ -1272,7 +1278,7 @@ export default function EnhancedGraphPaper() {
                     <RotateCcw className={`${isMobile ? "w-3 h-3" : "w-4 h-4"}`} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="left">
+                <TooltipContent side={isMobile ? "right" : "left"}>
                   <p>Reset View</p>
                 </TooltipContent>
               </Tooltip>
@@ -1282,7 +1288,7 @@ export default function EnhancedGraphPaper() {
       </div>
 
       {statusMessage && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
+        <div className={`absolute ${isMobile ? "bottom-24" : "bottom-6"} left-1/2 -translate-x-1/2 z-10`}>
           <Card className="shadow-lg border-0 bg-gray-900 text-white">
             <CardContent className={`${isMobile ? "px-3 py-2" : "px-4 py-2"}`}>
               <p className={`${isMobile ? "text-xs" : "text-sm"} font-medium`}>{statusMessage}</p>
