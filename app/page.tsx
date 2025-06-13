@@ -55,6 +55,8 @@ interface CanvasState {
 const EPSILON = 0.001
 const COLORS = ["#000000", "#dc2626", "#2563eb", "#16a34a", "#ca8a04", "#9333ea", "#c2410c"]
 const THICKNESSES = [1, 2, 4, 6]
+const MOBILE_COLORS = COLORS.slice(0, 2)
+const MOBILE_THICKNESSES = THICKNESSES.slice(0, 2)
 
 // Vector Math Helpers
 const vec = (p1: Point, p2: Point): Point => ({ x: p2.x - p1.x, y: p2.y - p1.y })
@@ -124,6 +126,8 @@ export default function EnhancedGraphPaper() {
   const coreToolNames: Tool[] = ["select", "line", "rectangle", "eraser", "pan"];
   const [showAllMobileTools, setShowAllMobileTools] = useState(false);
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const [isToolMenuOpen, setIsToolMenuOpen] = useState(false);
+  const [isColorMenuOpen, setIsColorMenuOpen] = useState(false);
   const [tool, setTool] = useState<Tool>("line")
   const [eraserMode, setEraserMode] = useState<EraserMode>("partial") // Default to partial
   const [currentColor, setCurrentColor] = useState("#000000")
@@ -172,6 +176,16 @@ export default function EnhancedGraphPaper() {
     if (showAllMobileTools) return tools;
     return tools.filter(t => coreToolNames.includes(t.name));
   }, [isMobile, showAllMobileTools, tools]); // tools was missing in dependencies
+
+  const colorOptions = useMemo(
+    () => (isMobile ? MOBILE_COLORS : COLORS),
+    [isMobile]
+  );
+
+  const thicknessOptions = useMemo(
+    () => (isMobile ? MOBILE_THICKNESSES : THICKNESSES),
+    [isMobile]
+  );
 
   const triggerFeedback = useCallback(() => {
     setIsAnimating(true)
@@ -1042,112 +1056,193 @@ export default function EnhancedGraphPaper() {
 
       <div
         className={`absolute z-10 transition-all duration-700 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"} ${
-          isMobile ? "bottom-6 left-1/2 -translate-x-1/2" : "top-6 right-6"
+          isMobile
+            ? "bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-1/2 -translate-x-1/2"
+            : "top-6 right-6"
         }`}
       >
-        <Card
-          className={`shadow-xl border-0 bg-white/95 backdrop-blur-sm transition-all duration-300 ${isAnimating ? "scale-105" : ""} ${isMobile ? "max-w-[calc(100vw-2rem)]" : ""}`}
-        >
-          <CardContent className={isMobile ? "p-1" : "p-2"}>
-            <ToggleGroup
-              type="single"
-              value={tool}
-              onValueChange={(value) => value && setTool(value as Tool)}
-              orientation="horizontal"
-              className={`gap-1 ${isMobile ? "flex flex-wrap justify-center items-center" : ""}`}
-            >
-              {displayedTools.map(({ name, icon: Icon, label, shortcut }) => (
-                <TooltipProvider key={name} delayDuration={isMobile ? 0 : 100}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <ToggleGroupItem
-                        value={name}
-                        aria-label={label}
-                        className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} data-[state=on]:bg-blue-100 data-[state=on]:text-blue-700 hover:bg-gray-100 transition-all duration-200 active:scale-95`}
-                      >
-                        <Icon className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
-                      </ToggleGroupItem>
-                    </TooltipTrigger>
-                    <TooltipContent side={isMobile ? "top" : "bottom"} className="bg-gray-900 text-white">
-                      <p>
-                        {label} {shortcut && `(${shortcut})`}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-              {isMobile && tools.length > coreToolNames.length && (
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setShowAllMobileTools(prev => !prev);
-                    triggerFeedback();
-                  }}
-                  className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} hover:bg-gray-100 transition-all duration-200 active:scale-95 flex items-center justify-center`}
-                  aria-label={showAllMobileTools ? "Show fewer tools" : "Show more tools"}
-                >
-                  {showAllMobileTools ? (
-                    <ChevronUp className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
-                  ) : (
-                    <ChevronDown className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
-                  )}
-                </Button>
-              )}
-            </ToggleGroup>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div
-        className={`absolute ${isMobile ? "top-6 left-6" : "top-6 left-6"} z-10 transition-all duration-700 delay-100 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
-      >
-        <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-          <CardContent className={isMobile ? "p-1.5" : "p-2"}>
-            <div className={`flex items-center gap-2 ${isMobile ? "flex-col" : ""}`}>
-              <Palette className="w-4 h-4 text-gray-600" />
-              <div className={`flex gap-1 ${isMobile ? "flex-wrap justify-center" : ""}`}>
-                {COLORS.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => {
-                      setCurrentColor(color)
-                      triggerFeedback()
-                    }}
-                    className={`${isMobile ? "w-10 h-10" : "w-6 h-6"} rounded-full border-2 transition-all duration-200 hover:scale-110 active:scale-95 ${currentColor === color ? "border-gray-800 ring-2 ring-blue-200" : "border-gray-300"}`}
-                    style={{ backgroundColor: color }}
-                  />
+        {isMobile && !isToolMenuOpen ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => { setIsToolMenuOpen(true); triggerFeedback(); }}
+            className="w-14 h-14 hover:bg-gray-100 active:scale-95"
+            aria-label="Select Tool"
+          >
+            {(() => {
+              const Icon = tools.find(t => t.name === tool)?.icon
+              return Icon ? <Icon className="w-6 h-6" /> : null
+            })()}
+          </Button>
+        ) : (
+          <Card className={`shadow-xl border-0 bg-white/95 backdrop-blur-sm transition-all duration-300 ${isAnimating ? "scale-105" : ""} ${isMobile ? "max-w-[calc(100vw-2rem)]" : ""}`}
+          >
+            <CardContent className={isMobile ? "p-1" : "p-2"}>
+              <ToggleGroup
+                type="single"
+                value={tool}
+                onValueChange={(value) => {
+                  if (value) setTool(value as Tool)
+                  if (isMobile) setIsToolMenuOpen(false)
+                }}
+                orientation="horizontal"
+                className={`gap-1 ${isMobile ? "flex flex-wrap justify-center items-center" : ""}`}
+              >
+                {displayedTools.map(({ name, icon: Icon, label, shortcut }) => (
+                  <TooltipProvider key={name} delayDuration={isMobile ? 0 : 100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <ToggleGroupItem
+                          value={name}
+                          aria-label={label}
+                          className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} data-[state=on]:bg-blue-100 data-[state=on]:text-blue-700 hover:bg-gray-100 transition-all duration-200 active:scale-95`}
+                        >
+                          <Icon className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
+                        </ToggleGroupItem>
+                      </TooltipTrigger>
+                      <TooltipContent side={isMobile ? "top" : "bottom"} className="bg-gray-900 text-white">
+                        <p>
+                          {label} {shortcut && `(${shortcut})`}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div
-        className={`absolute ${isMobile ? "top-24 left-6" : "top-20 left-6"} z-10 transition-all duration-700 delay-150 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
-      >
-        <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-          <CardContent className={isMobile ? "p-1.5" : "p-2"}>
-            <div className={`flex items-center gap-2 ${isMobile ? "flex-col" : ""}`}>
-              <div className="w-4 h-4 text-gray-600 text-xs font-medium">T</div>
-              <div className={`flex gap-1 ${isMobile ? "justify-center" : ""}`}>
-                {THICKNESSES.map((thickness) => (
-                  <button
-                    key={thickness}
+                {isMobile && tools.length > coreToolNames.length && (
+                  <Button
+                    variant="ghost"
                     onClick={() => {
-                      setCurrentThickness(thickness)
-                      triggerFeedback()
+                      setShowAllMobileTools(prev => !prev);
+                      triggerFeedback();
                     }}
-                    className={`${isMobile ? "w-10 h-10" : "w-6 h-6"} rounded border-2 transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center ${currentThickness === thickness ? "border-blue-500 bg-blue-50" : "border-gray-300"}`}
+                    className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} hover:bg-gray-100 transition-all duration-200 active:scale-95 flex items-center justify-center`}
+                    aria-label={showAllMobileTools ? "Show fewer tools" : "Show more tools"}
                   >
-                    <div className="rounded-full bg-gray-800" style={{ width: thickness + 2, height: thickness + 2 }} />
-                  </button>
-                ))}
+                    {showAllMobileTools ? (
+                      <ChevronUp className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
+                    ) : (
+                      <ChevronDown className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
+                    )}
+                  </Button>
+                )}
+              </ToggleGroup>
+            </CardContent>
+            {isMobile && (
+              <div className="flex justify-end pr-1 pb-1">
+                <Button variant="ghost" size="icon" onClick={() => { setIsToolMenuOpen(false); triggerFeedback(); }} className="w-8 h-8 hover:bg-gray-100 active:scale-95">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </Card>
+        )}
+      </div>
+
+      {isMobile ? (
+        <div className="absolute top-6 left-6 z-10">
+          {isColorMenuOpen ? (
+            <div className="space-y-2">
+              <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
+                <CardContent className="p-1.5">
+                  <div className="flex items-center gap-2 flex-col">
+                    <div className="flex gap-1 flex-wrap justify-center">
+                      {colorOptions.map((color) => (
+                        <button
+                          key={color}
+                          onClick={() => {
+                            setCurrentColor(color)
+                            triggerFeedback()
+                            setIsColorMenuOpen(false)
+                          }}
+                          className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 active:scale-95 ${currentColor === color ? "border-gray-800 ring-2 ring-blue-200" : "border-gray-300"}`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex gap-1 justify-center mt-2">
+                      {thicknessOptions.map((thickness) => (
+                        <button
+                          key={thickness}
+                          onClick={() => {
+                            setCurrentThickness(thickness)
+                            triggerFeedback()
+                            setIsColorMenuOpen(false)
+                          }}
+                          className={`w-8 h-8 rounded border-2 transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center ${currentThickness === thickness ? "border-blue-500 bg-blue-50" : "border-gray-300"}`}
+                        >
+                          <div className="rounded-full bg-gray-800" style={{ width: thickness + 2, height: thickness + 2 }} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <div className="flex justify-end">
+                <Button variant="ghost" size="icon" onClick={() => { setIsColorMenuOpen(false); triggerFeedback(); }} className="w-8 h-8 hover:bg-gray-100 active:scale-95">
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          ) : (
+            <Button variant="ghost" size="icon" onClick={() => { setIsColorMenuOpen(true); triggerFeedback(); }} className="w-10 h-10 hover:bg-gray-100 active:scale-95">
+              <Palette className="w-5 h-5" />
+            </Button>
+          )}
+        </div>
+      ) : (
+        <>
+          <div
+            className={`absolute top-6 left-6 z-10 transition-all duration-700 delay-100 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
+          >
+            <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-2">
+                <div className="flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-gray-600" />
+                  <div className="flex gap-1">
+                    {colorOptions.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => {
+                          setCurrentColor(color)
+                          triggerFeedback()
+                        }}
+                        className={`w-6 h-6 rounded-full border-2 transition-all duration-200 hover:scale-110 active:scale-95 ${currentColor === color ? "border-gray-800 ring-2 ring-blue-200" : "border-gray-300"}`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div
+            className={`absolute top-20 left-6 z-10 transition-all duration-700 delay-150 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
+          >
+            <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 text-gray-600 text-xs font-medium">T</div>
+                  <div className="flex gap-1">
+                    {thicknessOptions.map((thickness) => (
+                      <button
+                        key={thickness}
+                        onClick={() => {
+                          setCurrentThickness(thickness)
+                          triggerFeedback()
+                        }}
+                        className={`w-6 h-6 rounded border-2 transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center ${currentThickness === thickness ? "border-blue-500 bg-blue-50" : "border-gray-300"}`}
+                      >
+                        <div className="rounded-full bg-gray-800" style={{ width: thickness + 2, height: thickness + 2 }} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
 
       <div
         className={`absolute ${isMobile ? "top-6 right-6" : "bottom-6 left-6"} ${isMobile ? "" : "flex gap-2"} z-10 transition-all duration-700 delay-200 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
@@ -1274,7 +1369,7 @@ export default function EnhancedGraphPaper() {
       </div>
 
       <div
-        className={`absolute ${isMobile ? "bottom-6 left-6" : "bottom-6 right-6"} z-10 transition-all duration-700 delay-300 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
+        className={`absolute ${isMobile ? "bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-6" : "bottom-6 right-6"} z-10 transition-all duration-700 delay-300 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
       >
         <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
           <CardContent className="p-1 flex flex-col gap-1">
@@ -1349,7 +1444,7 @@ export default function EnhancedGraphPaper() {
       </div>
 
       {statusMessage && (
-        <div className={`absolute ${isMobile ? "bottom-24" : "bottom-6"} left-1/2 -translate-x-1/2 z-10`}>
+        <div className={`absolute ${isMobile ? "top-[calc(env(safe-area-inset-top)+1.5rem)]" : "bottom-6"} left-1/2 -translate-x-1/2 z-10`}>
           <Card className="shadow-lg border-0 bg-gray-900 text-white">
             <CardContent className={`${isMobile ? "px-3 py-2" : "px-4 py-2"}`}>
               <p className={`${isMobile ? "text-xs" : "text-sm"} font-medium`}>{statusMessage}</p>
