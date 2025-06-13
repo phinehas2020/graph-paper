@@ -1056,7 +1056,7 @@ export default function EnhancedGraphPaper() {
 
       <div
         className={`absolute z-10 transition-all duration-700 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"} ${
-        zame3p-codex/revamp-mobile-ui-design
+            ? "bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-1/2 -translate-x-1/2"
           isMobile
             ? "bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-1/2 -translate-x-1/2"
             : "top-6 right-6"
@@ -1344,7 +1344,7 @@ export default function EnhancedGraphPaper() {
                     </TooltipProvider>
 
                     <TooltipProvider>
-                      <Tooltip>
+        className={`absolute ${isMobile ? "bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-6" : "bottom-6 right-6"} z-10 transition-all duration-700 delay-300 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" onClick={() => { setEraserMode(eraserMode === "partial" ? "whole" : "partial"); triggerFeedback(); }} className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 ${tool === "eraser" ? (eraserMode === "partial" ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700") : "text-gray-500"}`} disabled={tool !== "eraser"}>
                             {eraserMode === "partial" ? <Scissors className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} /> : <Trash2 className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />}
