@@ -1092,7 +1092,11 @@ export default function EnhancedGraphPaper() {
         className={`absolute z-10 transition-all duration-700 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"} ${
           isMobile
             ? "bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-1/2 -translate-x-1/2"
+        8uszck-codex/fix-merge-conflict-in-ui-design
             : "top-6 right-20"
+
+            : "top-6 right-6"
+        main
         }`}
       >
         {isMobile && !isToolMenuOpen ? (
