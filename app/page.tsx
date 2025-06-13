@@ -896,6 +896,31 @@ export default function EnhancedGraphPaper() {
     return () => canvas.removeEventListener("touchmove", preventDefault)
   }, [])
 
+  // Load saved drawing on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("graph-paper-history")
+      if (stored) {
+        const parsed = JSON.parse(stored) as CanvasState[]
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setHistory(parsed)
+          setHistoryIndex(parsed.length - 1)
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load drawing", err)
+    }
+  }, [])
+
+  // Persist drawing whenever history changes
+  useEffect(() => {
+    try {
+      localStorage.setItem("graph-paper-history", JSON.stringify(history))
+    } catch (err) {
+      console.error("Failed to save drawing", err)
+    }
+  }, [history])
+
   const handleDownload = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -932,6 +957,26 @@ export default function EnhancedGraphPaper() {
     document.body.removeChild(link)
     triggerFeedback()
   }, [drawShapes, triggerFeedback]) // drawShapes has its own dependencies
+
+  const handleClearDrawing = useCallback(() => {
+    setHistory([
+      {
+        lines: [],
+        arcs: [],
+        rectangles: [],
+        circles: [],
+        arrows: [],
+        texts: [],
+      },
+    ])
+    setHistoryIndex(0)
+    try {
+      localStorage.removeItem("graph-paper-history")
+    } catch (err) {
+      console.error("Failed to clear drawing", err)
+    }
+    triggerFeedback()
+  }, [triggerFeedback])
 
   return (
     <div className="w-screen h-screen overflow-hidden relative bg-gradient-to-br from-slate-50 to-slate-100 touch-none">
@@ -1189,6 +1234,19 @@ export default function EnhancedGraphPaper() {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={handleClearDrawing} className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95`}>
+                            <Trash2 className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <p>Clear Drawing</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" onClick={() => { setEraserMode(eraserMode === "partial" ? "whole" : "partial"); triggerFeedback(); }} className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 ${tool === "eraser" ? (eraserMode === "partial" ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700") : "text-gray-500"}`} disabled={tool !== "eraser"}>
                             {eraserMode === "partial" ? <Scissors className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} /> : <Trash2 className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />}
                           </Button>
@@ -1207,6 +1265,7 @@ export default function EnhancedGraphPaper() {
                 <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={redo} disabled={historyIndex === history.length - 1} className="w-9 h-9 hover:bg-gray-100 disabled:opacity-50 active:scale-95"><Redo className="w-5 h-5 text-black" /></Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Shift+Z)</p></TooltipContent></Tooltip></TooltipProvider>
                 <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => { setShowGrid(!showGrid); triggerFeedback(); }} className={`w-9 h-9 hover:bg-gray-100 active:scale-95 ${showGrid ? "bg-blue-50 text-blue-700" : ""}`}><Grid3X3 className="w-5 h-5" /></Button></TooltipTrigger><TooltipContent><p>Toggle Grid (G)</p></TooltipContent></Tooltip></TooltipProvider>
                 <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={handleDownload} className="w-9 h-9 hover:bg-gray-100 active:scale-95"><Download className="w-5 h-5 text-black" /></Button></TooltipTrigger><TooltipContent><p>Download PNG</p></TooltipContent></Tooltip></TooltipProvider>
+                <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={handleClearDrawing} className="w-9 h-9 hover:bg-gray-100 active:scale-95"><Trash2 className="w-5 h-5 text-black" /></Button></TooltipTrigger><TooltipContent><p>Clear Drawing</p></TooltipContent></Tooltip></TooltipProvider>
                 <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => { setEraserMode(eraserMode === "partial" ? "whole" : "partial"); triggerFeedback(); }} className={`w-9 h-9 hover:bg-gray-100 active:scale-95 ${tool === "eraser" ? (eraserMode === "partial" ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700") : "text-gray-500"}`} disabled={tool !== "eraser"}>{eraserMode === "partial" ? <Scissors className="w-5 h-5" /> : <Trash2 className="w-5 h-5" />}</Button></TooltipTrigger><TooltipContent><p>Eraser: {eraserMode === "partial" ? "Partial (Lines Only)" : "Whole Element"}</p></TooltipContent></Tooltip></TooltipProvider>
               </>
             )}
