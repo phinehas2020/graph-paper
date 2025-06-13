@@ -30,6 +30,8 @@ import {
   ChevronUp,
   Menu,
   X,
+  Maximize,
+  Minimize,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -150,6 +152,7 @@ export default function EnhancedGraphPaper() {
   const [statusMessage, setStatusMessage] = useState("")
   const [isAnimating, setIsAnimating] = useState(false)
   const [isFirstLoad, setIsFirstLoad] = useState(true)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const [lastTouchDistance, setLastTouchDistance] = useState<number>(0)
   const [isMultiTouch, setIsMultiTouch] = useState(false)
@@ -215,6 +218,15 @@ export default function EnhancedGraphPaper() {
       triggerFeedback()
     }
   }, [historyIndex, history.length, triggerFeedback])
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {})
+    } else {
+      document.exitFullscreen().catch(() => {})
+    }
+    triggerFeedback()
+  }, [triggerFeedback])
 
   const getCanvasPoint = (e: { clientX: number; clientY: number }): Point => {
     const canvas = canvasRef.current!
@@ -992,6 +1004,12 @@ export default function EnhancedGraphPaper() {
     triggerFeedback()
   }, [triggerFeedback])
 
+  useEffect(() => {
+    const handler = () => setIsFullscreen(Boolean(document.fullscreenElement))
+    document.addEventListener("fullscreenchange", handler)
+    return () => document.removeEventListener("fullscreenchange", handler)
+  }, [])
+
   return (
     <div className="w-screen h-screen overflow-hidden relative bg-gradient-to-br from-slate-50 to-slate-100 touch-none">
       <canvas
@@ -1054,11 +1072,31 @@ export default function EnhancedGraphPaper() {
         }}
       />
 
+      <div className="absolute top-6 right-6 z-10">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleFullscreen}
+          className="w-12 h-12 hover:bg-gray-100 active:scale-95"
+          aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+        >
+          {isFullscreen ? (
+            <Minimize className="w-5 h-5" />
+          ) : (
+            <Maximize className="w-5 h-5" />
+          )}
+        </Button>
+      </div>
+
       <div
         className={`absolute z-10 transition-all duration-700 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"} ${
           isMobile
             ? "bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-1/2 -translate-x-1/2"
+        8uszck-codex/fix-merge-conflict-in-ui-design
+            : "top-6 right-20"
+
             : "top-6 right-6"
+        main
         }`}
       >
         {isMobile && !isToolMenuOpen ? (
