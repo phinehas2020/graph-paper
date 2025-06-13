@@ -935,7 +935,7 @@ export default function EnhancedGraphPaper() {
     <div className="w-screen h-screen overflow-hidden relative bg-gradient-to-br from-slate-50 to-slate-100 touch-none">
       <canvas
         ref={canvasRef}
-        className={`absolute top-0 left-0 w-full h-full transition-all duration-200 touch-none ${
+        className={`absolute top-0 left-0 w-full h-full touch-none ${
           tool === "pan" ? "cursor-grab" : tool === "eraser" ? "cursor-crosshair" : "cursor-crosshair"
         } ${isPanning ? "cursor-grabbing" : ""}`}
         onMouseDown={(e) => handlePointerDown(getCanvasPoint(e), e.shiftKey)}
