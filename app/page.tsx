@@ -30,6 +30,8 @@ import {
   ChevronUp,
   Menu,
   X,
+  Maximize,
+  Minimize,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -150,6 +152,7 @@ export default function EnhancedGraphPaper() {
   const [statusMessage, setStatusMessage] = useState("")
   const [isAnimating, setIsAnimating] = useState(false)
   const [isFirstLoad, setIsFirstLoad] = useState(true)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const [lastTouchDistance, setLastTouchDistance] = useState<number>(0)
   const [isMultiTouch, setIsMultiTouch] = useState(false)
@@ -215,6 +218,15 @@ export default function EnhancedGraphPaper() {
       triggerFeedback()
     }
   }, [historyIndex, history.length, triggerFeedback])
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {})
+    } else {
+      document.exitFullscreen().catch(() => {})
+    }
+    triggerFeedback()
+  }, [triggerFeedback])
 
   const getCanvasPoint = (e: { clientX: number; clientY: number }): Point => {
     const canvas = canvasRef.current!
@@ -992,6 +1004,12 @@ export default function EnhancedGraphPaper() {
     triggerFeedback()
   }, [triggerFeedback])
 
+  useEffect(() => {
+    const handler = () => setIsFullscreen(Boolean(document.fullscreenElement))
+    document.addEventListener("fullscreenchange", handler)
+    return () => document.removeEventListener("fullscreenchange", handler)
+  }, [])
+
   return (
     <div className="w-screen h-screen overflow-hidden relative bg-gradient-to-br from-slate-50 to-slate-100 touch-none">
       <canvas
@@ -1054,21 +1072,27 @@ export default function EnhancedGraphPaper() {
         }}
       />
 
+      <div className="absolute top-6 right-6 z-10">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleFullscreen}
+          className="w-12 h-12 hover:bg-gray-100 active:scale-95"
+          aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+        >
+          {isFullscreen ? (
+            <Minimize className="w-5 h-5" />
+          ) : (
+            <Maximize className="w-5 h-5" />
+          )}
+        </Button>
+      </div>
+
       <div
         className={`absolute z-10 transition-all duration-700 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"} ${
-        q1lbkb-codex/revamp-mobile-ui-design
           isMobile
             ? "bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-1/2 -translate-x-1/2"
-            : "top-6 right-6"
-
-        zame3p-codex/revamp-mobile-ui-design
-          isMobile
-            ? "bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-1/2 -translate-x-1/2"
-            : "top-6 right-6"
-
-          isMobile ? "bottom-8 left-1/2 -translate-x-1/2" : "top-6 right-6"
-        main  
-       main
+            : "top-6 right-20"
         }`}
       >
         {isMobile && !isToolMenuOpen ? (
@@ -1379,15 +1403,7 @@ export default function EnhancedGraphPaper() {
       </div>
 
       <div
-       q1lbkb-codex/revamp-mobile-ui-design
         className={`absolute ${isMobile ? "bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-6" : "bottom-6 right-6"} z-10 transition-all duration-700 delay-300 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
- 
-        zame3p-codex/revamp-mobile-ui-design
-        className={`absolute ${isMobile ? "bottom-[calc(env(safe-area-inset-bottom)+2rem)] left-6" : "bottom-6 right-6"} z-10 transition-all duration-700 delay-300 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
-
-        className={`absolute ${isMobile ? "bottom-8 left-6" : "bottom-6 right-6"} z-10 transition-all duration-700 delay-300 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
-        main
-       main
       >
         <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
           <CardContent className="p-1 flex flex-col gap-1">
@@ -1462,15 +1478,7 @@ export default function EnhancedGraphPaper() {
       </div>
 
       {statusMessage && (
-      q1lbkb-codex/revamp-mobile-ui-design
         <div className={`absolute ${isMobile ? "top-[calc(env(safe-area-inset-top)+1.5rem)]" : "bottom-6"} left-1/2 -translate-x-1/2 z-10`}>
-
-        zame3p-codex/revamp-mobile-ui-design
-        <div className={`absolute ${isMobile ? "top-[calc(env(safe-area-inset-top)+1.5rem)]" : "bottom-6"} left-1/2 -translate-x-1/2 z-10`}>
-
-        <div className={`absolute ${isMobile ? "top-6" : "bottom-6"} left-1/2 -translate-x-1/2 z-10`}>
-         main
-        main
           <Card className="shadow-lg border-0 bg-gray-900 text-white">
             <CardContent className={`${isMobile ? "px-3 py-2" : "px-4 py-2"}`}>
               <p className={`${isMobile ? "text-xs" : "text-sm"} font-medium`}>{statusMessage}</p>
