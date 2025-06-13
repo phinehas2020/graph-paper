@@ -26,6 +26,8 @@ import {
   Download,
   Scissors,
   Trash2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -112,11 +114,13 @@ const tools: { name: Tool; icon: LucideIcon; label: string; shortcut?: string }[
   { name: "arrow", icon: ArrowRight, label: "Arrow", shortcut: "A" },
   { name: "measure", icon: Ruler, label: "Measure", shortcut: "M" },
   { name: "eraser", icon: EraserIcon, label: "Eraser", shortcut: "E" },
-  { name: "pan", icon: Move, label: "Pan", shortcut: "P" },
+  { name: "pan", icon: Move, label: "Navigate", shortcut: "P" },
 ]
 
 export default function EnhancedGraphPaper() {
   const isMobile = useIsMobile()
+  const coreToolNames: Tool[] = ["select", "line", "rectangle", "eraser", "pan"];
+  const [showAllMobileTools, setShowAllMobileTools] = useState(false);
   const [tool, setTool] = useState<Tool>("line")
   const [eraserMode, setEraserMode] = useState<EraserMode>("partial") // Default to partial
   const [currentColor, setCurrentColor] = useState("#000000")
@@ -159,6 +163,12 @@ export default function EnhancedGraphPaper() {
   const eraserWidth = gridSize / 1.5
 
   const currentState = useMemo(() => history[historyIndex], [history, historyIndex])
+
+  const displayedTools = useMemo(() => {
+    if (!isMobile) return tools;
+    if (showAllMobileTools) return tools;
+    return tools.filter(t => coreToolNames.includes(t.name));
+  }, [isMobile, showAllMobileTools, tools]); // tools was missing in dependencies
 
   const triggerFeedback = useCallback(() => {
     setIsAnimating(true)
@@ -869,7 +879,7 @@ export default function EnhancedGraphPaper() {
             ? "Tap to set arc end point"
             : "Tap to set arc curve",
       eraser: `Drag to erase (${eraserMode} mode)`,
-      pan: "Drag to pan the canvas",
+      pan: "Drag to move, pinch to zoom",
       select: "Tap to select elements",
     }
     setStatusMessage(messages[tool] || "")
@@ -986,26 +996,26 @@ export default function EnhancedGraphPaper() {
         }`}
       >
         <Card
-          className={`shadow-xl border-0 bg-white/95 backdrop-blur-sm transition-all duration-300 ${isAnimating ? "scale-105" : ""}`}
+          className={`shadow-xl border-0 bg-white/95 backdrop-blur-sm transition-all duration-300 ${isAnimating ? "scale-105" : ""} ${isMobile ? "max-w-[calc(100vw-2rem)]" : ""}`}
         >
-          <CardContent className={isMobile ? "p-2" : "p-2"}>
+          <CardContent className={isMobile ? "p-1" : "p-2"}>
             <ToggleGroup
               type="single"
               value={tool}
               onValueChange={(value) => value && setTool(value as Tool)}
               orientation="horizontal"
-              className="gap-1"
+              className={`gap-1 ${isMobile ? "flex flex-wrap justify-center items-center" : ""}`}
             >
-              {tools.map(({ name, icon: Icon, label, shortcut }) => (
+              {displayedTools.map(({ name, icon: Icon, label, shortcut }) => (
                 <TooltipProvider key={name} delayDuration={isMobile ? 0 : 100}>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <ToggleGroupItem
                         value={name}
                         aria-label={label}
-                        className={`${isMobile ? "w-11 h-11" : "w-12 h-12"} data-[state=on]:bg-blue-100 data-[state=on]:text-blue-700 hover:bg-gray-100 transition-all duration-200 active:scale-95`}
+                        className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} data-[state=on]:bg-blue-100 data-[state=on]:text-blue-700 hover:bg-gray-100 transition-all duration-200 active:scale-95`}
                       >
-                        <Icon className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                        <Icon className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
                       </ToggleGroupItem>
                     </TooltipTrigger>
                     <TooltipContent side={isMobile ? "top" : "bottom"} className="bg-gray-900 text-white">
@@ -1016,6 +1026,23 @@ export default function EnhancedGraphPaper() {
                   </Tooltip>
                 </TooltipProvider>
               ))}
+              {isMobile && tools.length > coreToolNames.length && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setShowAllMobileTools(prev => !prev);
+                    triggerFeedback();
+                  }}
+                  className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} hover:bg-gray-100 transition-all duration-200 active:scale-95 flex items-center justify-center`}
+                  aria-label={showAllMobileTools ? "Show fewer tools" : "Show more tools"}
+                >
+                  {showAllMobileTools ? (
+                    <ChevronUp className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
+                  ) : (
+                    <ChevronDown className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
+                  )}
+                </Button>
+              )}
             </ToggleGroup>
           </CardContent>
         </Card>
@@ -1025,10 +1052,10 @@ export default function EnhancedGraphPaper() {
         className={`absolute ${isMobile ? "top-6 left-1/2 -translate-x-1/2" : "top-6 left-6"} z-10 transition-all duration-700 delay-100 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
       >
         <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-          <CardContent className="p-2">
+          <CardContent className={isMobile ? "p-1.5" : "p-2"}>
             <div className={`flex items-center gap-2 ${isMobile ? "flex-col" : ""}`}>
               <Palette className="w-4 h-4 text-gray-600" />
-              <div className="flex gap-1">
+              <div className={`flex gap-1 ${isMobile ? "flex-wrap justify-center" : ""}`}>
                 {COLORS.map((color) => (
                   <button
                     key={color}
@@ -1036,7 +1063,7 @@ export default function EnhancedGraphPaper() {
                       setCurrentColor(color)
                       triggerFeedback()
                     }}
-                    className={`${isMobile ? "w-8 h-8" : "w-6 h-6"} rounded-full border-2 transition-all duration-200 hover:scale-110 active:scale-95 ${currentColor === color ? "border-gray-800 ring-2 ring-blue-200" : "border-gray-300"}`}
+                    className={`${isMobile ? "w-10 h-10" : "w-6 h-6"} rounded-full border-2 transition-all duration-200 hover:scale-110 active:scale-95 ${currentColor === color ? "border-gray-800 ring-2 ring-blue-200" : "border-gray-300"}`}
                     style={{ backgroundColor: color }}
                   />
                 ))}
@@ -1050,10 +1077,10 @@ export default function EnhancedGraphPaper() {
         className={`absolute ${isMobile ? "top-20 left-1/2 -translate-x-1/2" : "top-20 left-6"} z-10 transition-all duration-700 delay-150 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
       >
         <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-          <CardContent className="p-2">
+          <CardContent className={isMobile ? "p-1.5" : "p-2"}>
             <div className={`flex items-center gap-2 ${isMobile ? "flex-col" : ""}`}>
               <div className="w-4 h-4 text-gray-600 text-xs font-medium">T</div>
-              <div className="flex gap-1">
+              <div className={`flex gap-1 ${isMobile ? "justify-center" : ""}`}>
                 {THICKNESSES.map((thickness) => (
                   <button
                     key={thickness}
@@ -1061,7 +1088,7 @@ export default function EnhancedGraphPaper() {
                       setCurrentThickness(thickness)
                       triggerFeedback()
                     }}
-                    className={`${isMobile ? "w-8 h-8" : "w-6 h-6"} rounded border-2 transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center ${currentThickness === thickness ? "border-blue-500 bg-blue-50" : "border-gray-300"}`}
+                    className={`${isMobile ? "w-10 h-10" : "w-6 h-6"} rounded border-2 transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center ${currentThickness === thickness ? "border-blue-500 bg-blue-50" : "border-gray-300"}`}
                   >
                     <div className="rounded-full bg-gray-800" style={{ width: thickness + 2, height: thickness + 2 }} />
                   </button>
