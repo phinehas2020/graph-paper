@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css" // Ensure your global styles are imported
 import { ThemeProvider } from "@/components/theme-provider" // Assuming you have a theme provider
+import ServiceWorkerRegister from "@/components/service-worker-register"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -35,8 +36,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
+      <head>
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" content="#ffffff" />
+      </head>
       <body className={inter.className}>
+        <ServiceWorkerRegister />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystemTransition disableTransitionOnChange>
           {children}
         </ThemeProvider>
