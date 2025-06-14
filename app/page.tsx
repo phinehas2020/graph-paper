@@ -38,7 +38,7 @@ import type { LucideIcon } from "lucide-react"
 type Tool = "select" | "line" | "rectangle" | "circle" | "arrow" | "text" | "arc" | "pan" | "measure" | "eraser"
 type EraserMode = "partial" | "whole"
 type Point = { x: number; y: number }
-type Line = { start: Point; end: Point; color?: string; thickness?: number }
+type Line = { start: Point; end: Point; color?: string; thickness?: number; studCount?: number }
 type Arc = { start: Point; end: Point; control: Point; color?: string; thickness?: number }
 type Rectangle = { start: Point; end: Point; color?: string; thickness?: number; filled?: boolean }
 type CircleShape = { center: Point; radius: number; color?: string; thickness?: number; filled?: boolean }
@@ -59,6 +59,8 @@ const COLORS = ["#000000", "#dc2626", "#2563eb", "#16a34a", "#ca8a04", "#9333ea"
 const THICKNESSES = [1, 2, 4, 6]
 const MOBILE_COLORS = COLORS.slice(0, 2)
 const MOBILE_THICKNESSES = THICKNESSES.slice(0, 2)
+const TRUSS_SPACING_UNITS = 2; // Represents 2 grid units, e.g., 16 inches if grid unit is 8 inches.
+const STUD_SPACING_UNITS = 2; // e.g., 16 inches if grid unit is 8 inches.
 
 // Vector Math Helpers
 const vec = (p1: Point, p2: Point): Point => ({ x: p2.x - p1.x, y: p2.y - p1.y })
@@ -131,6 +133,7 @@ export default function EnhancedGraphPaper() {
   const [isToolMenuOpen, setIsToolMenuOpen] = useState(false)
   const [isColorMenuOpen, setIsColorMenuOpen] = useState(false)
   const [tool, setTool] = useState<Tool>("line")
+  const [designMode, setDesignMode] = useState<"graph" | "residential">("graph");
   const [eraserMode, setEraserMode] = useState<EraserMode>("partial") // Default to partial
   const [currentColor, setCurrentColor] = useState("#000000")
   const [currentThickness, setCurrentThickness] = useState(2)
@@ -316,6 +319,42 @@ export default function EnhancedGraphPaper() {
         ctx.moveTo(line.start.x * zoom + panOffset.x, line.start.y * zoom + panOffset.y)
         ctx.lineTo(line.end.x * zoom + panOffset.x, line.end.y * zoom + panOffset.y)
         ctx.stroke()
+
+          if (designMode === "residential" && line.studCount !== undefined && line.studCount > 0 && zoom > 0.2) { // Only draw if studCount exists, is positive, and zoomed in enough
+            const midXWorld = (line.start.x + line.end.x) / 2;
+            const midYWorld = (line.start.y + line.end.y) / 2;
+
+            const midXCanvas = midXWorld * zoom + panOffset.x;
+            const midYCanvas = midYWorld * zoom + panOffset.y;
+
+            // Calculate a slight offset perpendicular to the line to avoid drawing text directly on the line
+            // For simplicity, we'll just offset vertically for now, or based on line angle.
+            // A simple fixed vertical offset for now:
+            let textOffsetY = -Math.max(8, 10 * zoom); // Offset text above the line
+
+            // Optional: Adjust offset based on line angle to be truly perpendicular
+            // const angle = Math.atan2(line.end.y - line.start.y, line.end.x - line.start.x);
+            // if (Math.abs(Math.cos(angle)) < 0.1) { // Line is mostly vertical
+            //   textOffsetX = Math.max(8, 10 * zoom); // Offset text to the right
+            //   textOffsetY = 0;
+            // }
+
+
+            ctx.save();
+            ctx.font = `${Math.max(10, 12 * zoom)}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+            ctx.fillStyle = "#3b82f6"; // Blue color, same as dimension previews
+            ctx.textAlign = "center";
+            ctx.textBaseline = "bottom"; // Adjust if textOffsetY is negative (above line)
+
+            const text = `S: ${line.studCount}`;
+
+            // Simple stroke for better readability against grid/other lines
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 2 * zoom; // Adjusted for zoom
+            ctx.strokeText(text, midXCanvas, midYCanvas + textOffsetY);
+            ctx.fillText(text, midXCanvas, midYCanvas + textOffsetY);
+            ctx.restore();
+          }
       })
       currentState.arcs.forEach((arc) => {
         ctx.strokeStyle = arc.color || currentColor
@@ -612,10 +651,63 @@ export default function EnhancedGraphPaper() {
           }
           switch (tool) {
             case "line":
-              addToHistory({ lines: [...currentState.lines, shapeData] })
+              let lineData = { ...shapeData }; // shapeData is { start, end, color, thickness }
+              if (designMode === "residential") {
+                const lengthInGridCells = dist(lineData.start, lineData.end) / gridSize; // Calculate length in terms of grid cells
+
+                if (lengthInGridCells > EPSILON) { // Only calculate for non-zero length lines
+                  const studCount = Math.ceil(lengthInGridCells / STUD_SPACING_UNITS) + 1;
+                  lineData.studCount = studCount;
+                } else {
+                  lineData.studCount = 0; // Or 1 if even a point wall has one stud. Let's go with 0 for zero length.
+                }
+              }
+              addToHistory({ lines: [...currentState.lines, lineData] });
               break
             case "rectangle":
-              addToHistory({ rectangles: [...currentState.rectangles, shapeData as Rectangle] })
+              const newRectangle = shapeData as Rectangle;
+              let newLinesForTrusses: Line[] = [];
+
+              if (designMode === "residential") {
+                const worldStartX = Math.min(newRectangle.start.x, newRectangle.end.x);
+                const worldStartY = Math.min(newRectangle.start.y, newRectangle.end.y);
+                const worldEndX = Math.max(newRectangle.start.x, newRectangle.end.x);
+                const worldEndY = Math.max(newRectangle.start.y, newRectangle.end.y);
+
+                const rectWidth = worldEndX - worldStartX;
+                const rectHeight = worldEndY - worldStartY;
+
+                if (rectWidth > 0 && rectHeight > 0) { // Ensure positive dimensions
+                  if (rectWidth < rectHeight) { // Trusses are horizontal (parallel to X-axis), span rectWidth
+                    for (let y = worldStartY + TRUSS_SPACING_UNITS; y < worldEndY; y += TRUSS_SPACING_UNITS) {
+                      if (y < worldEndY - EPSILON) { // Avoid truss too close to the far edge
+                         newLinesForTrusses.push({
+                           start: { x: worldStartX, y: y },
+                           end: { x: worldEndX, y: y },
+                           color: currentColor, // Or a specific truss color
+                           thickness: 1, // Or a specific truss thickness
+                         });
+                      }
+                    }
+                  } else { // Trusses are vertical (parallel to Y-axis), span rectHeight
+                    for (let x = worldStartX + TRUSS_SPACING_UNITS; x < worldEndX; x += TRUSS_SPACING_UNITS) {
+                       if (x < worldEndX - EPSILON) { // Avoid truss too close to the far edge
+                        newLinesForTrusses.push({
+                          start: { x: x, y: worldStartY },
+                          end: { x: x, y: worldEndY },
+                          color: currentColor, // Or a specific truss color
+                          thickness: 1, // Or a specific truss thickness
+                        });
+                      }
+                    }
+                  }
+                }
+              }
+
+              addToHistory({
+                rectangles: [...currentState.rectangles, newRectangle],
+                lines: [...currentState.lines, ...newLinesForTrusses], // Add new trusses along with the rectangle
+              });
               break
             case "circle":
               const radius = dist(activeShapeStartPoint, snappedPoint)
@@ -668,15 +760,30 @@ export default function EnhancedGraphPaper() {
 
       // --- Line Erasing ---
       if (eraserMode === "partial") {
-        const originalLinesSnapshot = [...newLines]
-        const processedLines: Line[] = []
-        newLines.forEach((originalLine) => {
-          let segments: Line[] = [originalLine]
+        const originalLinesSnapshot = [...newLines]; // Keep a snapshot for comparison
+        const processedLines: Line[] = [];
+        originalLinesSnapshot.forEach((originalLine) => {
+          // Residential mode: if a stud wall is hit in partial erase, treat as whole erase for that line
+          if (designMode === "residential" && originalLine.studCount !== undefined) {
+            let studWallHit = false;
+            for (const ep of eraserStrokePoints) {
+              if (distancePointToLineSegment(ep, originalLine.start, originalLine.end) < eraserWidth / 2) {
+                studWallHit = true;
+                break;
+              }
+            }
+            if (studWallHit) {
+              opPerformed = true; // Mark operation performed
+              return; // Skip this originalLine, effectively deleting it from processedLines
+            }
+          }
+
+          let segments: Line[] = [originalLine];
           eraserStrokePoints.forEach((ep) => {
-            const nextSegments: Line[] = []
+            const nextSegments: Line[] = [];
             segments.forEach((seg) => {
               if (distancePointToLineSegment(ep, seg.start, seg.end) < eraserWidth / 2) {
-                const proj = projectPointOntoLine(ep, seg.start, seg.end)
+                const proj = projectPointOntoLine(ep, seg.start, seg.end);
                 const lineDir = normalize(vec(seg.start, seg.end))
                 const cutP1 = clampPointToSegment(sub(proj, scale(lineDir, eraserWidth / 2)), seg.start, seg.end)
                 const cutP2 = clampPointToSegment(add(proj, scale(lineDir, eraserWidth / 2)), seg.start, seg.end)
@@ -714,48 +821,95 @@ export default function EnhancedGraphPaper() {
           (line) =>
             !eraserStrokePoints.some((ep) => distancePointToLineSegment(ep, line.start, line.end) < eraserWidth / 2),
         )
-        if (newLines.length !== originalLineCount) opPerformed = true
+        if (newLines.length !== originalLineCount) opPerformed = true;
       }
 
       // --- Other Shapes (always whole element deletion) ---
-      const originalCircleCount = newCircles.length
+      // Circles
+      const originalCircleCount = newCircles.length;
       newCircles = newCircles.filter(
         (circle) =>
           !eraserStrokePoints.some((ep) => Math.abs(dist(ep, circle.center) - circle.radius) < eraserWidth / 2),
-      )
-      if (newCircles.length !== originalCircleCount) opPerformed = true
+      );
+      if (newCircles.length !== originalCircleCount) opPerformed = true;
 
-      const originalArcCount = newArcs.length
+      // Arcs
+      const originalArcCount = newArcs.length;
       newArcs = newArcs.filter((arc) => {
-        const arcPolyline = getPointsOnArc(arc)
+        const arcPolyline = getPointsOnArc(arc);
         return !eraserStrokePoints.some((ep) =>
           arcPolyline.some(
             (p_arc, i_arc, arr_arc) =>
               i_arc < arr_arc.length - 1 && distancePointToLineSegment(ep, p_arc, arr_arc[i_arc + 1]) < eraserWidth / 2,
           ),
-        )
-      })
-      if (newArcs.length !== originalArcCount) opPerformed = true
+        );
+      });
+      if (newArcs.length !== originalArcCount) opPerformed = true;
 
-      const originalRectangleCount = newRectangles.length
-      newRectangles = newRectangles.filter((rect) => {
-        const p1 = rect.start
-        const p3 = rect.end
-        const p2 = { x: p3.x, y: p1.y }
-        const p4 = { x: p1.x, y: p3.y }
+      // Rectangles (and their trusses if in residential mode)
+      const removedRectangles: Rectangle[] = [];
+      const keptRectangles: Rectangle[] = [];
+      currentState.rectangles.forEach(rect => {
+        const p1 = rect.start;
+        const p3 = rect.end;
+        const p2 = { x: p3.x, y: p1.y };
+        const p4 = { x: p1.x, y: p3.y };
         const sides = [
-          { start: p1, end: p2 },
-          { start: p2, end: p3 },
-          { start: p3, end: p4 },
-          { start: p4, end: p1 },
-        ]
-        return !eraserStrokePoints.some((ep) =>
+          { start: p1, end: p2 }, { start: p2, end: p3 },
+          { start: p3, end: p4 }, { start: p4, end: p1 },
+        ];
+        const isHit = eraserStrokePoints.some((ep) =>
           sides.some((side) => distancePointToLineSegment(ep, side.start, side.end) < eraserWidth / 2),
-        )
-      })
-      if (newRectangles.length !== originalRectangleCount) opPerformed = true
+        );
+        if (isHit) {
+          removedRectangles.push(rect);
+          opPerformed = true;
+        } else {
+          keptRectangles.push(rect);
+        }
+      });
+      newRectangles = keptRectangles;
 
-      const originalArrowCount = newArrows.length
+      if (designMode === "residential" && removedRectangles.length > 0) {
+        const linesToAlsoRemoveDueToRectErasure: Line[] = [];
+        removedRectangles.forEach(rect => {
+          const minX = Math.min(rect.start.x, rect.end.x);
+          const minY = Math.min(rect.start.y, rect.end.y);
+          const maxX = Math.max(rect.start.x, rect.end.x);
+          const maxY = Math.max(rect.start.y, rect.end.y);
+
+          // Iterate over the current state of lines *after* primary line erasing pass
+          // This means newLines might have already been modified by line eraser
+          newLines.forEach(line => {
+            if (line.thickness === 1) { // Potential truss characteristic
+              const isHorizTruss = Math.abs(line.start.y - line.end.y) < EPSILON && // is horizontal
+                                   line.thickness === 1 &&
+                                   Math.abs(line.start.x - minX) < EPSILON && Math.abs(line.end.x - maxX) < EPSILON && // matches rect x-bounds
+                                   line.start.y > minY && line.start.y < maxY; // y is within rect (not on boundary)
+              const isVertTruss =  Math.abs(line.start.x - line.end.x) < EPSILON && // is vertical
+                                   line.thickness === 1 &&
+                                   Math.abs(line.start.y - minY) < EPSILON && Math.abs(line.end.y - maxY) < EPSILON && // matches rect y-bounds
+                                   line.start.x > minX && line.start.x < maxX; // x is within rect (not on boundary)
+
+              if (isHorizTruss || isVertTruss) {
+                // Check if this line is already slated for removal to avoid double counting or processing
+                // For simplicity, we just add it. Filtering `newLines` later will handle duplicates if any.
+                linesToAlsoRemoveDueToRectErasure.push(line);
+              }
+            }
+          });
+        });
+
+        if (linesToAlsoRemoveDueToRectErasure.length > 0) {
+          newLines = newLines.filter(nl => !linesToAlsoRemoveDueToRectErasure.some(rfl =>
+            dist(nl.start, rfl.start) < EPSILON && dist(nl.end, rfl.end) < EPSILON && nl.thickness === rfl.thickness
+          ));
+          opPerformed = true; // Ensure opPerformed is true if trusses were removed
+        }
+      }
+
+      // Arrows
+      const originalArrowCount = newArrows.length;
       newArrows = newArrows.filter(
         (arrow) =>
           !eraserStrokePoints.some((ep) => distancePointToLineSegment(ep, arrow.start, arrow.end) < eraserWidth / 2),
@@ -1152,6 +1306,20 @@ export default function EnhancedGraphPaper() {
                   </Button>
                 )}
               </ToggleGroup>
+            {isMobile && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDesignMode(prevMode => prevMode === "graph" ? "residential" : "graph");
+                  triggerFeedback();
+                  // setIsToolMenuOpen(false); // Optionally close menu
+                }}
+                className="w-full mt-2 text-xs"
+                size="sm"
+              >
+                {designMode === "graph" ? "Residential Builder" : "Graph Paper"}
+              </Button>
+            )}
             </CardContent>
             {isMobile && (
               <div className="flex justify-end pr-1 pb-1">
@@ -1298,6 +1466,27 @@ export default function EnhancedGraphPaper() {
             </Card>
           </div>
         </>
+      )}
+      {/* Design Mode Toggle - Desktop */}
+      {!isMobile && (
+        <div
+          className={`absolute top-[9rem] left-6 z-10 transition-all duration-700 delay-200 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
+        >
+          <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
+            <CardContent className="p-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDesignMode(prevMode => prevMode === "graph" ? "residential" : "graph");
+                  triggerFeedback();
+                }}
+                className="w-full"
+              >
+                {designMode === "graph" ? "Enable Residential Builder" : "Enable Graph Paper"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       <div
