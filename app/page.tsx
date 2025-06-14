@@ -60,7 +60,7 @@ const THICKNESSES = [1, 2, 4, 6]
 const MOBILE_COLORS = COLORS.slice(0, 2)
 const MOBILE_THICKNESSES = THICKNESSES.slice(0, 2)
 const TRUSS_SPACING_UNITS = 2; // Represents 2 grid units, e.g., 16 inches if grid unit is 8 inches.
-const STUD_SPACING_UNITS = 2; // e.g., 16 inches if grid unit is 8 inches.
+const STUD_SPACING_UNITS = 1.33; // Represents 16 inches (16/12 feet)
 
 // Vector Math Helpers
 const vec = (p1: Point, p2: Point): Point => ({ x: p2.x - p1.x, y: p2.y - p1.y })
@@ -134,6 +134,8 @@ export default function EnhancedGraphPaper() {
   const [isColorMenuOpen, setIsColorMenuOpen] = useState(false)
   const [tool, setTool] = useState<Tool>("line")
   const [designMode, setDesignMode] = useState<"graph" | "residential">("graph");
+  const [currentTrussSpacing, setCurrentTrussSpacing] = useState<number>(2); // Default 2 feet
+  const [currentStudSpacing, setCurrentStudSpacing] = useState<number>(1.33); // Default 1.33 feet (16 inches)
   const [eraserMode, setEraserMode] = useState<EraserMode>("partial") // Default to partial
   const [currentColor, setCurrentColor] = useState("#000000")
   const [currentThickness, setCurrentThickness] = useState(2)
@@ -656,7 +658,8 @@ export default function EnhancedGraphPaper() {
                 const lengthInGridCells = dist(lineData.start, lineData.end) / gridSize; // Calculate length in terms of grid cells
 
                 if (lengthInGridCells > EPSILON) { // Only calculate for non-zero length lines
-                  const studCount = Math.ceil(lengthInGridCells / STUD_SPACING_UNITS) + 1;
+                  const activeStudSpacing = currentStudSpacing > 0 ? currentStudSpacing : 1.33;
+                  const studCount = Math.ceil(lengthInGridCells / activeStudSpacing) + 1;
                   lineData.studCount = studCount;
                 } else {
                   lineData.studCount = 0; // Or 1 if even a point wall has one stud. Let's go with 0 for zero length.
@@ -677,31 +680,51 @@ export default function EnhancedGraphPaper() {
                 const rectWidth = worldEndX - worldStartX;
                 const rectHeight = worldEndY - worldStartY;
 
-                if (rectWidth > 0 && rectHeight > 0) { // Ensure positive dimensions
-                  if (rectWidth < rectHeight) { // Trusses are horizontal (parallel to X-axis), span rectWidth
-                    for (let y = worldStartY + TRUSS_SPACING_UNITS; y < worldEndY; y += TRUSS_SPACING_UNITS) {
-                      if (y < worldEndY - EPSILON) { // Avoid truss too close to the far edge
-                         newLinesForTrusses.push({
-                           start: { x: worldStartX, y: y },
-                           end: { x: worldEndX, y: y },
-                           color: currentColor, // Or a specific truss color
-                           thickness: 1, // Or a specific truss thickness
-                         });
-                      }
+                // New truss generation logic with boundary trusses
+                const spacing = currentTrussSpacing > 0 ? currentTrussSpacing : 2; // Use state, ensure positive, fallback to 2ft
+                const trussLinesRaw: Line[] = [];
+                const trussCommonProps = { color: currentColor, thickness: 1 };
+
+                if (rectWidth > 0 && rectHeight > 0) {
+                    if (rectWidth < rectHeight) { // Trusses are horizontal (parallel to X-axis)
+                        if (rectWidth >= EPSILON) { // Ensure practical width for trusses
+                            for (let y = worldStartY; y <= worldEndY + EPSILON; y += spacing) {
+                                const currentY = Math.min(y, worldEndY);
+                                trussLinesRaw.push({
+                                    start: { x: worldStartX, y: currentY },
+                                    end: { x: worldEndX, y: currentY },
+                                    ...trussCommonProps
+                                });
+                                if (currentY >= worldEndY - EPSILON) break;
+                            }
+                        }
+                    } else { // Trusses are vertical (parallel to Y-axis)
+                        if (rectHeight >= EPSILON) { // Ensure practical height for trusses
+                            for (let x = worldStartX; x <= worldEndX + EPSILON; x += spacing) {
+                                const currentX = Math.min(x, worldEndX);
+                                trussLinesRaw.push({
+                                    start: { x: currentX, y: worldStartY },
+                                    end: { x: currentX, y: worldEndY },
+                                    ...trussCommonProps
+                                });
+                                if (currentX >= worldEndX - EPSILON) break;
+                            }
+                        }
                     }
-                  } else { // Trusses are vertical (parallel to Y-axis), span rectHeight
-                    for (let x = worldStartX + TRUSS_SPACING_UNITS; x < worldEndX; x += TRUSS_SPACING_UNITS) {
-                       if (x < worldEndX - EPSILON) { // Avoid truss too close to the far edge
-                        newLinesForTrusses.push({
-                          start: { x: x, y: worldStartY },
-                          end: { x: x, y: worldEndY },
-                          color: currentColor, // Or a specific truss color
-                          thickness: 1, // Or a specific truss thickness
-                        });
-                      }
-                    }
-                  }
                 }
+
+                // Deduplicate trusses
+                const uniqueSignatures = new Set<string>();
+                newLinesForTrusses = trussLinesRaw.filter(truss => {
+                    const p1 = truss.start.x < truss.end.x || (truss.start.x === truss.end.x && truss.start.y < truss.end.y) ? truss.start : truss.end;
+                    const p2 = truss.start.x < truss.end.x || (truss.start.x === truss.end.x && truss.start.y < truss.end.y) ? truss.end : truss.start;
+                    const sig = `${p1.x.toFixed(3)},${p1.y.toFixed(3)}-${p2.x.toFixed(3)},${p2.y.toFixed(3)}`;
+                    if (!uniqueSignatures.has(sig)) {
+                        uniqueSignatures.add(sig);
+                        return true;
+                    }
+                    return false;
+                });
               }
 
               addToHistory({
@@ -884,12 +907,14 @@ export default function EnhancedGraphPaper() {
             if (line.thickness === 1) { // Potential truss characteristic
               const isHorizTruss = Math.abs(line.start.y - line.end.y) < EPSILON && // is horizontal
                                    line.thickness === 1 &&
-                                   Math.abs(line.start.x - minX) < EPSILON && Math.abs(line.end.x - maxX) < EPSILON && // matches rect x-bounds
-                                   line.start.y > minY && line.start.y < maxY; // y is within rect (not on boundary)
+                                   (Math.abs(line.start.x - minX) < EPSILON && Math.abs(line.end.x - maxX) < EPSILON ||
+                                    Math.abs(line.start.x - maxX) < EPSILON && Math.abs(line.end.x - minX) < EPSILON) && // matches rect x-bounds (normal or reversed)
+                                   line.start.y >= minY - EPSILON && line.start.y <= maxY + EPSILON; // y is within rect (inclusive of boundaries)
               const isVertTruss =  Math.abs(line.start.x - line.end.x) < EPSILON && // is vertical
                                    line.thickness === 1 &&
-                                   Math.abs(line.start.y - minY) < EPSILON && Math.abs(line.end.y - maxY) < EPSILON && // matches rect y-bounds
-                                   line.start.x > minX && line.start.x < maxX; // x is within rect (not on boundary)
+                                   (Math.abs(line.start.y - minY) < EPSILON && Math.abs(line.end.y - maxY) < EPSILON ||
+                                    Math.abs(line.start.y - maxY) < EPSILON && Math.abs(line.end.y - minY) < EPSILON) && // matches rect y-bounds (normal or reversed)
+                                   line.start.x >= minX - EPSILON && line.start.x <= maxX + EPSILON; // x is within rect (inclusive of boundaries)
 
               if (isHorizTruss || isVertTruss) {
                 // Check if this line is already slated for removal to avoid double counting or processing
@@ -1320,6 +1345,71 @@ export default function EnhancedGraphPaper() {
                 {designMode === "graph" ? "Residential Builder" : "Graph Paper"}
               </Button>
             )}
+            {/* Truss Spacing Input - Mobile */}
+            {isMobile && designMode === "residential" && (
+              <div className="mt-2"> {/* Add some margin */}
+                <label htmlFor="truss-spacing-input-mobile" className="block text-xs font-medium text-gray-700 mb-0.5">
+                  Truss Spacing (ft):
+                </label>
+                <input
+                  type="number"
+                  id="truss-spacing-input-mobile"
+                  value={currentTrussSpacing}
+                  onChange={(e) => {
+                    const valStr = e.target.value;
+                    if (valStr === "") {
+                        // Allow temporary empty state, rely on blur to fix if needed
+                        // Or set to a temp "invalid" marker if your state supports it
+                    } else {
+                        const num = parseFloat(valStr);
+                        if (!isNaN(num) && num > 0) {
+                            setCurrentTrussSpacing(num);
+                        }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    let num = parseFloat(e.target.value);
+                    if (isNaN(num) || num <= 0) {
+                        num = 2; // Default if invalid
+                    }
+                    setCurrentTrussSpacing(num);
+                  }}
+                  min="0.5"
+                  step="0.01"
+                  className="w-full p-1.5 border border-gray-300 rounded-md text-sm"
+                />
+              </div>
+            )}
+            {/* Stud Spacing Input - Mobile */}
+            {isMobile && designMode === "residential" && (
+              <div className="mt-2"> {/* Add some margin */}
+                <label htmlFor="stud-spacing-input-mobile" className="block text-xs font-medium text-gray-700 mb-0.5">
+                  Stud Spacing (ft):
+                </label>
+                <input
+                  type="number"
+                  id="stud-spacing-input-mobile"
+                  value={currentStudSpacing}
+                  onChange={(e) => {
+                    const valStr = e.target.value;
+                    const num = parseFloat(valStr);
+                    if (!isNaN(num) && num > 0) {
+                        setCurrentStudSpacing(num);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    let num = parseFloat(e.target.value);
+                    if (isNaN(num) || num <= 0) {
+                        num = 1.33; // Default if invalid
+                    }
+                    setCurrentStudSpacing(num);
+                  }}
+                  min="0.5"
+                  step="0.01"
+                  className="w-full p-1.5 border border-gray-300 rounded-md text-sm"
+                />
+              </div>
+            )}
             </CardContent>
             {isMobile && (
               <div className="flex justify-end pr-1 pb-1">
@@ -1484,6 +1574,82 @@ export default function EnhancedGraphPaper() {
               >
                 {designMode === "graph" ? "Enable Residential Builder" : "Enable Graph Paper"}
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      {/* Truss Spacing Input - Desktop */}
+      {!isMobile && designMode === "residential" && (
+        <div
+          className={`absolute top-[12.5rem] left-6 z-10 transition-all duration-700 delay-200 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
+        >
+          <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
+            <CardContent className="p-2">
+              <label htmlFor="truss-spacing-input" className="block text-xs font-medium text-gray-700 mb-1">
+                Truss Spacing (ft):
+              </label>
+              <input
+                type="number"
+                id="truss-spacing-input"
+                value={currentTrussSpacing}
+                onChange={(e) => {
+                    const valStr = e.target.value;
+                    if (valStr === "") {
+                        // Allow temporary empty state, rely on blur to fix
+                    } else {
+                        const num = parseFloat(valStr);
+                        if (!isNaN(num) && num > 0) {
+                            setCurrentTrussSpacing(num);
+                        }
+                    }
+                }}
+                onBlur={(e) => {
+                    let num = parseFloat(e.target.value);
+                    if (isNaN(num) || num <= 0) {
+                        num = 2; // Default to 2ft if invalid
+                    }
+                    setCurrentTrussSpacing(num);
+                }}
+                min="0.5"
+                step="0.01"
+                className="w-full p-1 border border-gray-300 rounded-md text-sm"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      {/* Stud Spacing Input - Desktop */}
+      {!isMobile && designMode === "residential" && (
+        <div
+          className={`absolute top-[16.5rem] left-6 z-10 transition-all duration-700 delay-200 ${isFirstLoad ? "opacity-0 scale-95 -translate-x-4" : "opacity-100 scale-100 translate-x-0"}`}
+        >
+          <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
+            <CardContent className="p-2">
+              <label htmlFor="stud-spacing-input" className="block text-xs font-medium text-gray-700 mb-1">
+                Stud Spacing (ft):
+              </label>
+              <input
+                type="number"
+                id="stud-spacing-input"
+                value={currentStudSpacing}
+                onChange={(e) => {
+                  const valStr = e.target.value;
+                  const num = parseFloat(valStr);
+                  if (!isNaN(num) && num > 0) {
+                      setCurrentStudSpacing(num);
+                  }
+                }}
+                onBlur={(e) => {
+                  let num = parseFloat(e.target.value);
+                  if (isNaN(num) || num <= 0) {
+                      num = 1.33; // Default if invalid
+                  }
+                  setCurrentStudSpacing(num);
+                }}
+                min="0.5"
+                step="0.01"
+                className="w-full p-1 border border-gray-300 rounded-md text-sm"
+              />
             </CardContent>
           </Card>
         </div>
