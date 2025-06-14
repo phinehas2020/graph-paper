@@ -863,6 +863,7 @@ export default function EnhancedGraphPaper() {
               }
 
               addToHistory({
+                ...currentState, // Add this spread operator
                 rectangles: [...currentState.rectangles, newRectangle],
                 lines: [...currentState.lines, ...newLinesForTrusses],
                 walls: [...currentState.walls, ...newWallsFromRect],
