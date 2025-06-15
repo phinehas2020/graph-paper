@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -127,6 +128,7 @@ const tools: { name: Tool; icon: LucideIcon; label: string; shortcut?: string }[
 
 export default function EnhancedGraphPaper() {
   const isMobile = useIsMobile()
+  const router = useRouter()
   const coreToolNames: Tool[] = ["select", "line", "rectangle", "eraser", "pan"]
   const [showAllMobileTools, setShowAllMobileTools] = useState(false)
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false)
@@ -1995,6 +1997,23 @@ export default function EnhancedGraphPaper() {
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "right" : "left"}>
                   <p>Reset View</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => router.push('/three')}
+                    className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95`}
+                  >
+                    <Orbit className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side={isMobile ? 'right' : 'left'}>
+                  <p>3D Preview</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
