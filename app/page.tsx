@@ -1481,6 +1481,7 @@ export default function EnhancedGraphPaper() {
                 </div>
               </CardContent>
             </Card>
+          )}
         )}
       </div> {/* This closes the main Tool Selection UI Container */}
 
