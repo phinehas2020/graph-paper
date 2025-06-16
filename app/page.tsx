@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { AnimatedToolbar } from "@/components/AnimatedToolbar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useIsMobile } from "@/hooks/use-is-mobile"
 import {
@@ -115,17 +115,17 @@ function getPointsOnArc(arc: Arc, numPoints = 20): Point[] {
   return points
 }
 
-const tools: { name: Tool; icon: LucideIcon; label: string; shortcut?: string }[] = [
-  { name: "select", icon: MousePointer, label: "Select", shortcut: "V" },
-  { name: "line", icon: PenLine, label: "Line", shortcut: "L" },
-  { name: "rectangle", icon: Square, label: "Rectangle", shortcut: "R" },
-  { name: "circle", icon: Circle, label: "Circle", shortcut: "C" },
-  { name: "arc", icon: Orbit, label: "Arc", shortcut: "O" },
-  { name: "arrow", icon: ArrowRight, label: "Arrow", shortcut: "A" },
-  { name: "text", icon: Baseline, label: "Text", shortcut: "T" },
-  { name: "measure", icon: Ruler, label: "Measure", shortcut: "M" },
-  { name: "eraser", icon: EraserIcon, label: "Eraser", shortcut: "E" },
-  { name: "pan", icon: Move, label: "Navigate", shortcut: "P" },
+const tools: { name: Tool; icon: LucideIcon; label: string; shortcut?: string; color?: string }[] = [
+  { name: "select", icon: MousePointer, label: "Select", shortcut: "V", color: "#6366f1" },
+  { name: "line", icon: PenLine, label: "Line", shortcut: "L", color: "#ef4444" },
+  { name: "rectangle", icon: Square, label: "Rectangle", shortcut: "R", color: "#f97316" },
+  { name: "circle", icon: Circle, label: "Circle", shortcut: "C", color: "#eab308" },
+  { name: "arc", icon: Orbit, label: "Arc", shortcut: "O", color: "#22c55e" },
+  { name: "arrow", icon: ArrowRight, label: "Arrow", shortcut: "A", color: "#06b6d4" },
+  { name: "text", icon: Baseline, label: "Text", shortcut: "T", color: "#8b5cf6" },
+  { name: "measure", icon: Ruler, label: "Measure", shortcut: "M", color: "#ec4899" },
+  { name: "eraser", icon: EraserIcon, label: "Eraser", shortcut: "E", color: "#64748b" },
+  { name: "pan", icon: Move, label: "Navigate", shortcut: "P", color: "#84cc16" },
 ]
 
 export default function EnhancedGraphPaper() {
@@ -1367,59 +1367,27 @@ export default function EnhancedGraphPaper() {
             })()}
           </Button>
         ) : (
-          <Card
-            className={`shadow-xl border-0 bg-white/95 backdrop-blur-sm transition-all duration-300 ${isAnimating ? "scale-105" : ""} ${isMobile ? "max-w-[calc(100vw-2rem)]" : ""}`}
-          >
-            <CardContent className={isMobile ? "p-1" : "p-2"}>
-              <ToggleGroup
-                type="single"
-                value={tool}
-                onValueChange={(value) => {
-                  if (value) setTool(value as Tool)
-                  if (isMobile) setIsToolMenuOpen(false)
-                }}
-                orientation="horizontal"
-                className={`gap-1 ${isMobile ? "flex flex-wrap justify-center items-center" : ""}`}
-              >
-                {displayedTools.map(({ name, icon: Icon, label, shortcut }) => (
-                  <TooltipProvider key={name} delayDuration={isMobile ? 0 : 100}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <ToggleGroupItem
-                          value={name}
-                          aria-label={label}
-                          className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} data-[state=on]:bg-blue-100 data-[state=on]:text-blue-700 hover:bg-gray-100 transition-all duration-200 active:scale-95 text-gray-800 dark:text-white`}
-                        >
-                          <Icon className={`${isMobile ? "w-6 h-6 text-gray-800 dark:text-white" : "w-5 h-5 text-gray-800 dark:text-white"}`} />
-                        </ToggleGroupItem>
-                      </TooltipTrigger>
-                      <TooltipContent side={isMobile ? "top" : "bottom"} className="bg-gray-900 text-gray-200">
-                        <p>
-                          {label} {shortcut && `(${shortcut})`}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ))}
-                {isMobile && tools.length > coreToolNames.length && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setShowAllMobileTools((prev) => !prev)
-                      triggerFeedback()
-                    }}
-                    className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} hover:bg-gray-100 transition-all duration-200 active:scale-95 flex items-center justify-center`}
-                    aria-label={showAllMobileTools ? "Show fewer tools" : "Show more tools"}
-                  >
-                    {showAllMobileTools ? (
-                      <ChevronUp className={`${isMobile ? "w-6 h-6 text-gray-800 dark:text-white" : "w-5 h-5 text-gray-800 dark:text-white"}`} />
-                    ) : (
-                      <ChevronDown className={`${isMobile ? "w-6 h-6 text-gray-800 dark:text-white" : "w-5 h-5 text-gray-800 dark:text-white"}`} />
-                    )}
-                  </Button>
-                )}
-              </ToggleGroup>
-            {isMobile && (
+          <AnimatedToolbar
+            tools={displayedTools.map(({ name, icon, label, shortcut, color }) => ({
+              name,
+              icon,
+              label,
+              shortcut,
+              color
+            }))}
+            activeTool={tool}
+            onToolChange={(selectedTool) => {
+              setTool(selectedTool as Tool)
+              if (isMobile) setIsToolMenuOpen(false)
+            }}
+            isMobile={isMobile}
+            className={isMobile ? "max-w-[calc(100vw-2rem)]" : ""}
+          />
+          
+          {/* Additional mobile controls */}
+          {isMobile && (
+            <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm mt-2">
+              <CardContent className="p-2">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -1498,23 +1466,21 @@ export default function EnhancedGraphPaper() {
                 />
               </div>
             )}
-            </CardContent>
-            {isMobile && (
-              <div className="flex justify-end pr-1 pb-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setIsToolMenuOpen(false)
-                    triggerFeedback()
-                  }}
-                  className="w-8 h-8 hover:bg-gray-100 active:scale-95 text-gray-800 dark:text-white"
-                >
-                  <X className="w-4 h-4 text-gray-800 dark:text-white" />
-                </Button>
-              </div>
-            )}
-          </Card>
+                <div className="flex justify-end pt-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setIsToolMenuOpen(false)
+                      triggerFeedback()
+                    }}
+                    className="w-8 h-8 hover:bg-gray-100 active:scale-95 text-gray-800 dark:text-white"
+                  >
+                    <X className="w-4 h-4 text-gray-800 dark:text-white" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
         )}
       </div> {/* This closes the main Tool Selection UI Container */}
 
