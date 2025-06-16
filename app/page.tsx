@@ -1401,7 +1401,6 @@ export default function EnhancedGraphPaper() {
               >
                 {designMode === "graph" ? "Residential Builder" : "Graph Paper"}
               </Button>
-            )}
             {/* Truss Spacing Input - Mobile */}
             {isMobile && designMode === "residential" && (
               <div className="mt-2"> {/* Add some margin */}
