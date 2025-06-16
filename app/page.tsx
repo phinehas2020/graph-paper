@@ -1341,7 +1341,7 @@ export default function EnhancedGraphPaper() {
       />
 
       {!isMobile && (
-        <div className="absolute top-6 right-6 z-20 flex items-start gap-4">
+        <div className="absolute top-6 right-6 z-30 flex items-start gap-4">
           <Button
             variant="ghost"
             size="icon"
@@ -1539,7 +1539,7 @@ export default function EnhancedGraphPaper() {
       )}
 
       {isMobile && (
-        <div className="absolute top-6 right-6 z-20">
+        <div className="absolute top-6 right-6 z-30">
           <Button
             variant="ghost"
             size="icon"
