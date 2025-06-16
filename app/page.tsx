@@ -1534,9 +1534,9 @@ export default function EnhancedGraphPaper() {
             )}
           </Card>
         )}
-        </div>
-        </div>
-      </div>
+        </div> {/* tool menu container */}
+        </div> {/* transition wrapper */}
+      </div> {/* fullscreen & tools wrapper */}
       )}
 
       {isMobile && (
