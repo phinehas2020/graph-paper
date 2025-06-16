@@ -1340,14 +1340,13 @@ export default function EnhancedGraphPaper() {
         }}
       />
 
-       5wc509-codex/fix-icon-visibility-and-fullscreen-button-position
-      {!isMobile && (
-        <div className="absolute top-6 right-6 z-20 flex items-start gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleFullscreen}
-            className="w-12 h-12 hover:bg-gray-100 active:scale-95 text-gray-800 dark:text-white"
+            <div
+              className={`z-10 transition-all duration-700 ${
+                isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"
+              } ${
+                isMobile ? `absolute bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-1/2 -translate-x-1/2` : ""
+              }`}
+            >
             aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           >
             {isFullscreen ? (
@@ -1509,9 +1508,9 @@ export default function EnhancedGraphPaper() {
                 <input
                   type="number"
                   id="stud-spacing-input-mobile"
-                  value={currentStudSpacing}
-                  onChange={(e) => {
-                    const valStr = e.target.value;
+        </div>
+        </div>
+      </div>
                     const num = parseFloat(valStr);
                     if (!isNaN(num) && num > 0) {
                         setCurrentStudSpacing(num);
