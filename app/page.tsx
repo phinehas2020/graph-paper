@@ -1340,118 +1340,16 @@ export default function EnhancedGraphPaper() {
         }}
       />
 
-       5wc509-codex/fix-icon-visibility-and-fullscreen-button-position
-       main
-
-      {!isMobile && (
-        <div className="absolute top-6 right-6 z-20 flex items-start gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleFullscreen}
-            className="w-12 h-12 hover:bg-gray-100 active:scale-95 text-gray-800 dark:text-white"
-            aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-          >
-            {isFullscreen ? (
-              <Minimize className="w-5 h-5 text-gray-800 dark:text-white" />
-            ) : (
-              <Maximize className="w-5 h-5 text-gray-800 dark:text-white" />
-            )}
-          </Button>
-          <div
-            className={`transition-all duration-700 ${
-              isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"
-            }`}
-          >
-            <ToolContainer
-              orientation="horizontal"
-              toolsState={toolsState}
-              setToolsState={setToolsState}
-              undo={undo}
-              redo={redo}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              clear={clear}
-              isLoading={isLoading}
-              isSaving={isSaving}
-              isGenerating={isGenerating}
-              isMobile={isMobile}
-              toggleEraserMode={toggleEraserMode}
-              togglePenMode={togglePenMode}
-              toggleLineMode={toggleLineMode}
-              toggleSelectMode={toggleSelectMode}
-              toggleArrowMode={toggleArrowMode}
-              toggleRectangleMode={toggleRectangleMode}
-              toggleCircleMode={toggleCircleMode}
-              toggleTextMode={toggleTextMode}
-              toggleImageMode={toggleImageMode}
-              toggleHighlighterMode={toggleHighlighterMode}
-              toggleLaserMode={toggleLaserMode}
-              settings={settings}
-              setSettings={setSettings}
-              toggleZenMode={toggleZenMode}
-              toggleGridMode={toggleGridMode}
-              togglePanelOpen={togglePanelOpen}
-              isPanelOpen={isPanelOpen}
-              exportToFormat={exportToFormat}
-              exportToPng={exportToPng}
-              exportToSvg={exportToSvg}
-              exportToJpg={exportToJpg}
-              exportToWebp={exportToWebp}
-              exportToClipboard={exportToClipboard}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Mobile Tool Container */}
-      {isMobile && (
-        <div
-          className={`z-10 transition-all duration-700 ${
-            isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"
-          } ${
-            isMobile ? `absolute bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-1/2 -translate-x-1/2` : ""
-          }`}
-        >
-          <ToolContainer
-            orientation="horizontal"
-            toolsState={toolsState}
-            setToolsState={setToolsState}
-            undo={undo}
-            redo={redo}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            clear={clear}
-            isLoading={isLoading}
-            isSaving={isSaving}
-            isGenerating={isGenerating}
-            isMobile={isMobile}
-            toggleEraserMode={toggleEraserMode}
-            togglePenMode={togglePenMode}
-            toggleLineMode={toggleLineMode}
-            toggleSelectMode={toggleSelectMode}
-            toggleArrowMode={toggleArrowMode}
-            toggleRectangleMode={toggleRectangleMode}
-            toggleCircleMode={toggleCircleMode}
-            toggleTextMode={toggleTextMode}
-            toggleImageMode={toggleImageMode}
-            toggleHighlighterMode={toggleHighlighterMode}
-            toggleLaserMode={toggleLaserMode}
-            settings={settings}
-            setSettings={setSettings}
-            toggleZenMode={toggleZenMode}
-            toggleGridMode={toggleGridMode}
-            togglePanelOpen={togglePanelOpen}
-            isPanelOpen={isPanelOpen}
-            exportToFormat={exportToFormat}
-            exportToPng={exportToPng}
-            exportToSvg={exportToSvg}
-            exportToJpg={exportToJpg}
-            exportToWebp={exportToWebp}
-            exportToClipboard={exportToClipboard}
-          />
-        </div>
-      )}
+      {/* Tool Selection UI Container */}
+      <div
+        className={`absolute z-10 transition-all duration-700 ${
+          isMobile
+            ? isToolMenuOpen
+              ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" // Mobile: Tool menu open (centered card)
+              : "bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] left-1/2 -translate-x-1/2" // Mobile: Tool menu closed (button at bottom)
+            : "top-6 right-24" // Desktop: tools next to fullscreen
+        } ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
+      >
         {isMobile && !isToolMenuOpen ? (
           <Button
             variant="ghost"
@@ -1618,11 +1516,9 @@ export default function EnhancedGraphPaper() {
             )}
           </Card>
         )}
-        </div> {/* tool menu container */}
-        </div> {/* transition wrapper */}
-      </div> {/* fullscreen & tools wrapper */}
-      )}
+      </div> {/* This closes the main Tool Selection UI Container */}
 
+      {/* Mobile Fullscreen Button - Placed separately to avoid issues with tool menu animations */}
       {isMobile && (
         <div className="absolute top-6 right-6 z-20">
           <Button
