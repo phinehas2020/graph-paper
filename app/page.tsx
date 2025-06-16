@@ -1367,27 +1367,28 @@ export default function EnhancedGraphPaper() {
             })()}
           </Button>
         ) : (
-          <AnimatedToolbar
-            tools={displayedTools.map(({ name, icon, label, shortcut, color }) => ({
-              name,
-              icon,
-              label,
-              shortcut,
-              color
-            }))}
-            activeTool={tool}
-            onToolChange={(selectedTool) => {
-              setTool(selectedTool as Tool)
-              if (isMobile) setIsToolMenuOpen(false)
-            }}
-            isMobile={isMobile}
-            className={isMobile ? "max-w-[calc(100vw-2rem)]" : ""}
-          />
-          
-          {/* Additional mobile controls */}
-          {isMobile && (
-            <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm mt-2">
-              <CardContent className="p-2">
+          <>
+            <AnimatedToolbar
+              tools={displayedTools.map(({ name, icon, label, shortcut, color }) => ({
+                name,
+                icon,
+                label,
+                shortcut,
+                color
+              }))}
+              activeTool={tool}
+              onToolChange={(selectedTool) => {
+                setTool(selectedTool as Tool)
+                if (isMobile) setIsToolMenuOpen(false)
+              }}
+              isMobile={isMobile}
+              className={isMobile ? "max-w-[calc(100vw-2rem)]" : ""}
+            />
+            
+            {/* Additional mobile controls */}
+            {isMobile && (
+              <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm mt-2">
+                <CardContent className="p-2">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -1479,9 +1480,10 @@ export default function EnhancedGraphPaper() {
                     <X className="w-4 h-4 text-gray-800 dark:text-white" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
       </div> {/* This closes the main Tool Selection UI Container */}
 
