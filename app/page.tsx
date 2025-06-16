@@ -33,6 +33,7 @@ import {
   X,
   Maximize,
   Minimize,
+  Baseline,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -121,6 +122,7 @@ const tools: { name: Tool; icon: LucideIcon; label: string; shortcut?: string }[
   { name: "circle", icon: Circle, label: "Circle", shortcut: "C" },
   { name: "arc", icon: Orbit, label: "Arc", shortcut: "O" },
   { name: "arrow", icon: ArrowRight, label: "Arrow", shortcut: "A" },
+  { name: "text", icon: Baseline, label: "Text", shortcut: "T" },
   { name: "measure", icon: Ruler, label: "Measure", shortcut: "M" },
   { name: "eraser", icon: EraserIcon, label: "Eraser", shortcut: "E" },
   { name: "pan", icon: Move, label: "Navigate", shortcut: "P" },
@@ -159,6 +161,8 @@ export default function EnhancedGraphPaper() {
   const [statusMessage, setStatusMessage] = useState("")
   const [isAnimating, setIsAnimating] = useState(false)
   const [isFirstLoad, setIsFirstLoad] = useState(true)
+  const [editingText, setEditingText] = useState<{ position: Point; currentText: string; inputLeft: number; inputTop: number } | null>(null)
+  const [selectedTextElement, setSelectedTextElement] = useState<TextElement | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   const [lastTouchDistance, setLastTouchDistance] = useState<number>(0)
@@ -427,8 +431,36 @@ export default function EnhancedGraphPaper() {
         )
         ctx.stroke()
       })
+      currentState.texts.forEach((textElement) => {
+        ctx.fillStyle = textElement.color || currentColor
+        ctx.font = `${textElement.fontSize ? textElement.fontSize * zoom : 16 * zoom}px Arial`
+        ctx.textAlign = "left"
+        ctx.textBaseline = "alphabetic"
+        ctx.fillText(
+          textElement.text,
+          textElement.position.x * zoom + panOffset.x,
+          textElement.position.y * zoom + panOffset.y,
+        )
+        if (selectedTextElement && selectedTextElement === textElement) {
+          // Font is already set from fillText
+          const textMetrics = ctx.measureText(textElement.text);
+          // The width from measureText is in unscaled pixels if the context isn't pre-scaled for font setting.
+          // However, since ctx.font was set with zoom-scaled font size, textMetrics.width should be canvas-scaled.
+          const textWidthCanvas = textMetrics.width;
+          const textHeightCanvas = (textElement.fontSize || 16) * zoom;
+          const xPosCanvas = textElement.position.x * zoom + panOffset.x;
+          const yPosCanvas = textElement.position.y * zoom + panOffset.y;
+
+          ctx.strokeStyle = "rgba(0, 100, 255, 0.7)";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 2]);
+          // Assuming textElement.position.y is the baseline:
+          ctx.strokeRect(xPosCanvas - 2, yPosCanvas - textHeightCanvas - 2, textWidthCanvas + 4, textHeightCanvas + 4);
+          ctx.setLineDash([]);
+        }
+      })
     },
-    [currentState, currentColor, currentThickness, panOffset, zoom],
+    [currentState, currentColor, currentThickness, panOffset, zoom, selectedTextElement],
   )
 
   const drawPreview = useCallback(
@@ -611,7 +643,33 @@ export default function EnhancedGraphPaper() {
     const worldPoint = getWorldPoint(point)
     const snappedPoint = getSnappedPoint(point)
 
-    if (tool === "arc") {
+    if (tool === "select") {
+      setSelectedTextElement(null); // Reset selection first
+      const ctx = canvasRef.current?.getContext('2d');
+      if (ctx) {
+        for (let i = 0; i < currentState.texts.length; i++) {
+          const textElement = currentState.texts[i];
+          ctx.font = `${textElement.fontSize || 16}px Arial`;
+          const textMetrics = ctx.measureText(textElement.text);
+          const textWidth = textMetrics.width;
+          const textHeight = textElement.fontSize || 16; // Approximation
+
+          const bboxLeft = textElement.position.x;
+          const bboxTop = textElement.position.y - textHeight; // Assuming position.y is baseline
+          const bboxRight = textElement.position.x + textWidth;
+          const bboxBottom = textElement.position.y;
+
+          if (worldPoint.x >= bboxLeft && worldPoint.x <= bboxRight &&
+              worldPoint.y >= bboxTop && worldPoint.y <= bboxBottom) {
+            setSelectedTextElement(textElement);
+            triggerFeedback();
+            return; // Found a text element, stop here
+          }
+        }
+      }
+      // If no text element is selected, proceed with other shape selection logic (if any)
+      // For now, we assume no other selection logic, or it's handled elsewhere/below.
+    } else if (tool === "arc") {
       if (arcPoints.length === 0) {
         setArcPoints([snappedPoint])
         setActiveShapeStartPoint(snappedPoint)
@@ -757,6 +815,14 @@ export default function EnhancedGraphPaper() {
     } else if (tool === "eraser") {
       setIsErasing(true)
       setEraserStrokePoints([worldPoint])
+    } else if (tool === "text") {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const inputLeft = snappedPoint.x * zoom + panOffset.x + rect.left;
+      const inputTop = snappedPoint.y * zoom + panOffset.y + rect.top;
+      setEditingText({ position: snappedPoint, currentText: "", inputLeft, inputTop });
+      triggerFeedback();
     }
   }
 
@@ -991,6 +1057,12 @@ export default function EnhancedGraphPaper() {
         e.preventDefault()
         setShowGrid((s) => !s)
         triggerFeedback()
+      } else if (selectedTextElement && (e.key === "Delete" || e.key === "Backspace")) {
+        e.preventDefault();
+        const newTexts = currentState.texts.filter(textEl => textEl !== selectedTextElement);
+        addToHistory({ texts: newTexts });
+        setSelectedTextElement(null);
+        triggerFeedback();
       } else if (pressedKey === "escape") {
         e.preventDefault()
         setActiveShapeStartPoint(null)
@@ -1013,6 +1085,9 @@ export default function EnhancedGraphPaper() {
     setActiveShapeEndPoint,
     setArcPoints,
     triggerFeedback,
+    selectedTextElement, // Added
+    currentState, // Added (or currentState.texts specifically)
+    addToHistory, // Added
   ])
 
   useEffect(() => {
@@ -1082,12 +1157,13 @@ export default function EnhancedGraphPaper() {
           : arcPoints.length === 1
             ? "Tap to set arc end point"
             : "Tap to set arc curve",
+      text: editingText ? "Type your text and press Enter" : "Tap to place text",
       eraser: `Drag to erase (${eraserMode} mode)`,
       pan: "Drag to move, pinch to zoom",
-      select: "Tap to select elements",
+      select: selectedTextElement ? "Text selected. Press Delete to remove." : "Tap to select elements",
     }
     setStatusMessage(messages[tool] || "")
-  }, [tool, activeShapeStartPoint, arcPoints, eraserMode])
+  }, [tool, activeShapeStartPoint, arcPoints, eraserMode, editingText, selectedTextElement])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -1178,6 +1254,24 @@ export default function EnhancedGraphPaper() {
     }
     triggerFeedback()
   }, [triggerFeedback])
+
+  const handleTextInputConfirm = () => {
+    if (editingText && editingText.currentText.trim() !== "") {
+      addToHistory({
+        texts: [
+          ...currentState.texts,
+          {
+            position: editingText.position,
+            text: editingText.currentText.trim(),
+            color: currentColor,
+            fontSize: 16, // Default font size, rendering will scale with zoom
+          },
+        ],
+      });
+    }
+    setEditingText(null);
+    triggerFeedback();
+  };
 
   useEffect(() => {
     const handler = () => setIsFullscreen(Boolean(document.fullscreenElement))
@@ -2031,6 +2125,35 @@ export default function EnhancedGraphPaper() {
             </CardContent>
           </Card>
         </div>
+      )}
+      {editingText && (
+        <input
+          type="text"
+          ref={(inputRef) => inputRef && inputRef.focus()} // Auto-focus the input
+          value={editingText.currentText}
+          onChange={(e) => setEditingText({ ...editingText, currentText: e.target.value })}
+          onBlur={handleTextInputConfirm}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleTextInputConfirm();
+            } else if (e.key === "Escape") {
+              setEditingText(null); // Cancel editing
+              triggerFeedback();
+            }
+          }}
+          style={{
+            position: 'absolute',
+            left: `${editingText.inputLeft}px`,
+            top: `${editingText.inputTop}px`,
+            border: '1px solid #ccc',
+            padding: '4px',
+            fontSize: `${16 * zoom}px`, // Match visual size with zoom
+            fontFamily: 'Arial, sans-serif', // Match canvas font
+            backgroundColor: 'white',
+            zIndex: 100, // Ensure it's on top
+          }}
+          placeholder="Enter text..."
+        />
       )}
     </div>
   )
