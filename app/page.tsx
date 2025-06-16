@@ -37,7 +37,18 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-type Tool = "select" | "line" | "rectangle" | "circle" | "arrow" | "text" | "arc" | "pan" | "measure" | "eraser"
+type Tool =
+  | "select"
+  | "line"
+  | "rectangle"
+  | "circle"
+  | "arrow"
+  | "text"
+  | "arc"
+  | "pan"
+  | "measure"
+  | "eraser"
+  | "fullscreen"
 type EraserMode = "partial" | "whole"
 type Point = { x: number; y: number }
 type Line = { start: Point; end: Point; color?: string; thickness?: number; studCount?: number }
@@ -126,12 +137,13 @@ const tools: { name: Tool; icon: LucideIcon; label: string; shortcut?: string; c
   { name: "measure", icon: Ruler, label: "Measure", shortcut: "M", color: "#ec4899" },
   { name: "eraser", icon: EraserIcon, label: "Eraser", shortcut: "E", color: "#64748b" },
   { name: "pan", icon: Move, label: "Navigate", shortcut: "P", color: "#84cc16" },
+  { name: "fullscreen", icon: Maximize, label: "Fullscreen", shortcut: "F", color: "#0ea5e9" },
 ]
 
 export default function EnhancedGraphPaper() {
   const isMobile = useIsMobile()
   const router = useRouter()
-  const coreToolNames: Tool[] = ["select", "line", "rectangle", "eraser", "pan"]
+  const coreToolNames: Tool[] = ["select", "line", "rectangle", "eraser", "pan", "fullscreen"]
   const [showAllMobileTools, setShowAllMobileTools] = useState(false)
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false)
   const [isToolMenuOpen, setIsToolMenuOpen] = useState(false)
@@ -186,10 +198,15 @@ export default function EnhancedGraphPaper() {
   const currentState = useMemo(() => history[historyIndex], [history, historyIndex])
 
   const displayedTools = useMemo(() => {
-    if (!isMobile) return tools
-    if (showAllMobileTools) return tools
-    return tools.filter((t) => coreToolNames.includes(t.name))
-  }, [isMobile, showAllMobileTools, tools]) // tools was missing in dependencies
+    const all = tools.map((t) =>
+      t.name === "fullscreen"
+        ? { ...t, icon: isFullscreen ? Minimize : Maximize, label: isFullscreen ? "Exit Fullscreen" : "Fullscreen" }
+        : t
+    )
+    if (!isMobile) return all
+    if (showAllMobileTools) return all
+    return all.filter((t) => coreToolNames.includes(t.name as Tool))
+  }, [isMobile, showAllMobileTools, tools, isFullscreen])
 
   const colorOptions = useMemo(() => (isMobile ? MOBILE_COLORS : COLORS), [isMobile])
 
@@ -1036,10 +1053,14 @@ export default function EnhancedGraphPaper() {
       if (toolToSelect && !e.metaKey && !e.ctrlKey && !e.altKey) {
         // Ensure no modifiers for tool shortcuts
         e.preventDefault()
-        setTool(toolToSelect.name)
-        setActiveShapeStartPoint(null)
-        setActiveShapeEndPoint(null)
-        setArcPoints([])
+        if (toolToSelect.name === "fullscreen") {
+          toggleFullscreen()
+        } else {
+          setTool(toolToSelect.name as Tool)
+          setActiveShapeStartPoint(null)
+          setActiveShapeEndPoint(null)
+          setArcPoints([])
+        }
         triggerFeedback()
         return
       }
@@ -1084,6 +1105,7 @@ export default function EnhancedGraphPaper() {
     setActiveShapeEndPoint,
     setArcPoints,
     triggerFeedback,
+    toggleFullscreen,
     selectedTextElement, // Added
     currentState, // Added (or currentState.texts specifically)
     addToHistory, // Added
@@ -1347,7 +1369,7 @@ export default function EnhancedGraphPaper() {
             ? isToolMenuOpen
               ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" // Mobile: Tool menu open (centered card)
               : "bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] left-1/2 -translate-x-1/2" // Mobile: Tool menu closed (button at bottom)
-            : "top-6 right-24" // Desktop: tools next to fullscreen
+            : "top-6 right-6" // Desktop toolbar position
         } ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"}`}
       >
         {isMobile && !isToolMenuOpen ? (
@@ -1378,6 +1400,10 @@ export default function EnhancedGraphPaper() {
               }))}
               activeTool={tool}
               onToolChange={(selectedTool) => {
+                if (selectedTool === "fullscreen") {
+                  toggleFullscreen()
+                  return
+                }
                 setTool(selectedTool as Tool)
                 if (isMobile) setIsToolMenuOpen(false)
               }}
@@ -1401,7 +1427,6 @@ export default function EnhancedGraphPaper() {
               >
                 {designMode === "graph" ? "Residential Builder" : "Graph Paper"}
               </Button>
-            )}
             {/* Truss Spacing Input - Mobile */}
             {isMobile && designMode === "residential" && (
               <div className="mt-2"> {/* Add some margin */}
@@ -1487,24 +1512,6 @@ export default function EnhancedGraphPaper() {
         )}
       </div> {/* This closes the main Tool Selection UI Container */}
 
-      {/* Mobile Fullscreen Button - Placed separately to avoid issues with tool menu animations */}
-      {isMobile && (
-        <div className="absolute top-6 right-6 z-20">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleFullscreen}
-            className="w-12 h-12 hover:bg-gray-100 active:scale-95 text-gray-800 dark:text-white"
-            aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-          >
-            {isFullscreen ? (
-              <Minimize className="w-5 h-5 text-gray-800 dark:text-white" />
-            ) : (
-              <Maximize className="w-5 h-5 text-gray-800 dark:text-white" />
-            )}
-          </Button>
-        </div>
-      )}
 
       {isMobile ? (
         <div className="absolute top-6 left-6 z-10">
