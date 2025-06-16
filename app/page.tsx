@@ -818,9 +818,8 @@ export default function EnhancedGraphPaper() {
     } else if (tool === "text") {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const inputLeft = snappedPoint.x * zoom + panOffset.x + rect.left;
-      const inputTop = snappedPoint.y * zoom + panOffset.y + rect.top;
+      const inputLeft = snappedPoint.x * zoom + panOffset.x;
+      const inputTop = snappedPoint.y * zoom + panOffset.y;
       setEditingText({ position: snappedPoint, currentText: "", inputLeft, inputTop });
       triggerFeedback();
     }
@@ -1341,6 +1340,28 @@ export default function EnhancedGraphPaper() {
         }}
       />
 
+       5wc509-codex/fix-icon-visibility-and-fullscreen-button-position
+      {!isMobile && (
+        <div className="absolute top-6 right-6 z-20 flex items-start gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleFullscreen}
+            className="w-12 h-12 hover:bg-gray-100 active:scale-95 text-gray-800 dark:text-white"
+            aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+          >
+            {isFullscreen ? (
+              <Minimize className="w-5 h-5 text-gray-800 dark:text-white" />
+            ) : (
+              <Maximize className="w-5 h-5 text-gray-800 dark:text-white" />
+            )}
+          </Button>
+          <div
+            className={`transition-all duration-700 ${
+              isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"
+            }`}
+          >
+
       <div className="absolute top-6 right-24 z-20">
         <Button
           variant="ghost"
@@ -1352,10 +1373,13 @@ export default function EnhancedGraphPaper() {
           {isFullscreen ? <Minimize className="w-5 h-5 text-gray-800 dark:text-white" /> : <Maximize className="w-5 h-5 text-gray-800 dark:text-white" />}
         </Button>
       </div>
+       main
 
       <div
-        className={`absolute z-10 transition-all duration-700 ${isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"} ${
-          isMobile ? `bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-1/2 -translate-x-1/2` : "top-6 right-6"
+        className={`z-10 transition-all duration-700 ${
+          isFirstLoad ? "opacity-0 scale-95 translate-y-4" : "opacity-100 scale-100 translate-y-0"
+        } ${
+          isMobile ? `absolute bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-1/2 -translate-x-1/2` : ""
         }`}
       >
         {isMobile && !isToolMenuOpen ? (
@@ -1524,7 +1548,28 @@ export default function EnhancedGraphPaper() {
             )}
           </Card>
         )}
-      </div>
+        </div> {/* tool menu container */}
+        </div> {/* transition wrapper */}
+      </div> {/* fullscreen & tools wrapper */}
+      )}
+
+      {isMobile && (
+        <div className="absolute top-6 right-6 z-20">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleFullscreen}
+            className="w-12 h-12 hover:bg-gray-100 active:scale-95 text-gray-800 dark:text-white"
+            aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+          >
+            {isFullscreen ? (
+              <Minimize className="w-5 h-5 text-gray-800 dark:text-white" />
+            ) : (
+              <Maximize className="w-5 h-5 text-gray-800 dark:text-white" />
+            )}
+          </Button>
+        </div>
+      )}
 
       {isMobile ? (
         <div className="absolute top-6 left-6 z-10">
