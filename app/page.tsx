@@ -1341,7 +1341,7 @@ export default function EnhancedGraphPaper() {
         }}
       />
 
-      <div className="absolute top-6 right-6 z-10">
+      <div className="absolute top-6 right-24 z-10">
         <Button
           variant="ghost"
           size="icon"
