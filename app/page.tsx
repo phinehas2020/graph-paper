@@ -1346,10 +1346,10 @@ export default function EnhancedGraphPaper() {
           variant="ghost"
           size="icon"
           onClick={toggleFullscreen}
-          className="w-12 h-12 hover:bg-gray-100 active:scale-95"
+          className="w-12 h-12 hover:bg-gray-100 active:scale-95 text-white"
           aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
         >
-          {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+          {isFullscreen ? <Minimize className="w-5 h-5 text-white" /> : <Maximize className="w-5 h-5 text-white" />}
         </Button>
       </div>
 
@@ -1366,12 +1366,12 @@ export default function EnhancedGraphPaper() {
               setIsToolMenuOpen(true)
               triggerFeedback()
             }}
-            className="w-14 h-14 hover:bg-gray-100 active:scale-95"
+            className="w-14 h-14 hover:bg-gray-100 active:scale-95 text-white"
             aria-label="Select Tool"
           >
             {(() => {
               const Icon = tools.find((t) => t.name === tool)?.icon
-              return Icon ? <Icon className="w-6 h-6" /> : null
+              return Icon ? <Icon className="w-6 h-6 text-white" /> : null
             })()}
           </Button>
         ) : (
@@ -1396,9 +1396,9 @@ export default function EnhancedGraphPaper() {
                         <ToggleGroupItem
                           value={name}
                           aria-label={label}
-                          className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} data-[state=on]:bg-blue-100 data-[state=on]:text-blue-700 hover:bg-gray-100 transition-all duration-200 active:scale-95`}
+                          className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} data-[state=on]:bg-blue-100 data-[state=on]:text-blue-700 hover:bg-gray-100 transition-all duration-200 active:scale-95 text-white`}
                         >
-                          <Icon className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
+                          <Icon className={`${isMobile ? "w-6 h-6 text-white" : "w-5 h-5 text-white"}`} />
                         </ToggleGroupItem>
                       </TooltipTrigger>
                       <TooltipContent side={isMobile ? "top" : "bottom"} className="bg-gray-900 text-white">
@@ -1420,9 +1420,9 @@ export default function EnhancedGraphPaper() {
                     aria-label={showAllMobileTools ? "Show fewer tools" : "Show more tools"}
                   >
                     {showAllMobileTools ? (
-                      <ChevronUp className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
+                      <ChevronUp className={`${isMobile ? "w-6 h-6 text-white" : "w-5 h-5 text-white"}`} />
                     ) : (
-                      <ChevronDown className={`${isMobile ? "w-6 h-6" : "w-5 h-5"}`} />
+                      <ChevronDown className={`${isMobile ? "w-6 h-6 text-white" : "w-5 h-5 text-white"}`} />
                     )}
                   </Button>
                 )}
@@ -1516,9 +1516,9 @@ export default function EnhancedGraphPaper() {
                     setIsToolMenuOpen(false)
                     triggerFeedback()
                   }}
-                  className="w-8 h-8 hover:bg-gray-100 active:scale-95"
+                  className="w-8 h-8 hover:bg-gray-100 active:scale-95 text-white"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4 text-white" />
                 </Button>
               </div>
             )}
@@ -1576,9 +1576,9 @@ export default function EnhancedGraphPaper() {
                     setIsColorMenuOpen(false)
                     triggerFeedback()
                   }}
-                  className="w-8 h-8 hover:bg-gray-100 active:scale-95"
+                  className="w-8 h-8 hover:bg-gray-100 active:scale-95 text-white"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4 text-white" />
                 </Button>
               </div>
             </div>
@@ -1590,9 +1590,9 @@ export default function EnhancedGraphPaper() {
                 setIsColorMenuOpen(true)
                 triggerFeedback()
               }}
-              className="w-10 h-10 hover:bg-gray-100 active:scale-95"
+              className="w-10 h-10 hover:bg-gray-100 active:scale-95 text-white"
             >
-              <Palette className="w-5 h-5" />
+              <Palette className="w-5 h-5 text-white" />
             </Button>
           )}
         </div>
@@ -1604,7 +1604,7 @@ export default function EnhancedGraphPaper() {
             <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
               <CardContent className="p-2">
                 <div className="flex items-center gap-2">
-                  <Palette className="w-4 h-4 text-gray-600" />
+                  <Palette className="w-4 h-4 text-white" />
                   <div className="flex gap-1">
                     {colorOptions.map((color) => (
                       <button
@@ -1768,9 +1768,9 @@ export default function EnhancedGraphPaper() {
                           setIsActionMenuOpen((prev) => !prev)
                           triggerFeedback()
                         }}
-                        className="w-10 h-10 hover:bg-gray-100 active:scale-95"
+                        className="w-10 h-10 hover:bg-gray-100 active:scale-95 text-white"
                       >
-                        {isActionMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                        {isActionMenuOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="left">
@@ -1789,9 +1789,9 @@ export default function EnhancedGraphPaper() {
                             size="icon"
                             onClick={undo}
                             disabled={historyIndex === 0}
-                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 disabled:opacity-50 active:scale-95`}
+                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 disabled:opacity-50 active:scale-95 text-white`}
                           >
-                            <Undo className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                            <Undo className={`${isMobile ? "w-4 h-4 text-white" : "w-5 h-5 text-white"}`} />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left">
@@ -1808,9 +1808,9 @@ export default function EnhancedGraphPaper() {
                             size="icon"
                             onClick={redo}
                             disabled={historyIndex === history.length - 1}
-                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 disabled:opacity-50 active:scale-95`}
+                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 disabled:opacity-50 active:scale-95 text-white`}
                           >
-                            <Redo className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                            <Redo className={`${isMobile ? "w-4 h-4 text-white" : "w-5 h-5 text-white"}`} />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left">
@@ -1829,9 +1829,9 @@ export default function EnhancedGraphPaper() {
                               setShowGrid(!showGrid)
                               triggerFeedback()
                             }}
-                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 ${showGrid ? "bg-blue-50 text-blue-700" : ""}`}
+                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 text-white ${showGrid ? "bg-blue-50 text-blue-700" : ""}`}
                           >
-                            <Grid3X3 className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                            <Grid3X3 className={`${isMobile ? "w-4 h-4 text-white" : "w-5 h-5 text-white"}`} />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left">
@@ -1847,9 +1847,9 @@ export default function EnhancedGraphPaper() {
                             variant="ghost"
                             size="icon"
                             onClick={handleDownload}
-                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95`}
+                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 text-white`}
                           >
-                            <Download className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                            <Download className={`${isMobile ? "w-4 h-4 text-white" : "w-5 h-5 text-white"}`} />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left">
@@ -1865,9 +1865,9 @@ export default function EnhancedGraphPaper() {
                             variant="ghost"
                             size="icon"
                             onClick={handleClearDrawing}
-                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95`}
+                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 text-white`}
                           >
-                            <Trash2 className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                            <Trash2 className={`${isMobile ? "w-4 h-4 text-white" : "w-5 h-5 text-white"}`} />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left">
@@ -1886,13 +1886,13 @@ export default function EnhancedGraphPaper() {
                               setEraserMode(eraserMode === "partial" ? "whole" : "partial")
                               triggerFeedback()
                             }}
-                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 ${tool === "eraser" ? (eraserMode === "partial" ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700") : "text-gray-500"}`}
+                            className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 text-white ${tool === "eraser" ? (eraserMode === "partial" ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700") : "text-gray-500"}`}
                             disabled={tool !== "eraser"}
                           >
                             {eraserMode === "partial" ? (
-                              <Scissors className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                              <Scissors className={`${isMobile ? "w-4 h-4 text-white" : "w-5 h-5 text-white"}`} />
                             ) : (
-                              <Trash2 className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
+                              <Trash2 className={`${isMobile ? "w-4 h-4 text-white" : "w-5 h-5 text-white"}`} />
                             )}
                           </Button>
                         </TooltipTrigger>
@@ -1914,9 +1914,9 @@ export default function EnhancedGraphPaper() {
                         size="icon"
                         onClick={undo}
                         disabled={historyIndex === 0}
-                        className="w-9 h-9 hover:bg-gray-100 disabled:opacity-50 active:scale-95"
+                        className="w-9 h-9 hover:bg-gray-100 disabled:opacity-50 active:scale-95 text-white"
                       >
-                        <Undo className="w-5 h-5 text-slate-600 text-slate-600 text-black text-black bg-black bg-black bg-white bg-black bg-black" />
+                        <Undo className="w-5 h-5 text-white" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -1932,9 +1932,9 @@ export default function EnhancedGraphPaper() {
                         size="icon"
                         onClick={redo}
                         disabled={historyIndex === history.length - 1}
-                        className="w-9 h-9 hover:bg-gray-100 disabled:opacity-50 active:scale-95"
+                        className="w-9 h-9 hover:bg-gray-100 disabled:opacity-50 active:scale-95 text-white"
                       >
-                        <Redo className="w-5 h-5 text-black" />
+                        <Redo className="w-5 h-5 text-white" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -1952,9 +1952,9 @@ export default function EnhancedGraphPaper() {
                           setShowGrid(!showGrid)
                           triggerFeedback()
                         }}
-                        className={`w-9 h-9 hover:bg-gray-100 active:scale-95 ${showGrid ? "bg-blue-50 text-blue-700" : ""}`}
+                        className={`w-9 h-9 hover:bg-gray-100 active:scale-95 text-white ${showGrid ? "bg-blue-50 text-blue-700" : ""}`}
                       >
-                        <Grid3X3 className="w-5 h-5" />
+                        <Grid3X3 className="w-5 h-5 text-white" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -1969,9 +1969,9 @@ export default function EnhancedGraphPaper() {
                         variant="ghost"
                         size="icon"
                         onClick={handleDownload}
-                        className="w-9 h-9 hover:bg-gray-100 active:scale-95"
+                        className="w-9 h-9 hover:bg-gray-100 active:scale-95 text-white"
                       >
-                        <Download className="w-5 h-5 text-black" />
+                        <Download className="w-5 h-5 text-white" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -1986,9 +1986,9 @@ export default function EnhancedGraphPaper() {
                         variant="ghost"
                         size="icon"
                         onClick={handleClearDrawing}
-                        className="w-9 h-9 hover:bg-gray-100 active:scale-95"
+                        className="w-9 h-9 hover:bg-gray-100 active:scale-95 text-white"
                       >
-                        <Trash2 className="w-5 h-5 text-black" />
+                        <Trash2 className="w-5 h-5 text-white" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -2006,10 +2006,10 @@ export default function EnhancedGraphPaper() {
                           setEraserMode(eraserMode === "partial" ? "whole" : "partial")
                           triggerFeedback()
                         }}
-                        className={`w-9 h-9 hover:bg-gray-100 active:scale-95 ${tool === "eraser" ? (eraserMode === "partial" ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700") : "text-gray-500"}`}
+                        className={`w-9 h-9 hover:bg-gray-100 active:scale-95 text-white ${tool === "eraser" ? (eraserMode === "partial" ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700") : "text-gray-500"}`}
                         disabled={tool !== "eraser"}
                       >
-                        {eraserMode === "partial" ? <Scissors className="w-5 h-5" /> : <Trash2 className="w-5 h-5" />}
+                        {eraserMode === "partial" ? <Scissors className="w-5 h-5 text-white" /> : <Trash2 className="w-5 h-5 text-white" />}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -2038,7 +2038,7 @@ export default function EnhancedGraphPaper() {
                       setZoom((z) => Math.min(5, z + 0.3))
                       triggerFeedback()
                     }}
-                    className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95`}
+                    className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 text-white`}
                   >
                     <ZoomIn className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
                   </Button>
@@ -2063,7 +2063,7 @@ export default function EnhancedGraphPaper() {
                       setZoom((z) => Math.max(0.1, z - 0.3))
                       triggerFeedback()
                     }}
-                    className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95`}
+                    className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 text-white`}
                   >
                     <ZoomOut className={`${isMobile ? "w-4 h-4" : "w-5 h-5"}`} />
                   </Button>
@@ -2084,9 +2084,9 @@ export default function EnhancedGraphPaper() {
                       setPanOffset({ x: 0, y: 0 })
                       triggerFeedback()
                     }}
-                    className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95`}
+                    className={`${isMobile ? "w-10 h-10" : "w-9 h-9"} hover:bg-gray-100 active:scale-95 text-white`}
                   >
-                    <RotateCcw className={`${isMobile ? "w-3 h-3" : "w-4 h-4"}`} />
+                    <RotateCcw className={`${isMobile ? "w-3 h-3 text-white" : "w-4 h-4 text-white"}`} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? "right" : "left"}>
@@ -2101,9 +2101,9 @@ export default function EnhancedGraphPaper() {
                     variant="ghost"
                     size="icon"
                     onClick={() => router.push('/three')}
-                    className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95`}
+                    className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95 text-white`}
                   >
-                    <Orbit className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                    <Orbit className={`${isMobile ? 'w-4 h-4 text-white' : 'w-5 h-5 text-white'}`} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? 'right' : 'left'}>
