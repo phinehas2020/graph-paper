@@ -1,8 +1,8 @@
-"use client"
+'use client';
 
-import { useServiceWorker } from "@/hooks/use-service-worker"
+import { useServiceWorker } from '@/hooks/use-service-worker';
 
 export default function ServiceWorkerRegister() {
-  useServiceWorker()
-  return null
+  useServiceWorker();
+  return null;
 }
