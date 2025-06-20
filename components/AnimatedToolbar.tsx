@@ -182,9 +182,9 @@ export function AnimatedToolbar({
                       onPointerLeave={handleLongPressEnd}
                       onPointerMove={handlePointerMove}
                       className={`
-                        ${isMobile ? 'w-14 h-14' : 'w-12 h-12'}
+                        ${isMobile ? 'w-16 h-16' : 'w-12 h-12'}
                         transition-all duration-300 ease-out
-                        ${isActive ? 'bg-blue-100 text-blue-700 shadow-md' : 'hover:bg-gray-100 text-gray-700'}
+                        ${isActive ? 'bg-blue-100 shadow-md' : 'hover:bg-gray-100'}
                         ${isExpanded ? 'scale-125 shadow-lg z-10' : ''}
                         active:scale-95
                         relative overflow-hidden
@@ -202,10 +202,10 @@ export function AnimatedToolbar({
                       aria-label={tool.label}
                     >
                       <Icon
-                        className={`${isMobile ? 'w-6 h-6' : 'w-5 h-5'} transition-all duration-200`}
+                        className={`${isMobile ? 'w-8 h-8' : 'w-5 h-5'} transition-all duration-200`}
                         style={{
-                          color:
-                            isActive && tool.color ? tool.color : undefined,
+                          color: tool.color,
+                          opacity: isActive ? 1 : 0.8,
                         }}
                       />
 

@@ -902,6 +902,24 @@ export default function EnhancedGraphPaper() {
         ctx.lineWidth = Math.max(1, 2 * zoom);
         ctx.stroke();
       }
+
+      if (isMobile) {
+        const snapped = getSnappedPoint(currentMousePos);
+        const x = snapped.x * zoom + panOffset.x;
+        const y = snapped.y * zoom + panOffset.y - 20; // offset above finger
+        const size = 6 * zoom;
+        ctx.save();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x - size, y);
+        ctx.lineTo(x + size, y);
+        ctx.moveTo(x, y - size);
+        ctx.lineTo(x, y + size);
+        ctx.stroke();
+        ctx.restore();
+      }
       ctx.setLineDash([]);
     },
     [
@@ -915,6 +933,7 @@ export default function EnhancedGraphPaper() {
       tool,
       zoom,
       arcPoints,
+      isMobile,
     ],
   );
 
