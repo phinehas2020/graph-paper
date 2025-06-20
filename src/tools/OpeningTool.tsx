@@ -36,8 +36,9 @@ const OpeningTool: React.FC<OpeningToolProps> = ({
       // For now, default based on type or keep simple default
       setType('window');
       setWidth(1);
-      setHeight(selectedWall.type === 'door' ? 2.1 : 1.2);
-      setElevation(selectedWall.type === 'door' ? 0 : 0.8);
+      // Default opening dimensions regardless of wall type
+      setHeight(1.2);
+      setElevation(0.8);
       setPosition(1); // Default to 1 unit from start. User should adjust.
     } else if (!isActive) {
         onClose(); // Ensure form is hidden if tool becomes inactive
