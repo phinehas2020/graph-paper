@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import useStore from '@/src/model/useStore'; // Adjusted path based on tsconfig alias
-import { Point, Floor } from '@/src/model/types'; // Adjusted path
+import { Point } from '@/src/model/types'; // Adjusted path
 
 // Props for the FloorTool - to be expanded as canvas interaction is defined
 interface FloorToolProps {
