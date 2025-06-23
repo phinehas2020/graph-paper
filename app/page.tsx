@@ -321,8 +321,6 @@ export default function EnhancedGraphPaper() {
   const [editingText, setEditingText] = useState<{
     position: Point;
     currentText: string;
-    inputLeft: number;
-    inputTop: number;
   } | null>(null);
   const [selectedTextElement, setSelectedTextElement] =
     useState<TextElement | null>(null);
@@ -332,8 +330,13 @@ export default function EnhancedGraphPaper() {
   const [isMultiTouch, setIsMultiTouch] = useState(false);
 
   // State for area selection
-  const [selectionRect, setSelectionRect] = useState<{ start: Point; end: Point } | null>(null);
-  const [selectedElementIndices, setSelectedElementIndices] = useState<number[]>([]); // Using indices for now
+  const [selectionRect, setSelectionRect] = useState<{
+    start: Point;
+    end: Point;
+  } | null>(null);
+  const [selectedElementIndices, setSelectedElementIndices] = useState<
+    number[]
+  >([]); // Using indices for now
 
   const [history, setHistory] = useState<CanvasState[]>([
     {
@@ -939,12 +942,19 @@ export default function EnhancedGraphPaper() {
       ctx.setLineDash([]);
 
       // Draw selection rectangle for area-delete tool
-      if (tool === 'area-delete' && selectionRect && selectionRect.start && currentMousePos) {
+      if (
+        tool === 'area-delete' &&
+        selectionRect &&
+        selectionRect.start &&
+        currentMousePos
+      ) {
         const worldStart = getWorldPoint(selectionRect.start);
         const worldCurrent = getWorldPoint(currentMousePos);
 
-        const rectX = Math.min(worldStart.x, worldCurrent.x) * zoom + panOffset.x;
-        const rectY = Math.min(worldStart.y, worldCurrent.y) * zoom + panOffset.y;
+        const rectX =
+          Math.min(worldStart.x, worldCurrent.x) * zoom + panOffset.x;
+        const rectY =
+          Math.min(worldStart.y, worldCurrent.y) * zoom + panOffset.y;
         const rectW = Math.abs(worldCurrent.x - worldStart.x) * zoom;
         const rectH = Math.abs(worldCurrent.y - worldStart.y) * zoom;
 
@@ -1220,13 +1230,9 @@ export default function EnhancedGraphPaper() {
     } else if (tool === 'text') {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const inputLeft = snappedPoint.x * zoom + panOffset.x;
-      const inputTop = snappedPoint.y * zoom + panOffset.y;
       setEditingText({
         position: snappedPoint,
         currentText: '',
-        inputLeft,
-        inputTop,
       });
       triggerFeedback();
     }
@@ -1252,7 +1258,12 @@ export default function EnhancedGraphPaper() {
   };
 
   const handlePointerUp = () => {
-    if (tool === 'area-delete' && isDrawing && selectionRect && currentMousePos) {
+    if (
+      tool === 'area-delete' &&
+      isDrawing &&
+      selectionRect &&
+      currentMousePos
+    ) {
       setIsDrawing(false);
       // Finalize selection rectangle in world coordinates
       const worldRectStart = getWorldPoint(selectionRect.start);
@@ -2792,8 +2803,8 @@ export default function EnhancedGraphPaper() {
           }}
           style={{
             position: 'absolute',
-            left: `${editingText.inputLeft}px`,
-            top: `${editingText.inputTop}px`,
+            left: `${editingText.position.x * zoom + panOffset.x}px`,
+            top: `${editingText.position.y * zoom + panOffset.y}px`,
             border: '1px solid #ccc',
             padding: '4px',
             fontSize: `${16 * zoom}px`, // Match visual size with zoom
