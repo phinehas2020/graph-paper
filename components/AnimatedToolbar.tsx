@@ -204,7 +204,7 @@ export function AnimatedToolbar({
                       <Icon
                         className={`${isMobile ? 'w-8 h-8' : 'w-5 h-5'} transition-all duration-200`}
                         style={{
-                          color: tool.color,
+                          color: isActive ? (tool.color || 'var(--primary-foreground)') : 'var(--foreground)',
                           opacity: isActive ? 1 : 0.8,
                         }}
                       />
@@ -215,14 +215,14 @@ export function AnimatedToolbar({
                           absolute inset-0 rounded-md opacity-0 
                           ${isActive ? 'animate-pulse opacity-10' : ''}
                         `}
-                        style={{ backgroundColor: tool.color || '#3b82f6' }}
+                        style={{ backgroundColor: tool.color || 'var(--primary)' }}
                       />
 
                       {/* Active indicator */}
                       {isActive && (
                         <div
                           className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 rounded-full bg-current opacity-70"
-                          style={{ backgroundColor: tool.color || '#3b82f6' }}
+                          style={{ backgroundColor: tool.color || 'var(--primary)' }}
                         />
                       )}
                     </Button>
