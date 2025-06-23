@@ -39,11 +39,13 @@ import {
   Maximize,
   Minimize,
   Baseline,
+  ScanSearch,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 type Tool =
   | 'select'
+  | 'area-delete'
   | 'line'
   | 'rectangle'
   | 'circle'
@@ -262,6 +264,13 @@ const tools: {
     shortcut: 'F',
     color: '#0ea5e9',
   },
+  {
+    name: 'area-delete',
+    icon: ScanSearch,
+    label: 'Area Delete',
+    shortcut: 'D',
+    color: '#f43f5e', // Rose color for destructive action
+  },
 ];
 
 export default function EnhancedGraphPaper() {
@@ -321,6 +330,10 @@ export default function EnhancedGraphPaper() {
 
   const [lastTouchDistance, setLastTouchDistance] = useState<number>(0);
   const [isMultiTouch, setIsMultiTouch] = useState(false);
+
+  // State for area selection
+  const [selectionRect, setSelectionRect] = useState<{ start: Point; end: Point } | null>(null);
+  const [selectedElementIndices, setSelectedElementIndices] = useState<number[]>([]); // Using indices for now
 
   const [history, setHistory] = useState<CanvasState[]>([
     {
@@ -411,10 +424,13 @@ export default function EnhancedGraphPaper() {
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const getWorldPoint = (canvasPoint: Point): Point => ({
-    x: (canvasPoint.x - panOffset.x) / zoom,
-    y: (canvasPoint.y - panOffset.y) / zoom,
-  });
+  const getWorldPoint = useCallback(
+    (canvasPoint: Point): Point => ({
+      x: (canvasPoint.x - panOffset.x) / zoom,
+      y: (canvasPoint.y - panOffset.y) / zoom,
+    }),
+    [panOffset, zoom],
+  );
 
   const getSnappedPoint = (point: Point): Point => {
     const worldPoint = getWorldPoint(point);
@@ -921,6 +937,25 @@ export default function EnhancedGraphPaper() {
         ctx.restore();
       }
       ctx.setLineDash([]);
+
+      // Draw selection rectangle for area-delete tool
+      if (tool === 'area-delete' && selectionRect && selectionRect.start && currentMousePos) {
+        const worldStart = getWorldPoint(selectionRect.start);
+        const worldCurrent = getWorldPoint(currentMousePos);
+
+        const rectX = Math.min(worldStart.x, worldCurrent.x) * zoom + panOffset.x;
+        const rectY = Math.min(worldStart.y, worldCurrent.y) * zoom + panOffset.y;
+        const rectW = Math.abs(worldCurrent.x - worldStart.x) * zoom;
+        const rectH = Math.abs(worldCurrent.y - worldStart.y) * zoom;
+
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.7)'; // Rose color, semi-transparent
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.1)'; // Rose color, very transparent fill
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.fillRect(rectX, rectY, rectW, rectH);
+        ctx.strokeRect(rectX, rectY, rectW, rectH);
+        ctx.setLineDash([]);
+      }
     },
     [
       activeShapeStartPoint,
@@ -934,6 +969,8 @@ export default function EnhancedGraphPaper() {
       zoom,
       arcPoints,
       isMobile,
+      selectionRect, // Added dependency
+      getWorldPoint, // Added dependency
     ],
   );
 
@@ -949,6 +986,14 @@ export default function EnhancedGraphPaper() {
     }
     const worldPoint = getWorldPoint(point);
     const snappedPoint = getSnappedPoint(point);
+
+    if (tool === 'area-delete') {
+      setSelectionRect({ start: point, end: point }); // Use raw canvas points for drawing rect
+      setSelectedElementIndices([]); // Clear previous selection
+      setIsDrawing(true); // Use isDrawing to indicate selection in progress
+      triggerFeedback();
+      return;
+    }
 
     if (tool === 'select') {
       setSelectedTextElement(null); // Reset selection first
@@ -1189,6 +1234,11 @@ export default function EnhancedGraphPaper() {
 
   const handlePointerMove = (point: Point) => {
     setCurrentMousePos(point);
+    if (tool === 'area-delete' && isDrawing && selectionRect) {
+      setSelectionRect({ ...selectionRect, end: point });
+      // No need to calculate selected elements here, only on pointer up
+      return;
+    }
     if (isPanning) {
       const dx = point.x - startPanPoint.x;
       const dy = point.y - startPanPoint.y;
@@ -1202,6 +1252,61 @@ export default function EnhancedGraphPaper() {
   };
 
   const handlePointerUp = () => {
+    if (tool === 'area-delete' && isDrawing && selectionRect && currentMousePos) {
+      setIsDrawing(false);
+      // Finalize selection rectangle in world coordinates
+      const worldRectStart = getWorldPoint(selectionRect.start);
+      const worldRectEnd = getWorldPoint(currentMousePos); // Use currentMousePos for the end
+
+      const minX = Math.min(worldRectStart.x, worldRectEnd.x);
+      const maxX = Math.max(worldRectStart.x, worldRectEnd.x);
+      const minY = Math.min(worldRectStart.y, worldRectEnd.y);
+      const maxY = Math.max(worldRectStart.y, worldRectEnd.y);
+
+      const indicesToSelect: number[] = [];
+      // For now, only considering 'lines' as floor plan elements
+      currentState.lines.forEach((line, index) => {
+        // Check if both start and end points of the line are within the selection rectangle
+        const lineStartInRect =
+          line.start.x >= minX &&
+          line.start.x <= maxX &&
+          line.start.y >= minY &&
+          line.start.y <= maxY;
+        const lineEndInRect =
+          line.end.x >= minX &&
+          line.end.x <= maxX &&
+          line.end.y >= minY &&
+          line.end.y <= maxY;
+
+        if (lineStartInRect && lineEndInRect) {
+          indicesToSelect.push(index);
+        }
+      });
+      setSelectedElementIndices(indicesToSelect);
+      // The selectionRect (visual rubber band) will be cleared by drawPreview logic or explicitly if needed
+      // For now, drawPreview will stop drawing it if selectionRect.start is not set on next mousedown
+      // Or we can explicitly setSelectionRect(null) here if we don't want it to persist visually after selection.
+      // Let's clear it for now.
+      setSelectionRect(null);
+      if (indicesToSelect.length > 0) {
+        const confirmed = window.confirm(
+          `Are you sure you want to delete ${indicesToSelect.length} selected element(s)? This action cannot be undone directly (but you can use Undo).`,
+        );
+        if (confirmed) {
+          // Note: deleteSelectedElements uses selectedElementIndices from state,
+          // which should have been set just before this confirmation.
+          deleteSelectedElements();
+        } else {
+          // User cancelled, clear the selection
+          setSelectedElementIndices([]);
+          setStatusMessage('Deletion cancelled.');
+        }
+      } else {
+        setStatusMessage('No elements selected in the area.');
+      }
+      return;
+    }
+
     if (isErasing && tool === 'eraser' && eraserStrokePoints.length > 0) {
       let opPerformed = false;
       let newLines = [...currentState.lines];
@@ -1604,11 +1709,15 @@ export default function EnhancedGraphPaper() {
       select: selectedTextElement
         ? 'Text selected. Press Delete to remove.'
         : 'Tap to select elements',
+      'area-delete': selectionRect
+        ? 'Release to finalize selection for deletion'
+        : 'Click and drag to select area for deletion',
     };
     setStatusMessage(messages[tool] || '');
   }, [
     tool,
     activeShapeStartPoint,
+    selectionRect, // Added for area-delete status
     arcPoints,
     eraserMode,
     editingText,
@@ -1711,6 +1820,34 @@ export default function EnhancedGraphPaper() {
     }
     triggerFeedback();
   }, [triggerFeedback]);
+
+  const deleteSelectedElements = useCallback(() => {
+    if (selectedElementIndices.length === 0) return;
+
+    // For now, only handling lines as per current selection logic
+    const newLines = currentState.lines.filter(
+      (_, index) => !selectedElementIndices.includes(index),
+    );
+
+    // Potentially extend to other element types (rectangles, circles, etc.) here
+    // if the selection logic is expanded in the future.
+
+    addToHistory({
+      ...currentState, // Preserve other elements like arcs, rectangles etc.
+      lines: newLines,
+    });
+
+    setSelectedElementIndices([]); // Clear selection
+    triggerFeedback();
+    setStatusMessage(`${selectedElementIndices.length} element(s) deleted.`);
+  }, [
+    selectedElementIndices,
+    currentState,
+    addToHistory,
+    triggerFeedback,
+    setSelectedElementIndices, // ensure it's a dependency
+    setStatusMessage, // ensure it's a dependency
+  ]);
 
   const handleTextInputConfirm = () => {
     if (editingText && editingText.currentText.trim() !== '') {
