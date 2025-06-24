@@ -23,18 +23,35 @@ export default function ThreePreview() {
       0.1,
       1000,
     );
-    camera.position.set(0, -10, 10);
+    camera.position.set(10, 10, 8);
+    camera.lookAt(0, 0, 1.5); // Look at the middle height of typical walls
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.1;
 
+    // Improve lighting for better 3D visualization
     const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(10, 10, 10);
+    light.position.set(10, 15, 10);
+    light.castShadow = true;
     scene.add(light);
-    scene.add(new THREE.AmbientLight(0x404040));
+    
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    scene.add(ambientLight);
+
+    // Add a ground grid for reference
+    const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
+    scene.add(gridHelper);
+
+    // Add axis helper for orientation reference
+    const axesHelper = new THREE.AxesHelper(5);
+    scene.add(axesHelper);
 
     try {
       const stored = localStorage.getItem('graph-paper-history');
@@ -48,8 +65,13 @@ export default function ThreePreview() {
             const height = 3;
             const length = start.distanceTo(end);
             const geom = new THREE.BoxGeometry(length, 0.1, height);
-            const material = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+            const material = new THREE.MeshLambertMaterial({ 
+              color: 0xcccccc,
+              transparent: false
+            });
             const wall = new THREE.Mesh(geom, material);
+            wall.castShadow = true;
+            wall.receiveShadow = true;
             wall.position.set(
               (start.x + end.x) / 2,
               (start.y + end.y) / 2,
