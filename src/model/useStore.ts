@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import { Model, Floor, Wall, Truss, Point, Opening } from './types';
+import { Model, Floor, Wall, Truss, Point, Opening, FlatPiece, FlatOpening, Connection } from './types';
 
 // Helper for ID generation
 const generateId = () => Date.now().toString() + Math.random().toString(36).substring(2, 9);
@@ -8,6 +8,8 @@ const generateId = () => Date.now().toString() + Math.random().toString(36).subs
 const initialState: Model = {
   floors: [],
   walls: [],
+  flatPieces: [],
+  connections: [],
   trusses: {
     spacing: 24, // Default spacing
   },
@@ -15,6 +17,7 @@ const initialState: Model = {
     gridVisible: true,
     gridSize: 1,
     units: 'imperial',
+    mode: 'traditional',
   },
 };
 
@@ -28,9 +31,20 @@ interface StoreActions {
   addOpening: (wallId: string, openingData: Omit<Opening, 'id'>) => string;
   updateOpening: (wallId: string, openingId: string, updates: Partial<Omit<Opening, 'id'>>) => void;
   deleteOpening: (wallId: string, openingId: string) => void;
+  addFlatPiece: (pieceData: Omit<FlatPiece, 'id'>) => string;
+  updateFlatPiece: (id: string, updates: Partial<Omit<FlatPiece, 'id'>>) => void;
+  deleteFlatPiece: (id: string) => void;
+  addFlatOpening: (pieceId: string, openingData: Omit<FlatOpening, 'id'>) => string;
+  updateFlatOpening: (pieceId: string, openingId: string, updates: Partial<Omit<FlatOpening, 'id'>>) => void;
+  deleteFlatOpening: (pieceId: string, openingId: string) => void;
+  addConnection: (connectionData: Omit<Connection, 'id'>) => string;
+  updateConnection: (id: string, updates: Partial<Omit<Connection, 'id'>>) => void;
+  deleteConnection: (id: string) => void;
   updateTrussSettings: (settings: Partial<Truss>) => void;
   updateSettings: (settings: Partial<Model['settings']>) => void;
   setWallConnected: (wallId: string, connected: boolean) => void;
+  switchMode: (mode: 'traditional' | 'flat-layout') => void;
+  stitchPieces: () => void;
 }
 
 interface StoreSelectors {
@@ -39,6 +53,11 @@ interface StoreSelectors {
   selectFloorById: (id: string) => Floor | undefined;
   selectWallById: (id: string) => Wall | undefined;
   selectOpeningsByWallId: (wallId: string) => Opening[] | undefined;
+  selectFlatPieces: () => FlatPiece[];
+  selectConnections: () => Connection[];
+  selectFlatPieceById: (id: string) => FlatPiece | undefined;
+  selectConnectionById: (id: string) => Connection | undefined;
+  selectConnectionsByPieceId: (pieceId: string) => Connection[];
   selectTrussSettings: () => Truss;
   selectSettings: () => Model['settings'];
 }
@@ -107,6 +126,64 @@ const useStore = create<StoreState>()(
         wall.openings = wall.openings.filter(o => o.id !== openingId);
       }
     })),
+    addFlatPiece: (pieceData) => {
+      const id = generateId();
+      set(produce((draft: Model) => {
+        draft.flatPieces.push({ ...pieceData, id });
+      }));
+      return id;
+    },
+    updateFlatPiece: (id, updates) => set(produce((draft: Model) => {
+      const piece = draft.flatPieces.find(p => p.id === id);
+      if (piece) {
+        Object.assign(piece, updates);
+      }
+    })),
+    deleteFlatPiece: (id) => set(produce((draft: Model) => {
+      draft.flatPieces = draft.flatPieces.filter(p => p.id !== id);
+      draft.connections = draft.connections.filter(c => c.fromPieceId !== id && c.toPieceId !== id);
+    })),
+    addFlatOpening: (pieceId, openingData) => {
+      const id = generateId();
+      set(produce((draft: Model) => {
+        const piece = draft.flatPieces.find(p => p.id === pieceId);
+        if (piece) {
+          piece.openings.push({ ...openingData, id });
+        }
+      }));
+      return id;
+    },
+    updateFlatOpening: (pieceId, openingId, updates) => set(produce((draft: Model) => {
+      const piece = draft.flatPieces.find(p => p.id === pieceId);
+      if (piece) {
+        const opening = piece.openings.find(o => o.id === openingId);
+        if (opening) {
+          Object.assign(opening, updates);
+        }
+      }
+    })),
+    deleteFlatOpening: (pieceId, openingId) => set(produce((draft: Model) => {
+      const piece = draft.flatPieces.find(p => p.id === pieceId);
+      if (piece) {
+        piece.openings = piece.openings.filter(o => o.id !== openingId);
+      }
+    })),
+    addConnection: (connectionData) => {
+      const id = generateId();
+      set(produce((draft: Model) => {
+        draft.connections.push({ ...connectionData, id });
+      }));
+      return id;
+    },
+    updateConnection: (id, updates) => set(produce((draft: Model) => {
+      const connection = draft.connections.find(c => c.id === id);
+      if (connection) {
+        Object.assign(connection, updates);
+      }
+    })),
+    deleteConnection: (id) => set(produce((draft: Model) => {
+      draft.connections = draft.connections.filter(c => c.id !== id);
+    })),
     updateTrussSettings: (settings) => set(produce((draft: Model) => {
       draft.trusses = { ...draft.trusses, ...settings };
     })),
@@ -119,6 +196,15 @@ const useStore = create<StoreState>()(
             wall.connected = connected;
         }
     })),
+    switchMode: (mode) => set(produce((draft: Model) => {
+      draft.settings.mode = mode;
+    })),
+    stitchPieces: () => {
+      console.log('Stitching pieces together...');
+      const state = get();
+      console.log('Flat pieces:', state.flatPieces);
+      console.log('Connections:', state.connections);
+    },
 
     // Selectors
     selectFloors: () => get().floors,
@@ -129,6 +215,11 @@ const useStore = create<StoreState>()(
       const wall = get().walls.find(w => w.id === wallId);
       return wall?.openings;
     },
+    selectFlatPieces: () => get().flatPieces,
+    selectConnections: () => get().connections,
+    selectFlatPieceById: (id) => get().flatPieces.find(p => p.id === id),
+    selectConnectionById: (id) => get().connections.find(c => c.id === id),
+    selectConnectionsByPieceId: (pieceId) => get().connections.filter(c => c.fromPieceId === pieceId || c.toPieceId === pieceId),
     selectTrussSettings: () => get().trusses,
     selectSettings: () => get().settings,
   })
@@ -139,12 +230,18 @@ export const {
   addFloor, updateFloor, deleteFloor,
   addWall, updateWall, deleteWall,
   addOpening, updateOpening, deleteOpening,
+  addFlatPiece, updateFlatPiece, deleteFlatPiece,
+  addFlatOpening, updateFlatOpening, deleteFlatOpening,
+  addConnection, updateConnection, deleteConnection,
   updateTrussSettings, updateSettings, setWallConnected,
+  switchMode, stitchPieces,
 } = useStore.getState();
 
 export const {
   selectFloors, selectWalls, selectFloorById, selectWallById,
   selectOpeningsByWallId, selectTrussSettings, selectSettings,
+  selectFlatPieces, selectConnections, selectFlatPieceById,
+  selectConnectionById, selectConnectionsByPieceId,
 } = useStore.getState();
 
 

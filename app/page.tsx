@@ -40,6 +40,7 @@ import {
   Minimize,
   Baseline,
   ScanSearch,
+  Package,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -2746,6 +2747,25 @@ export default function EnhancedGraphPaper() {
                 </TooltipTrigger>
                 <TooltipContent side={isMobile ? 'right' : 'left'}>
                   <p>Reset View</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => router.push('/flat-layout')}
+                    className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95`}
+                  >
+                    <Package
+                      className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`}
+                    />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side={isMobile ? 'right' : 'left'}>
+                  <p>Flat Layout Builder</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
