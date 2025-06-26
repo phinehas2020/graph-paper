@@ -40,6 +40,9 @@ import {
   Minimize,
   Baseline,
   ScanSearch,
+  Zap,
+  Droplets,
+  DoorOpen,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -55,7 +58,10 @@ type Tool =
   | 'pan'
   | 'measure'
   | 'eraser'
-  | 'fullscreen';
+  | 'fullscreen'
+  | 'wiring'
+  | 'plumbing'
+  | 'enhanced-openings';
 type EraserMode = 'partial' | 'whole';
 type Point = { x: number; y: number };
 type Line = {
@@ -271,6 +277,28 @@ const tools: {
     shortcut: 'D',
     color: '#f43f5e', // Rose color for destructive action
   },
+  // House design tools (only show in residential mode)
+  {
+    name: 'wiring',
+    icon: Zap,
+    label: 'Electrical Wiring',
+    shortcut: 'W',
+    color: '#22c55e', // Green as requested
+  },
+  {
+    name: 'plumbing',
+    icon: Droplets,
+    label: 'Plumbing',
+    shortcut: 'B',
+    color: '#2563eb', // Blue
+  },
+  {
+    name: 'enhanced-openings',
+    icon: DoorOpen,
+    label: 'Windows & Doors',
+    shortcut: 'N',
+    color: '#8b5cf6', // Purple
+  },
 ];
 
 export default function EnhancedGraphPaper() {
@@ -338,6 +366,11 @@ export default function EnhancedGraphPaper() {
     number[]
   >([]); // Using indices for now
 
+  // House design tool states
+  const [wiringToolActive, setWiringToolActive] = useState(false);
+  const [plumbingToolActive, setPlumbingToolActive] = useState(false);
+  const [enhancedOpeningsToolActive, setEnhancedOpeningsToolActive] = useState(false);
+
   const [history, setHistory] = useState<CanvasState[]>([
     {
       lines: [],
@@ -359,7 +392,7 @@ export default function EnhancedGraphPaper() {
   );
 
   const displayedTools = useMemo(() => {
-    const all = tools.map((t) =>
+    let filteredTools = tools.map((t) =>
       t.name === 'fullscreen'
         ? {
             ...t,
@@ -368,10 +401,18 @@ export default function EnhancedGraphPaper() {
           }
         : t,
     );
-    if (!isMobile) return all;
-    if (showAllMobileTools) return all;
-    return all.filter((t) => coreToolNames.includes(t.name as Tool));
-  }, [isMobile, showAllMobileTools, tools, isFullscreen]);
+
+    // Filter house design tools based on design mode
+    if (designMode === 'graph') {
+      filteredTools = filteredTools.filter((t) => 
+        !['wiring', 'plumbing', 'enhanced-openings'].includes(t.name)
+      );
+    }
+
+    if (!isMobile) return filteredTools;
+    if (showAllMobileTools) return filteredTools;
+    return filteredTools.filter((t) => coreToolNames.includes(t.name as Tool));
+  }, [isMobile, showAllMobileTools, tools, isFullscreen, designMode]);
 
   const colorOptions = useMemo(
     () => (isMobile ? MOBILE_COLORS : COLORS),
