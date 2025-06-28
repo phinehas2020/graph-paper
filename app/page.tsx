@@ -280,6 +280,7 @@ export default function EnhancedGraphPaper() {
     'select',
     'line',
     'rectangle',
+    'text',
     'eraser',
     'pan',
     'fullscreen',
@@ -1230,8 +1231,10 @@ export default function EnhancedGraphPaper() {
     } else if (tool === 'text') {
       const canvas = canvasRef.current;
       if (!canvas) return;
+      // Use world coordinates for text positioning
+      const worldPoint = getWorldPoint(point);
       setEditingText({
-        position: snappedPoint,
+        position: worldPoint,
         currentText: '',
       });
       triggerFeedback();
@@ -1713,8 +1716,8 @@ export default function EnhancedGraphPaper() {
             ? 'Tap to set arc end point'
             : 'Tap to set arc curve',
       text: editingText
-        ? 'Type your text and press Enter'
-        : 'Tap to place text',
+        ? 'Type your text and press Enter (Esc to cancel)'
+        : 'Click where you want to place text',
       eraser: `Drag to erase (${eraserMode} mode)`,
       pan: 'Drag to move, pinch to zoom',
       select: selectedTextElement
@@ -1873,6 +1876,9 @@ export default function EnhancedGraphPaper() {
           },
         ],
       });
+      setStatusMessage('Text added successfully');
+    } else if (editingText) {
+      setStatusMessage('Text input cancelled - no text entered');
     }
     setEditingText(null);
     triggerFeedback();
@@ -2803,16 +2809,21 @@ export default function EnhancedGraphPaper() {
           }}
           style={{
             position: 'absolute',
-            left: `${editingText.position.x * zoom + panOffset.x}px`,
-            top: `${editingText.position.y * zoom + panOffset.y}px`,
-            border: '1px solid #ccc',
-            padding: '4px',
-            fontSize: `${16 * zoom}px`, // Match visual size with zoom
+            left: `${Math.max(10, Math.min(window.innerWidth - 150, editingText.position.x * zoom + panOffset.x))}px`,
+            top: `${Math.max(10, Math.min(window.innerHeight - 50, editingText.position.y * zoom + panOffset.y))}px`,
+            border: '2px solid #3b82f6',
+            borderRadius: '4px',
+            padding: '8px',
+            fontSize: `${Math.max(14, 16 * zoom)}px`, // Ensure minimum readable size
             fontFamily: 'Arial, sans-serif', // Match canvas font
             backgroundColor: 'white',
-            zIndex: 100, // Ensure it's on top
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            zIndex: 1000, // Ensure it's on top
+            minWidth: '120px',
+            outline: 'none',
           }}
           placeholder="Enter text..."
+          autoFocus
         />
       )}
     </div>
