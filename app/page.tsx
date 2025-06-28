@@ -1570,6 +1570,22 @@ export default function EnhancedGraphPaper() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const pressedKey = e.key.toLowerCase();
 
+      // Disable tool shortcuts when editing text to prevent accidental tool changes
+      if (editingText) {
+        // Still allow global shortcuts like Ctrl+Z for undo/redo when editing text
+        if ((e.metaKey || e.ctrlKey) && pressedKey === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            redo();
+          } else {
+            undo();
+          }
+          return;
+        }
+        // Block all other shortcuts when editing text - Escape and Enter are handled by the input field
+        return;
+      }
+
       // Handle tool shortcuts
       const toolToSelect = tools.find(
         (t) => t.shortcut && t.shortcut.toLowerCase() === pressedKey,
@@ -1638,6 +1654,7 @@ export default function EnhancedGraphPaper() {
     selectedTextElement, // Added
     currentState, // Added (or currentState.texts specifically)
     addToHistory, // Added
+    editingText, // Added to ensure keyboard shortcuts are properly disabled/enabled
   ]);
 
   useEffect(() => {
@@ -1716,7 +1733,7 @@ export default function EnhancedGraphPaper() {
             ? 'Tap to set arc end point'
             : 'Tap to set arc curve',
       text: editingText
-        ? 'Type your text and press Enter (Esc to cancel)'
+        ? 'Type your text and press Enter (Esc to cancel) - Tool shortcuts disabled while typing'
         : 'Click where you want to place text',
       eraser: `Drag to erase (${eraserMode} mode)`,
       pan: 'Drag to move, pinch to zoom',
