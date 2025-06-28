@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint . --ext .ts,.tsx",
+    "dev": "next dev",
     "format": "prettier --write .",
+    "lint": "eslint . --ext .ts,.tsx",
+    "start": "next start",
     "test": "jest"
   },
   "dependencies": {
@@ -41,6 +41,8 @@
     "@radix-ui/react-tooltip": "latest",
     "@react-three/drei": "latest",
     "@react-three/fiber": "latest",
+    "@supabase/auth-helpers-nextjs": "latest",
+    "@supabase/supabase-js": "latest",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

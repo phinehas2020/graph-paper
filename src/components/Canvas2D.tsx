@@ -585,4 +585,4 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       onMouseUp={handleMouseUp}
     />
   );
-}; 
+};

@@ -132,4 +132,4 @@ export const BlueprintIconPanel: React.FC<BlueprintIconPanelProps> = ({
   );
 };
 
-export default BlueprintIconPanel; 
+export default BlueprintIconPanel;

@@ -660,4 +660,4 @@ export const SYMBOL_CATEGORIES = [
   { id: 'furniture', name: 'Furniture', icon: Bed },
   { id: 'structural', name: 'Structural', icon: Home },
   { id: 'annotations', name: 'Annotations', icon: Plus }
-] as const; 
+] as const;

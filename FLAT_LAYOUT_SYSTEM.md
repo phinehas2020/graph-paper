@@ -31,7 +31,7 @@ I've implemented a revolutionary new building design system that allows users to
 ## Technical Implementation
 
 ### Data Model
-```typescript
+\`\`\`typescript
 interface FlatPiece {
   id: string;
   type: 'floor' | 'wall';
@@ -54,7 +54,7 @@ interface Connection {
   length: number;
   color?: string;
 }
-```
+\`\`\`
 
 ### Components Created
 
