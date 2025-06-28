@@ -280,6 +280,7 @@ export default function EnhancedGraphPaper() {
     'select',
     'line',
     'rectangle',
+    'text',
     'eraser',
     'pan',
     'fullscreen',
@@ -1230,6 +1231,12 @@ export default function EnhancedGraphPaper() {
     } else if (tool === 'text') {
       const canvas = canvasRef.current;
       if (!canvas) return;
+
+      // Preserve any ongoing text draft before starting a new one
+      if (editingText) {
+        handleTextInputConfirm();
+      }
+
       setEditingText({
         position: snappedPoint,
         currentText: '',
