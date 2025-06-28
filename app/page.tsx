@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-is-mobile';
+import useStore from '@/src/model/useStore';
 import {
   PenLine,
   Move,
@@ -40,8 +41,14 @@ import {
   Minimize,
   Baseline,
   ScanSearch,
+  Package,
+  Zap,
+  Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+
+// Add mode type
+type AppMode = 'traditional';
 
 type Tool =
   | 'select'
@@ -55,6 +62,8 @@ type Tool =
   | 'pan'
   | 'measure'
   | 'eraser'
+  | 'wiring'
+  | 'plumbing'
   | 'fullscreen';
 type EraserMode = 'partial' | 'whole';
 type Point = { x: number; y: number };
@@ -63,7 +72,6 @@ type Line = {
   end: Point;
   color?: string;
   thickness?: number;
-  studCount?: number;
 };
 type Arc = {
   start: Point;
@@ -93,6 +101,39 @@ type TextElement = {
   color?: string;
   fontSize?: number;
 };
+type Measurement = {
+  start: Point;
+  end: Point;
+  color?: string;
+  thickness?: number;
+};
+
+type ElectricalOutlet = {
+  id: string;
+  position: Point;
+  type: 'standard' | 'gfci' | 'usb';
+};
+
+type PlumbingFixture = {
+  id: string;
+  position: Point;
+  type: 'sink' | 'toilet' | 'shower' | 'bathtub' | 'dishwasher' | 'washing_machine';
+};
+
+type ElectricalWire = {
+  id: string;
+  start: Point;
+  end: Point;
+  outletIds: string[];
+};
+
+type PlumbingPipe = {
+  id: string;
+  start: Point;
+  end: Point;
+  fixtureIds: string[];
+  type: 'water' | 'drain';
+};
 
 interface CanvasState {
   lines: Line[];
@@ -101,6 +142,11 @@ interface CanvasState {
   circles: CircleShape[];
   arrows: Arrow[];
   texts: TextElement[];
+  measurements: Measurement[];
+  electricalOutlets: ElectricalOutlet[];
+  plumbingFixtures: PlumbingFixture[];
+  electricalWires: ElectricalWire[];
+  plumbingPipes: PlumbingPipe[];
 }
 
 const EPSILON = 0.001;
@@ -116,7 +162,7 @@ const COLORS = [
 const THICKNESSES = [1, 2, 4, 6];
 const MOBILE_COLORS = COLORS.slice(0, 2);
 const MOBILE_THICKNESSES = THICKNESSES.slice(0, 2);
-const TRUSS_SPACING_UNITS = 2; // Represents 2 grid units, e.g., 16 inches if grid unit is 8 inches.
+
 const STUD_SPACING_UNITS = 1.33; // Represents 16 inches (16/12 feet)
 
 // Vector Math Helpers
@@ -271,15 +317,39 @@ const tools: {
     shortcut: 'D',
     color: '#f43f5e', // Rose color for destructive action
   },
+  {
+    name: 'wiring',
+    icon: Zap,
+    label: 'Wiring',
+    shortcut: 'W',
+    color: '#22c55e', // Green as requested
+  },
+  {
+    name: 'plumbing',
+    icon: Wrench,
+    label: 'Water Fixtures',
+    shortcut: 'U',
+    color: '#3b82f6', // Blue as requested
+  },
 ];
 
 export default function EnhancedGraphPaper() {
   const isMobile = useIsMobile();
   const router = useRouter();
+  
+  // Add store integration and mode state
+  const { 
+    settings, 
+    switchMode
+  } = useStore();
+  
+  const [currentMode, setCurrentMode] = useState<AppMode>('traditional');
+  
   const coreToolNames: Tool[] = [
     'select',
     'line',
     'rectangle',
+    'text',
     'eraser',
     'pan',
     'fullscreen',
@@ -292,7 +362,7 @@ export default function EnhancedGraphPaper() {
   const [designMode, setDesignMode] = useState<'graph' | 'residential'>(
     'graph',
   );
-  const [currentTrussSpacing, setCurrentTrussSpacing] = useState<number>(2); // Default 2 feet
+
   const [currentStudSpacing, setCurrentStudSpacing] = useState<number>(1.33); // Default 1.33 feet (16 inches)
   const [eraserMode, setEraserMode] = useState<EraserMode>('partial'); // Default to partial
   const [currentColor, setCurrentColor] = useState('#000000');
@@ -325,6 +395,13 @@ export default function EnhancedGraphPaper() {
   const [selectedTextElement, setSelectedTextElement] =
     useState<TextElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Measure tool state
+  const [measurePoints, setMeasurePoints] = useState<Point[]>([]);
+  const [keepMeasurements, setKeepMeasurements] = useState(false);
+  const [isTextEditing, setIsTextEditing] = useState(false);
+  const [textInputStartTime, setTextInputStartTime] = useState<number>(0);
+  const textInputRef = useRef<HTMLInputElement>(null);
 
   const [lastTouchDistance, setLastTouchDistance] = useState<number>(0);
   const [isMultiTouch, setIsMultiTouch] = useState(false);
@@ -346,6 +423,11 @@ export default function EnhancedGraphPaper() {
       circles: [],
       arrows: [],
       texts: [],
+      measurements: [],
+      electricalOutlets: [],
+      plumbingFixtures: [],
+      electricalWires: [],
+      plumbingPipes: [],
     },
   ]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -443,7 +525,7 @@ export default function EnhancedGraphPaper() {
     };
   };
 
-  const getTouchDistance = (touches: TouchList): number => {
+  const getTouchDistance = (touches: React.TouchList): number => {
     if (touches.length < 2) return 0;
     const touch1 = touches[0];
     const touch2 = touches[1];
@@ -518,7 +600,7 @@ export default function EnhancedGraphPaper() {
     (ctx: CanvasRenderingContext2D) => {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      currentState.lines.forEach((line) => {
+      (currentState.lines || []).forEach((line) => {
         ctx.strokeStyle = line.color || currentColor;
         ctx.lineWidth = (line.thickness || currentThickness) * zoom;
         ctx.beginPath();
@@ -532,48 +614,9 @@ export default function EnhancedGraphPaper() {
         );
         ctx.stroke();
 
-        if (
-          designMode === 'residential' &&
-          line.studCount !== undefined &&
-          line.studCount > 0 &&
-          zoom > 0.2
-        ) {
-          // Only draw if studCount exists, is positive, and zoomed in enough
-          const midXWorld = (line.start.x + line.end.x) / 2;
-          const midYWorld = (line.start.y + line.end.y) / 2;
 
-          const midXCanvas = midXWorld * zoom + panOffset.x;
-          const midYCanvas = midYWorld * zoom + panOffset.y;
-
-          // Calculate a slight offset perpendicular to the line to avoid drawing text directly on the line
-          // For simplicity, we'll just offset vertically for now, or based on line angle.
-          // A simple fixed vertical offset for now:
-          let textOffsetY = -Math.max(8, 10 * zoom); // Offset text above the line
-
-          // Optional: Adjust offset based on line angle to be truly perpendicular
-          // const angle = Math.atan2(line.end.y - line.start.y, line.end.x - line.start.x);
-          // if (Math.abs(Math.cos(angle)) < 0.1) { // Line is mostly vertical
-          //   textOffsetX = Math.max(8, 10 * zoom); // Offset text to the right
-          //   textOffsetY = 0;
-          // }
-
-          ctx.save();
-          ctx.font = `${Math.max(10, 12 * zoom)}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
-          ctx.fillStyle = '#3b82f6'; // Blue color, same as dimension previews
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom'; // Adjust if textOffsetY is negative (above line)
-
-          const text = `S: ${line.studCount}`;
-
-          // Simple stroke for better readability against grid/other lines
-          ctx.strokeStyle = 'white';
-          ctx.lineWidth = 2 * zoom; // Adjusted for zoom
-          ctx.strokeText(text, midXCanvas, midYCanvas + textOffsetY);
-          ctx.fillText(text, midXCanvas, midYCanvas + textOffsetY);
-          ctx.restore();
-        }
       });
-      currentState.arcs.forEach((arc) => {
+      (currentState.arcs || []).forEach((arc) => {
         ctx.strokeStyle = arc.color || currentColor;
         ctx.lineWidth = (arc.thickness || currentThickness) * zoom;
         ctx.beginPath();
@@ -589,7 +632,7 @@ export default function EnhancedGraphPaper() {
         );
         ctx.stroke();
       });
-      currentState.rectangles.forEach((rect) => {
+      (currentState.rectangles || []).forEach((rect) => {
         ctx.strokeStyle = rect.color || currentColor;
         ctx.lineWidth = (rect.thickness || currentThickness) * zoom;
         const x = Math.min(rect.start.x, rect.end.x) * zoom + panOffset.x;
@@ -603,7 +646,7 @@ export default function EnhancedGraphPaper() {
           ctx.strokeRect(x, y, w, h);
         }
       });
-      currentState.circles.forEach((circle) => {
+      (currentState.circles || []).forEach((circle) => {
         ctx.strokeStyle = circle.color || currentColor;
         ctx.lineWidth = (circle.thickness || currentThickness) * zoom;
         ctx.beginPath();
@@ -621,7 +664,7 @@ export default function EnhancedGraphPaper() {
           ctx.stroke();
         }
       });
-      currentState.arrows.forEach((arrow) => {
+      (currentState.arrows || []).forEach((arrow) => {
         ctx.strokeStyle = arrow.color || currentColor;
         ctx.lineWidth = (arrow.thickness || currentThickness) * zoom;
         ctx.beginPath();
@@ -666,7 +709,58 @@ export default function EnhancedGraphPaper() {
         );
         ctx.stroke();
       });
-      currentState.texts.forEach((textElement) => {
+
+      // Draw measurements
+      (currentState.measurements || []).forEach((measurement) => {
+        ctx.strokeStyle = measurement.color || '#9333ea'; // Purple for measurements
+        ctx.lineWidth = (measurement.thickness || 1) * zoom;
+        ctx.setLineDash([5, 5]); // Dashed line for measurements
+        ctx.beginPath();
+        ctx.moveTo(
+          measurement.start.x * zoom + panOffset.x,
+          measurement.start.y * zoom + panOffset.y,
+        );
+        ctx.lineTo(
+          measurement.end.x * zoom + panOffset.x,
+          measurement.end.y * zoom + panOffset.y,
+        );
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset dash
+
+        // Draw measurement points
+        ctx.fillStyle = measurement.color || '#9333ea';
+        [measurement.start, measurement.end].forEach((point) => {
+          ctx.beginPath();
+          ctx.arc(
+            point.x * zoom + panOffset.x,
+            point.y * zoom + panOffset.y,
+            Math.max(2, 3 * zoom),
+            0,
+            2 * Math.PI,
+          );
+          ctx.fill();
+        });
+
+        // Draw distance label
+        const distance = dist(measurement.start, measurement.end) / gridSize;
+        if (distance > 0) {
+          const midX = ((measurement.start.x + measurement.end.x) / 2) * zoom + panOffset.x;
+          const midY = ((measurement.start.y + measurement.end.y) / 2) * zoom + panOffset.y;
+          ctx.save();
+          ctx.font = `${Math.max(10, 12 * zoom)}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+          ctx.fillStyle = '#9333ea';
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 3;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const text = `${distance.toFixed(1)} units`;
+          ctx.strokeText(text, midX, midY - Math.max(8, 15 * zoom));
+          ctx.fillText(text, midX, midY - Math.max(8, 15 * zoom));
+          ctx.restore();
+        }
+      });
+
+      (currentState.texts || []).forEach((textElement) => {
         ctx.fillStyle = textElement.color || currentColor;
         ctx.font = `${textElement.fontSize ? textElement.fontSize * zoom : 16 * zoom}px Arial`;
         ctx.textAlign = 'left';
@@ -698,6 +792,112 @@ export default function EnhancedGraphPaper() {
           );
           ctx.setLineDash([]);
         }
+      });
+
+      // Draw electrical outlets (green squares)
+      ((currentState.electricalOutlets || []) as ElectricalOutlet[]).forEach((outlet) => {
+        const size = 12 * zoom;
+        const x = outlet.position.x * zoom + panOffset.x - size/2;
+        const y = outlet.position.y * zoom + panOffset.y - size/2;
+        
+        ctx.fillStyle = outlet.type === 'gfci' ? '#22c55e' : '#16a34a';
+        ctx.fillRect(x, y, size, size);
+        
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, size, size);
+
+        // Outlet symbol (two vertical lines)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x + size/2 - 3, y + size/2 - 4);
+        ctx.lineTo(x + size/2 - 3, y + size/2 + 4);
+        ctx.moveTo(x + size/2 + 3, y + size/2 - 4);
+        ctx.lineTo(x + size/2 + 3, y + size/2 + 4);
+        ctx.stroke();
+      });
+
+      // Draw plumbing fixtures (blue shapes)
+      ((currentState.plumbingFixtures || []) as PlumbingFixture[]).forEach((fixture) => {
+        let size = 20 * zoom;
+        if (fixture.type === 'toilet') size = 30 * zoom;
+        if (fixture.type === 'shower') size = 40 * zoom;
+        
+        const x = fixture.position.x * zoom + panOffset.x;
+        const y = fixture.position.y * zoom + panOffset.y;
+        
+        ctx.fillStyle = '#3b82f6';
+        if (fixture.type === 'sink' || fixture.type === 'toilet') {
+          ctx.fillRect(x - size/2, y - size/2, size, size);
+        } else {
+          ctx.beginPath();
+          ctx.arc(x, y, size/2, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+        
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        if (fixture.type === 'sink' || fixture.type === 'toilet') {
+          ctx.strokeRect(x - size/2, y - size/2, size, size);
+        } else {
+          ctx.beginPath();
+          ctx.arc(x, y, size/2, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
+
+        // Type label
+        if (zoom > 0.3) {
+          ctx.fillStyle = '#000000';
+          ctx.font = `${Math.max(8, 10 * zoom)}px Arial`;
+          ctx.textAlign = 'center';
+          ctx.fillText(fixture.type.toUpperCase(), x, y + size + 10);
+        }
+      });
+
+      // Draw electrical wires (green lines)
+      ((currentState.electricalWires || []) as ElectricalWire[]).forEach((wire) => {
+        ctx.strokeStyle = '#16a34a'; // Green for electrical
+        ctx.lineWidth = Math.max(2, 3 * zoom);
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(
+          wire.start.x * zoom + panOffset.x,
+          wire.start.y * zoom + panOffset.y,
+        );
+        ctx.lineTo(
+          wire.end.x * zoom + panOffset.x,
+          wire.end.y * zoom + panOffset.y,
+        );
+        ctx.stroke();
+      });
+
+      // Draw plumbing pipes
+      ((currentState.plumbingPipes || []) as PlumbingPipe[]).forEach((pipe) => {
+        // Water pipes are blue, drain pipes are gray
+        ctx.strokeStyle = pipe.type === 'water' ? '#3b82f6' : '#6b7280';
+        ctx.lineWidth = Math.max(3, 4 * zoom);
+        
+        // Drain pipes are dashed
+        if (pipe.type === 'drain') {
+          ctx.setLineDash([8 * zoom, 4 * zoom]);
+        } else {
+          ctx.setLineDash([]);
+        }
+        
+        ctx.beginPath();
+        ctx.moveTo(
+          pipe.start.x * zoom + panOffset.x,
+          pipe.start.y * zoom + panOffset.y,
+        );
+        ctx.lineTo(
+          pipe.end.x * zoom + panOffset.x,
+          pipe.end.y * zoom + panOffset.y,
+        );
+        ctx.stroke();
+        
+        // Reset dash
+        ctx.setLineDash([]);
       });
     },
     [
@@ -791,6 +991,75 @@ export default function EnhancedGraphPaper() {
             ctx.fill();
           });
         }
+      }
+
+      // Draw measure tool preview
+      if (tool === 'measure' && measurePoints.length > 0) {
+        ctx.strokeStyle = '#9333ea80'; // Purple with transparency
+        ctx.lineWidth = Math.max(1, 2 * zoom);
+        ctx.setLineDash([5, 5]);
+        
+        // Draw existing measurement segments
+        for (let i = 0; i < measurePoints.length - 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(
+            measurePoints[i].x * zoom + panOffset.x,
+            measurePoints[i].y * zoom + panOffset.y,
+          );
+          ctx.lineTo(
+            measurePoints[i + 1].x * zoom + panOffset.x,
+            measurePoints[i + 1].y * zoom + panOffset.y,
+          );
+          ctx.stroke();
+        }
+        
+        // Draw preview line to current mouse position
+        const lastPoint = measurePoints[measurePoints.length - 1];
+        const snappedMouse = getSnappedPoint(currentMousePos);
+        ctx.beginPath();
+        ctx.moveTo(
+          lastPoint.x * zoom + panOffset.x,
+          lastPoint.y * zoom + panOffset.y,
+        );
+        ctx.lineTo(
+          snappedMouse.x * zoom + panOffset.x,
+          snappedMouse.y * zoom + panOffset.y,
+        );
+        ctx.stroke();
+        
+        // Draw measurement points
+        ctx.fillStyle = '#9333ea';
+        measurePoints.forEach((point) => {
+          ctx.beginPath();
+          ctx.arc(
+            point.x * zoom + panOffset.x,
+            point.y * zoom + panOffset.y,
+            Math.max(2, 3 * zoom),
+            0,
+            2 * Math.PI,
+          );
+          ctx.fill();
+        });
+        
+        // Draw distance preview
+        const distance = dist(lastPoint, snappedMouse) / gridSize;
+        if (distance > 0) {
+          const midX = ((lastPoint.x + snappedMouse.x) / 2) * zoom + panOffset.x;
+          const midY = ((lastPoint.y + snappedMouse.y) / 2) * zoom + panOffset.y;
+          ctx.save();
+          ctx.font = `${Math.max(10, 12 * zoom)}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+          ctx.fillStyle = '#9333ea';
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 3;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const text = `${distance.toFixed(1)} units`;
+          ctx.strokeText(text, midX, midY - Math.max(8, 15 * zoom));
+          ctx.fillText(text, midX, midY - Math.max(8, 15 * zoom));
+          ctx.restore();
+        }
+        
+        ctx.setLineDash([]);
       }
 
       if (activeShapeStartPoint && tool !== 'arc') {
@@ -1086,115 +1355,15 @@ export default function EnhancedGraphPaper() {
 
                 if (lengthInGridCells > EPSILON) {
                   // Only calculate for non-zero length lines
-                  const activeStudSpacing =
-                    currentStudSpacing > 0 ? currentStudSpacing : 1.33;
-                  const studCount =
-                    Math.ceil(lengthInGridCells / activeStudSpacing) + 1;
-                  lineData.studCount = studCount;
-                } else {
-                  lineData.studCount = 0; // Or 1 if even a point wall has one stud. Let's go with 0 for zero length.
+                  // Note: studCount calculations removed with 3D functionality
                 }
               }
               addToHistory({ lines: [...currentState.lines, lineData] });
               break;
             case 'rectangle':
               const newRectangle = shapeData as Rectangle;
-              let newLinesForTrusses: Line[] = [];
-
-              if (designMode === 'residential') {
-                const worldStartX = Math.min(
-                  newRectangle.start.x,
-                  newRectangle.end.x,
-                );
-                const worldStartY = Math.min(
-                  newRectangle.start.y,
-                  newRectangle.end.y,
-                );
-                const worldEndX = Math.max(
-                  newRectangle.start.x,
-                  newRectangle.end.x,
-                );
-                const worldEndY = Math.max(
-                  newRectangle.start.y,
-                  newRectangle.end.y,
-                );
-
-                const rectWidth = worldEndX - worldStartX;
-                const rectHeight = worldEndY - worldStartY;
-
-                // New truss generation logic with boundary trusses
-                const spacing =
-                  currentTrussSpacing > 0 ? currentTrussSpacing : 2; // Use state, ensure positive, fallback to 2ft
-                const trussLinesRaw: Line[] = [];
-                const trussCommonProps = { color: currentColor, thickness: 1 };
-
-                if (rectWidth > 0 && rectHeight > 0) {
-                  if (rectWidth < rectHeight) {
-                    // Trusses are horizontal (parallel to X-axis)
-                    if (rectWidth >= EPSILON) {
-                      // Ensure practical width for trusses
-                      for (
-                        let y = worldStartY;
-                        y <= worldEndY + EPSILON;
-                        y += spacing
-                      ) {
-                        const currentY = Math.min(y, worldEndY);
-                        trussLinesRaw.push({
-                          start: { x: worldStartX, y: currentY },
-                          end: { x: worldEndX, y: currentY },
-                          ...trussCommonProps,
-                        });
-                        if (currentY >= worldEndY - EPSILON) break;
-                      }
-                    }
-                  } else {
-                    // Trusses are vertical (parallel to Y-axis)
-                    if (rectHeight >= EPSILON) {
-                      // Ensure practical height for trusses
-                      for (
-                        let x = worldStartX;
-                        x <= worldEndX + EPSILON;
-                        x += spacing
-                      ) {
-                        const currentX = Math.min(x, worldEndX);
-                        trussLinesRaw.push({
-                          start: { x: currentX, y: worldStartY },
-                          end: { x: currentX, y: worldEndY },
-                          ...trussCommonProps,
-                        });
-                        if (currentX >= worldEndX - EPSILON) break;
-                      }
-                    }
-                  }
-                }
-
-                // Deduplicate trusses
-                const uniqueSignatures = new Set<string>();
-                newLinesForTrusses = trussLinesRaw.filter((truss) => {
-                  const p1 =
-                    truss.start.x < truss.end.x ||
-                    (truss.start.x === truss.end.x &&
-                      truss.start.y < truss.end.y)
-                      ? truss.start
-                      : truss.end;
-                  const p2 =
-                    truss.start.x < truss.end.x ||
-                    (truss.start.x === truss.end.x &&
-                      truss.start.y < truss.end.y)
-                      ? truss.end
-                      : truss.start;
-                  const sig = `${p1.x.toFixed(3)},${p1.y.toFixed(3)}-${p2.x.toFixed(3)},${p2.y.toFixed(3)}`;
-                  if (!uniqueSignatures.has(sig)) {
-                    uniqueSignatures.add(sig);
-                    return true;
-                  }
-                  return false;
-                });
-              }
-
               addToHistory({
                 rectangles: [...currentState.rectangles, newRectangle],
-                lines: [...currentState.lines, ...newLinesForTrusses], // Add new trusses along with the rectangle
               });
               break;
             case 'circle':
@@ -1228,11 +1397,132 @@ export default function EnhancedGraphPaper() {
       setIsErasing(true);
       setEraserStrokePoints([worldPoint]);
     } else if (tool === 'text') {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      setEditingText({
-        position: snappedPoint,
-        currentText: '',
+      // Simple text tool implementation
+      console.log('=== TEXT TOOL CLICKED ===');
+      console.log('Current editingText state:', editingText);
+      console.log('Click position:', point);
+      
+      // If already editing, save the current text first
+      if (editingText) {
+        console.log('Already editing text, saving current text first');
+        if (editingText.currentText.trim()) {
+          const worldPosition = getWorldPoint(editingText.position);
+          addToHistory({
+            texts: [
+              ...currentState.texts,
+              {
+                position: worldPosition,
+                text: editingText.currentText.trim(),
+                color: currentColor,
+                fontSize: 16,
+              },
+            ],
+          });
+          console.log('Saved text:', editingText.currentText.trim());
+        }
+      }
+      
+             // Start new text input
+       console.log('Starting new text input');
+       setEditingText({
+         position: point,
+         currentText: '',
+       });
+       setIsTextEditing(true);
+       setTextInputStartTime(Date.now());
+       triggerFeedback();
+      
+    } else if (tool === 'measure') {
+      if (measurePoints.length === 0) {
+        setMeasurePoints([snappedPoint]);
+        triggerFeedback();
+      } else {
+        const lastPoint = measurePoints[measurePoints.length - 1];
+        if (dist(lastPoint, snappedPoint) > EPSILON) {
+          setMeasurePoints([...measurePoints, snappedPoint]);
+          triggerFeedback();
+        }
+      }
+    } else if (tool === 'wiring') {
+      // Add electrical outlet
+      const newOutletId = `outlet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const newOutlets = [
+        ...(currentState.electricalOutlets || []),
+        {
+          id: newOutletId,
+          position: snappedPoint,
+          type: 'standard' as const,
+        },
+      ];
+      
+      // Auto-route wires between outlets
+      const newWires = [...(currentState.electricalWires || [])];
+      const existingOutlets = currentState.electricalOutlets || [];
+      if (existingOutlets.length > 0) {
+        // Connect to nearest existing outlet
+        const nearestOutlet = existingOutlets.reduce((nearest, outlet) => 
+          dist(outlet.position, snappedPoint) < dist(nearest.position, snappedPoint) ? outlet : nearest
+        );
+        
+        const wireId = `wire_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        newWires.push({
+          id: wireId,
+          start: nearestOutlet.position,
+          end: snappedPoint,
+          outletIds: [nearestOutlet.id, newOutletId],
+        });
+      }
+      
+      addToHistory({
+        electricalOutlets: newOutlets,
+        electricalWires: newWires,
+      });
+      triggerFeedback();
+    } else if (tool === 'plumbing') {
+      // Add water fixture
+      const newFixtureId = `fixture_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const newFixtures = [
+        ...(currentState.plumbingFixtures || []),
+        {
+          id: newFixtureId,
+          position: snappedPoint,
+          type: 'sink' as const,
+        },
+      ];
+      
+      // Auto-route pipes between fixtures
+      const newPipes = [...(currentState.plumbingPipes || [])];
+      const existingFixtures = currentState.plumbingFixtures || [];
+      if (existingFixtures.length > 0) {
+        // Connect to nearest existing fixture with both water and drain lines
+        const nearestFixture = existingFixtures.reduce((nearest, fixture) => 
+          dist(fixture.position, snappedPoint) < dist(nearest.position, snappedPoint) ? fixture : nearest
+        );
+        
+        // Water supply pipe
+        const waterPipeId = `pipe_water_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        newPipes.push({
+          id: waterPipeId,
+          start: nearestFixture.position,
+          end: snappedPoint,
+          fixtureIds: [nearestFixture.id, newFixtureId],
+          type: 'water',
+        });
+        
+        // Drain pipe
+        const drainPipeId = `pipe_drain_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        newPipes.push({
+          id: drainPipeId,
+          start: nearestFixture.position,
+          end: snappedPoint,
+          fixtureIds: [nearestFixture.id, newFixtureId],
+          type: 'drain',
+        });
+      }
+      
+      addToHistory({
+        plumbingFixtures: newFixtures,
+        plumbingPipes: newPipes,
       });
       triggerFeedback();
     }
@@ -1334,7 +1624,7 @@ export default function EnhancedGraphPaper() {
           // Residential mode: if a stud wall is hit in partial erase, treat as whole erase for that line
           if (
             designMode === 'residential' &&
-            originalLine.studCount !== undefined
+            true
           ) {
             let studWallHit = false;
             for (const ep of eraserStrokePoints) {
@@ -1558,6 +1848,7 @@ export default function EnhancedGraphPaper() {
     }
 
     setIsPanning(false);
+    setIsDrawing(false); // Make sure to reset isDrawing for area-delete
     setIsErasing(false);
     setEraserStrokePoints([]);
     setIsMultiTouch(false);
@@ -1565,18 +1856,97 @@ export default function EnhancedGraphPaper() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      console.log('=== KEYDOWN EVENT ===');
+      console.log('Key pressed:', e.key);
+      console.log('isTextEditing:', isTextEditing);
+      console.log('editingText:', editingText);
+      
       const pressedKey = e.key.toLowerCase();
 
-      // Handle tool shortcuts
+      // Handle text editing - HIGHEST PRIORITY
+      if (isTextEditing && editingText) {
+        console.log('In text editing mode, handling key:', e.key);
+        
+        if (e.key === 'Enter') {
+          console.log('Enter pressed - saving text');
+          e.preventDefault();
+          e.stopPropagation();
+          
+          if (editingText.currentText.trim()) {
+            const worldPosition = getWorldPoint(editingText.position);
+            addToHistory({
+              texts: [
+                ...currentState.texts,
+                {
+                  position: worldPosition,
+                  text: editingText.currentText.trim(),
+                  color: currentColor,
+                  fontSize: 16,
+                },
+              ],
+            });
+            console.log('Text saved successfully:', editingText.currentText.trim());
+          }
+          
+          setEditingText(null);
+          setIsTextEditing(false);
+          return;
+        }
+        
+        if (e.key === 'Escape') {
+          console.log('Escape pressed - canceling text');
+          e.preventDefault();
+          e.stopPropagation();
+          setEditingText(null);
+          setIsTextEditing(false);
+          return;
+        }
+        
+        // For all other keys during text editing, let them through normally
+        console.log('Allowing key through for text input:', e.key);
+        return;
+      }
+
+      // Only handle tool shortcuts if NOT editing text
+      console.log('Not editing text, checking for tool shortcuts');
+      
+      // Handle measure tool shortcuts
+      if (tool === 'measure' && pressedKey === 'enter') {
+        e.preventDefault();
+        if (measurePoints.length > 1) {
+          // Finalize measurements
+          const newMeasurements: Measurement[] = [];
+          for (let i = 0; i < measurePoints.length - 1; i++) {
+            newMeasurements.push({
+              start: measurePoints[i],
+              end: measurePoints[i + 1],
+              color: '#9333ea', // Purple for measurements
+              thickness: 1,
+            });
+          }
+          addToHistory({
+            measurements: [...currentState.measurements, ...newMeasurements],
+          });
+          setMeasurePoints([]);
+          triggerFeedback();
+        }
+        return;
+      }
+
+      // Handle tool shortcuts - but only if we're not editing text
       const toolToSelect = tools.find(
         (t) => t.shortcut && t.shortcut.toLowerCase() === pressedKey,
       );
       if (toolToSelect && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        // Ensure no modifiers for tool shortcuts
+        console.log('Tool shortcut matched:', pressedKey, '-> switching to:', toolToSelect.name);
         e.preventDefault();
         if (toolToSelect.name === 'fullscreen') {
           toggleFullscreen();
         } else {
+          // Clear measurements when switching tools (unless keep setting is on)
+          if (!keepMeasurements && tool === 'measure') {
+            setMeasurePoints([]);
+          }
           setTool(toolToSelect.name as Tool);
           setActiveShapeStartPoint(null);
           setActiveShapeEndPoint(null);
@@ -1635,6 +2005,11 @@ export default function EnhancedGraphPaper() {
     selectedTextElement, // Added
     currentState, // Added (or currentState.texts specifically)
     addToHistory, // Added
+    isTextEditing, // Added for text editing state
+    editingText, // Added for text editing state
+    textInputStartTime, // Added for text input timing
+    measurePoints, // Added for measure tool
+    keepMeasurements, // Added for measure tool
   ]);
 
   useEffect(() => {
@@ -1713,8 +2088,11 @@ export default function EnhancedGraphPaper() {
             ? 'Tap to set arc end point'
             : 'Tap to set arc curve',
       text: editingText
-        ? 'Type your text and press Enter'
+        ? 'Type your text and press Enter (tool shortcuts disabled while typing)'
         : 'Tap to place text',
+      measure: measurePoints.length === 0
+        ? 'Tap to start measuring'
+        : `Tap to continue measuring (${measurePoints.length} points) - Press Enter to finish`,
       eraser: `Drag to erase (${eraserMode} mode)`,
       pan: 'Drag to move, pinch to zoom',
       select: selectedTextElement
@@ -1723,6 +2101,9 @@ export default function EnhancedGraphPaper() {
       'area-delete': selectionRect
         ? 'Release to finalize selection for deletion'
         : 'Click and drag to select area for deletion',
+      wiring: 'Tap to place electrical outlets - green wires auto-connect to nearest outlet',
+      plumbing: 'Tap to place water fixtures - blue water & gray drain pipes auto-connect',
+      fullscreen: 'Fullscreen toggled',
     };
     setStatusMessage(messages[tool] || '');
   }, [
@@ -1733,6 +2114,7 @@ export default function EnhancedGraphPaper() {
     eraserMode,
     editingText,
     selectedTextElement,
+    measurePoints, // Added for measure tool status
   ]);
 
   useEffect(() => {
@@ -1742,6 +2124,28 @@ export default function EnhancedGraphPaper() {
     canvas.addEventListener('touchmove', preventDefault, { passive: false });
     return () => canvas.removeEventListener('touchmove', preventDefault);
   }, []);
+
+  // Handle wheel events with proper non-passive listener
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const canvasPoint = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const worldPoint = getWorldPoint(canvasPoint);
+      const newZoom = Math.max(0.1, Math.min(5, zoom - e.deltaY * 0.001));
+      setPanOffset({
+        x: canvasPoint.x - worldPoint.x * newZoom,
+        y: canvasPoint.y - worldPoint.y * newZoom,
+      });
+      setZoom(newZoom);
+    };
+    
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, [zoom, panOffset, getWorldPoint, setPanOffset, setZoom]);
 
   // Load saved drawing on mount
   useEffect(() => {
@@ -1821,6 +2225,11 @@ export default function EnhancedGraphPaper() {
         circles: [],
         arrows: [],
         texts: [],
+        measurements: [],
+        electricalOutlets: [],
+        plumbingFixtures: [],
+        electricalWires: [],
+        plumbingPipes: [],
       },
     ]);
     setHistoryIndex(0);
@@ -1860,23 +2269,7 @@ export default function EnhancedGraphPaper() {
     setStatusMessage, // ensure it's a dependency
   ]);
 
-  const handleTextInputConfirm = () => {
-    if (editingText && editingText.currentText.trim() !== '') {
-      addToHistory({
-        texts: [
-          ...currentState.texts,
-          {
-            position: editingText.position,
-            text: editingText.currentText.trim(),
-            color: currentColor,
-            fontSize: 16, // Default font size, rendering will scale with zoom
-          },
-        ],
-      });
-    }
-    setEditingText(null);
-    triggerFeedback();
-  };
+
 
   useEffect(() => {
     const handler = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -1884,8 +2277,39 @@ export default function EnhancedGraphPaper() {
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
+  // Mode switching functions
+  const handleModeSwitch = (mode: AppMode) => {
+    setCurrentMode(mode);
+    switchMode('traditional');
+    triggerFeedback();
+  };
+
+  // Debug editingText changes and handle focus
+  useEffect(() => {
+    console.log('=== EDITING TEXT STATE CHANGED ===');
+    console.log('New editingText state:', editingText);
+    if (editingText) {
+      console.log('Text content:', editingText.currentText);
+      console.log('Text position:', editingText.position);
+      
+      // Focus the input when editingText is first created
+      if (editingText.currentText === '' && textInputRef.current) {
+        console.log('Focusing new text input');
+        setTimeout(() => {
+          if (textInputRef.current) {
+            textInputRef.current.focus();
+            textInputRef.current.select();
+          }
+        }, 50);
+      }
+    }
+  }, [editingText]);
+
+  // Render Traditional Graph Paper Mode (default)
   return (
     <div className="w-screen h-screen overflow-hidden relative bg-gradient-to-br from-slate-50 to-slate-100 touch-none">
+
+
       <canvas
         ref={canvasRef}
         className={`absolute top-0 left-0 w-full h-full touch-none ${
@@ -1955,6 +2379,7 @@ export default function EnhancedGraphPaper() {
           setZoom(newZoom);
         }}
       />
+
       {/* Tool Selection UI Container */}
       <div
         className={`absolute z-10 transition-all duration-700 ${
@@ -2019,7 +2444,6 @@ export default function EnhancedGraphPaper() {
                         prevMode === 'graph' ? 'residential' : 'graph',
                       );
                       triggerFeedback();
-                      // setIsToolMenuOpen(false); // Optionally close menu
                     }}
                     className="w-full mt-2 text-xs"
                     size="sm"
@@ -2028,81 +2452,7 @@ export default function EnhancedGraphPaper() {
                       ? 'Residential Builder'
                       : 'Graph Paper'}
                   </Button>
-                  {/* Truss Spacing Input - Mobile */}
-                  {isMobile && designMode === 'residential' && (
-                    <div className="mt-2">
-                      {' '}
-                      {/* Add some margin */}
-                      <label
-                        htmlFor="truss-spacing-input-mobile"
-                        className="block text-xs font-medium text-gray-700 mb-0.5"
-                      >
-                        Truss Spacing (ft):
-                      </label>
-                      <input
-                        type="number"
-                        id="truss-spacing-input-mobile"
-                        value={currentTrussSpacing}
-                        onChange={(e) => {
-                          const valStr = e.target.value;
-                          if (valStr === '') {
-                            // Allow temporary empty state, rely on blur to fix if needed
-                            // Or set to a temp "invalid" marker if your state supports it
-                          } else {
-                            const num = parseFloat(valStr);
-                            if (!isNaN(num) && num > 0) {
-                              setCurrentTrussSpacing(num);
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          let num = parseFloat(e.target.value);
-                          if (isNaN(num) || num <= 0) {
-                            num = 2; // Default if invalid
-                          }
-                          setCurrentTrussSpacing(num);
-                        }}
-                        min="0.5"
-                        step="0.01"
-                        className="w-full p-1.5 border border-gray-300 rounded-md text-sm"
-                      />
-                    </div>
-                  )}
-                  {/* Stud Spacing Input - Mobile */}
-                  {isMobile && designMode === 'residential' && (
-                    <div className="mt-2">
-                      {' '}
-                      {/* Add some margin */}
-                      <label
-                        htmlFor="stud-spacing-input-mobile"
-                        className="block text-xs font-medium text-gray-700 mb-0.5"
-                      >
-                        Stud Spacing (ft):
-                      </label>
-                      <input
-                        type="number"
-                        id="stud-spacing-input-mobile"
-                        value={currentStudSpacing}
-                        onChange={(e) => {
-                          const valStr = e.target.value;
-                          const num = parseFloat(valStr);
-                          if (!isNaN(num) && num > 0) {
-                            setCurrentStudSpacing(num);
-                          }
-                        }}
-                        onBlur={(e) => {
-                          let num = parseFloat(e.target.value);
-                          if (isNaN(num) || num <= 0) {
-                            num = 1.33; // Default if invalid
-                          }
-                          setCurrentStudSpacing(num);
-                        }}
-                        min="0.5"
-                        step="0.01"
-                        className="w-full p-1.5 border border-gray-300 rounded-md text-sm"
-                      />
-                    </div>
-                  )}
+                  
                   <div className="flex justify-end pt-2">
                     <Button
                       variant="ghost"
@@ -2121,661 +2471,14 @@ export default function EnhancedGraphPaper() {
             )}
           </>
         )}
-      </div>{' '}
-      {/* This closes the main Tool Selection UI Container */}
-      {isMobile ? (
-        <div className="absolute top-6 left-6 z-10">
-          {isColorMenuOpen ? (
-            <div className="space-y-2">
-              <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-                <CardContent className="p-1.5">
-                  <div className="flex items-center gap-2 flex-col">
-                    <div className="flex gap-1 flex-wrap justify-center">
-                      {colorOptions.map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => {
-                            setCurrentColor(color);
-                            triggerFeedback();
-                            setIsColorMenuOpen(false);
-                          }}
-                          className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 active:scale-95 ${currentColor === color ? 'border-gray-800 ring-2 ring-blue-200' : 'border-gray-300'}`}
-                          style={{ backgroundColor: color }}
-                        />
-                      ))}
-                    </div>
-                    <div className="flex gap-1 justify-center mt-2">
-                      {thicknessOptions.map((thickness) => (
-                        <button
-                          key={thickness}
-                          onClick={() => {
-                            setCurrentThickness(thickness);
-                            triggerFeedback();
-                            setIsColorMenuOpen(false);
-                          }}
-                          className={`w-8 h-8 rounded border-2 transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center ${currentThickness === thickness ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
-                        >
-                          <div
-                            className="rounded-full bg-gray-800"
-                            style={{
-                              width: thickness + 2,
-                              height: thickness + 2,
-                            }}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <div className="flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setIsColorMenuOpen(false);
-                    triggerFeedback();
-                  }}
-                  className="w-8 h-8 hover:bg-gray-100 active:scale-95"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setIsColorMenuOpen(true);
-                triggerFeedback();
-              }}
-              className="w-10 h-10 hover:bg-gray-100 active:scale-95"
-            >
-              <Palette className="w-5 h-5" />
-            </Button>
-          )}
-        </div>
-      ) : (
-        <>
-          <div
-            className={`absolute top-6 left-6 z-10 transition-all duration-700 delay-100 ${isFirstLoad ? 'opacity-0 scale-95 -translate-x-4' : 'opacity-100 scale-100 translate-x-0'}`}
-          >
-            <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-              <CardContent className="p-2">
-                <div className="flex items-center gap-2">
-                  <Palette className="w-4 h-4" />
-                  <div className="flex gap-1">
-                    {colorOptions.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => {
-                          setCurrentColor(color);
-                          triggerFeedback();
-                        }}
-                        className={`w-6 h-6 rounded-full border-2 transition-all duration-200 hover:scale-110 active:scale-95 ${currentColor === color ? 'border-gray-800 ring-2 ring-blue-200' : 'border-gray-300'}`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div
-            className={`absolute top-20 left-6 z-10 transition-all duration-700 delay-150 ${isFirstLoad ? 'opacity-0 scale-95 -translate-x-4' : 'opacity-100 scale-100 translate-x-0'}`}
-          >
-            <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-              <CardContent className="p-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 text-gray-600 text-xs font-medium">
-                    T
-                  </div>
-                  <div className="flex gap-1">
-                    {thicknessOptions.map((thickness) => (
-                      <button
-                        key={thickness}
-                        onClick={() => {
-                          setCurrentThickness(thickness);
-                          triggerFeedback();
-                        }}
-                        className={`w-6 h-6 rounded border-2 transition-all duration-200 hover:scale-110 active:scale-95 flex items-center justify-center ${currentThickness === thickness ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
-                      >
-                        <div
-                          className="rounded-full bg-gray-800"
-                          style={{
-                            width: thickness + 2,
-                            height: thickness + 2,
-                          }}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      )}
-      {/* Design Mode Toggle - Desktop */}
-      {!isMobile && (
-        <div
-          className={`absolute top-[9rem] left-6 z-10 transition-all duration-700 delay-200 ${isFirstLoad ? 'opacity-0 scale-95 -translate-x-4' : 'opacity-100 scale-100 translate-x-0'}`}
-        >
-          <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-            <CardContent className="p-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setDesignMode((prevMode) =>
-                    prevMode === 'graph' ? 'residential' : 'graph',
-                  );
-                  triggerFeedback();
-                }}
-                className="w-full"
-              >
-                {designMode === 'graph'
-                  ? 'Enable Residential Builder'
-                  : 'Enable Graph Paper'}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-      {/* Truss Spacing Input - Desktop */}
-      {!isMobile && designMode === 'residential' && (
-        <div
-          className={`absolute top-[12.5rem] left-6 z-10 transition-all duration-700 delay-200 ${isFirstLoad ? 'opacity-0 scale-95 -translate-x-4' : 'opacity-100 scale-100 translate-x-0'}`}
-        >
-          <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-            <CardContent className="p-2">
-              <label
-                htmlFor="truss-spacing-input"
-                className="block text-xs font-medium text-gray-700 mb-1"
-              >
-                Truss Spacing (ft):
-              </label>
-              <input
-                type="number"
-                id="truss-spacing-input"
-                value={currentTrussSpacing}
-                onChange={(e) => {
-                  const valStr = e.target.value;
-                  if (valStr === '') {
-                    // Allow temporary empty state, rely on blur to fix
-                  } else {
-                    const num = parseFloat(valStr);
-                    if (!isNaN(num) && num > 0) {
-                      setCurrentTrussSpacing(num);
-                    }
-                  }
-                }}
-                onBlur={(e) => {
-                  let num = parseFloat(e.target.value);
-                  if (isNaN(num) || num <= 0) {
-                    num = 2; // Default to 2ft if invalid
-                  }
-                  setCurrentTrussSpacing(num);
-                }}
-                min="0.5"
-                step="0.01"
-                className="w-full p-1 border border-gray-300 rounded-md text-sm"
-              />
-            </CardContent>
-          </Card>
-        </div>
-      )}
-      {/* Stud Spacing Input - Desktop */}
-      {!isMobile && designMode === 'residential' && (
-        <div
-          className={`absolute top-[16.5rem] left-6 z-10 transition-all duration-700 delay-200 ${isFirstLoad ? 'opacity-0 scale-95 -translate-x-4' : 'opacity-100 scale-100 translate-x-0'}`}
-        >
-          <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-            <CardContent className="p-2">
-              <label
-                htmlFor="stud-spacing-input"
-                className="block text-xs font-medium text-gray-700 mb-1"
-              >
-                Stud Spacing (ft):
-              </label>
-              <input
-                type="number"
-                id="stud-spacing-input"
-                value={currentStudSpacing}
-                onChange={(e) => {
-                  const valStr = e.target.value;
-                  const num = parseFloat(valStr);
-                  if (!isNaN(num) && num > 0) {
-                    setCurrentStudSpacing(num);
-                  }
-                }}
-                onBlur={(e) => {
-                  let num = parseFloat(e.target.value);
-                  if (isNaN(num) || num <= 0) {
-                    num = 1.33; // Default if invalid
-                  }
-                  setCurrentStudSpacing(num);
-                }}
-                min="0.5"
-                step="0.01"
-                className="w-full p-1 border border-gray-300 rounded-md text-sm"
-              />
-            </CardContent>
-          </Card>
-        </div>
-      )}
-      <div
-        className={`absolute ${isMobile ? 'top-6 right-6' : 'bottom-6 left-6'} ${isMobile ? '' : 'flex gap-2'} z-10 transition-all duration-700 delay-200 ${isFirstLoad ? 'opacity-0 scale-95 translate-y-4' : 'opacity-100 scale-100 translate-y-0'}`}
-      >
-        <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-          <CardContent
-            className={`p-1 ${isMobile ? 'flex flex-col items-end gap-1' : 'flex gap-1'}`}
-          >
-            {isMobile ? (
-              <>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setIsActionMenuOpen((prev) => !prev);
-                          triggerFeedback();
-                        }}
-                        className="w-10 h-10 hover:bg-gray-100 active:scale-95"
-                      >
-                        {isActionMenuOpen ? (
-                          <X className="w-5 h-5" />
-                        ) : (
-                          <Menu className="w-5 h-5" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      <p>{isActionMenuOpen ? 'Close Menu' : 'Open Menu'}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                {isActionMenuOpen && (
-                  <>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={undo}
-                            disabled={historyIndex === 0}
-                            className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 disabled:opacity-50 active:scale-95`}
-                          >
-                            <Undo
-                              className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`}
-                            />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <p>Undo (Ctrl+Z)</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={redo}
-                            disabled={historyIndex === history.length - 1}
-                            className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 disabled:opacity-50 active:scale-95`}
-                          >
-                            <Redo
-                              className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`}
-                            />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <p>Redo (Ctrl+Shift+Z)</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setShowGrid(!showGrid);
-                              triggerFeedback();
-                            }}
-                            className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95 ${showGrid ? 'bg-blue-50 text-blue-700' : ''}`}
-                          >
-                            <Grid3X3
-                              className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`}
-                            />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <p>Toggle Grid (G)</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleDownload}
-                            className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95`}
-                          >
-                            <Download
-                              className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`}
-                            />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <p>Download PNG</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleClearDrawing}
-                            className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95`}
-                          >
-                            <Trash2
-                              className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`}
-                            />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <p>Clear Drawing</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEraserMode(
-                                eraserMode === 'partial' ? 'whole' : 'partial',
-                              );
-                              triggerFeedback();
-                            }}
-                            className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95 ${tool === 'eraser' ? (eraserMode === 'partial' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700') : 'text-gray-500'}`}
-                            disabled={tool !== 'eraser'}
-                          >
-                            {eraserMode === 'partial' ? (
-                              <Scissors
-                                className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`}
-                              />
-                            ) : (
-                              <Trash2
-                                className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`}
-                              />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <p>
-                            Eraser:{' '}
-                            {eraserMode === 'partial'
-                              ? 'Partial (Lines Only)'
-                              : 'Whole Element'}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={undo}
-                        disabled={historyIndex === 0}
-                        className="w-9 h-9 hover:bg-gray-100 disabled:opacity-50 active:scale-95"
-                      >
-                        <Undo className="w-5 h-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Undo (Ctrl+Z)</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={redo}
-                        disabled={historyIndex === history.length - 1}
-                        className="w-9 h-9 hover:bg-gray-100 disabled:opacity-50 active:scale-95"
-                      >
-                        <Redo className="w-5 h-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Redo (Ctrl+Shift+Z)</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setShowGrid(!showGrid);
-                          triggerFeedback();
-                        }}
-                        className={`w-9 h-9 hover:bg-gray-100 active:scale-95 ${showGrid ? 'bg-blue-50 text-blue-700' : ''}`}
-                      >
-                        <Grid3X3 className="w-5 h-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Toggle Grid (G)</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleDownload}
-                        className="w-9 h-9 hover:bg-gray-100 active:scale-95"
-                      >
-                        <Download className="w-5 h-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Download PNG</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleClearDrawing}
-                        className="w-9 h-9 hover:bg-gray-100 active:scale-95"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Clear Drawing</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setEraserMode(
-                            eraserMode === 'partial' ? 'whole' : 'partial',
-                          );
-                          triggerFeedback();
-                        }}
-                        className={`w-9 h-9 hover:bg-gray-100 active:scale-95 ${tool === 'eraser' ? (eraserMode === 'partial' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700') : 'text-gray-500'}`}
-                        disabled={tool !== 'eraser'}
-                      >
-                        {eraserMode === 'partial' ? (
-                          <Scissors className="w-5 h-5" />
-                        ) : (
-                          <Trash2 className="w-5 h-5" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>
-                        Eraser:{' '}
-                        {eraserMode === 'partial'
-                          ? 'Partial (Lines Only)'
-                          : 'Whole Element'}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </>
-            )}
-          </CardContent>
-        </Card>
       </div>
-      <div
-        className={`absolute ${isMobile ? 'bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] left-6' : 'bottom-6 right-6'} z-10 transition-all duration-700 delay-300 ${isFirstLoad ? 'opacity-0 scale-95 translate-y-4' : 'opacity-100 scale-100 translate-y-0'}`}
-      >
-        <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
-          <CardContent className="p-1 flex flex-col gap-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setZoom((z) => Math.min(5, z + 0.3));
-                      triggerFeedback();
-                    }}
-                    className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95`}
-                  >
-                    <ZoomIn className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side={isMobile ? 'right' : 'left'}>
-                  <p>Zoom In</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <div
-              className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-xs'} text-gray-600 text-center min-w-[3rem]`}
-            >
-              {Math.round(zoom * 100)}%
-            </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setZoom((z) => Math.max(0.1, z - 0.3));
-                      triggerFeedback();
-                    }}
-                    className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95`}
-                  >
-                    <ZoomOut
-                      className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`}
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side={isMobile ? 'right' : 'left'}>
-                  <p>Zoom Out</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setZoom(1);
-                      setPanOffset({ x: 0, y: 0 });
-                      triggerFeedback();
-                    }}
-                    className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95`}
-                  >
-                    <RotateCcw
-                      className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`}
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side={isMobile ? 'right' : 'left'}>
-                  <p>Reset View</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => router.push('/three')}
-                    className={`${isMobile ? 'w-10 h-10' : 'w-9 h-9'} hover:bg-gray-100 active:scale-95`}
-                  >
-                    <Orbit
-                      className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`}
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side={isMobile ? 'right' : 'left'}>
-                  <p>3D Preview</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </CardContent>
-        </Card>
-      </div>
+
+      {/* Status Message */}
       {statusMessage && (
         <div
           className={`absolute ${isMobile ? 'top-[calc(env(safe-area-inset-top)+1.5rem)]' : 'bottom-6'} left-1/2 -translate-x-1/2 z-10`}
         >
-          <Card className="shadow-lg border-0 bg-gray-900 text-gray-800 dark:text-white">
+          <Card className="shadow-lg border-0 bg-gray-900 text-white">
             <CardContent className={`${isMobile ? 'px-3 py-2' : 'px-4 py-2'}`}>
               <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium`}>
                 {statusMessage}
@@ -2784,35 +2487,76 @@ export default function EnhancedGraphPaper() {
           </Card>
         </div>
       )}
+
+      {/* Text Editing Input */}
       {editingText && (
         <input
+          ref={textInputRef}
           type="text"
-          ref={(inputRef) => inputRef && inputRef.focus()} // Auto-focus the input
           value={editingText.currentText}
-          onChange={(e) =>
-            setEditingText({ ...editingText, currentText: e.target.value })
-          }
-          onBlur={handleTextInputConfirm}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              handleTextInputConfirm();
-            } else if (e.key === 'Escape') {
-              setEditingText(null); // Cancel editing
-              triggerFeedback();
-            }
+          onChange={(e) => {
+            console.log('=== TEXT INPUT CHANGE ===');
+            console.log('Input value:', e.target.value);
+            console.log('Current editingText state:', editingText);
+            console.log('Setting new text state...');
+            setEditingText({ ...editingText, currentText: e.target.value });
+            console.log('Text state updated');
           }}
-          style={{
-            position: 'absolute',
-            left: `${editingText.position.x * zoom + panOffset.x}px`,
-            top: `${editingText.position.y * zoom + panOffset.y}px`,
-            border: '1px solid #ccc',
-            padding: '4px',
-            fontSize: `${16 * zoom}px`, // Match visual size with zoom
-            fontFamily: 'Arial, sans-serif', // Match canvas font
-            backgroundColor: 'white',
-            zIndex: 100, // Ensure it's on top
+          onFocus={() => {
+            console.log('Text input focused');
+          }}
+          onBlur={(e) => {
+            console.log('Text input blurred, saving text');
+            
+            // Prevent immediate blur - only allow blur if enough time has passed or if there's actual text
+            const timeSinceStart = Date.now() - textInputStartTime;
+            const hasText = editingText && editingText.currentText.trim();
+            
+            if (timeSinceStart < 200 && !hasText) {
+              console.log('Preventing immediate blur - refocusing input');
+              // Refocus the input if blur happened too quickly
+              setTimeout(() => {
+                const input = e.target as HTMLInputElement;
+                if (input && editingText) {
+                  input.focus();
+                }
+              }, 10);
+              return;
+            }
+            
+            // Only save if we actually have some text
+            if (hasText) {
+              const worldPosition = getWorldPoint(editingText.position);
+              addToHistory({
+                texts: [
+                  ...currentState.texts,
+                  {
+                    position: worldPosition,
+                    text: editingText.currentText.trim(),
+                    color: currentColor,
+                    fontSize: 16,
+                  },
+                ],
+              });
+              console.log('Text saved on blur:', editingText.currentText.trim());
+            } else {
+              console.log('No text to save on blur');
+            }
+            setEditingText(null);
+            setIsTextEditing(false);
+          }}
+          onKeyDown={(e) => {
+            console.log('Text input onKeyDown:', e.key);
+            // Let the global keyboard handler deal with Enter and Escape
           }}
           placeholder="Enter text..."
+          autoFocus
+          className="absolute bg-white border-2 border-blue-500 rounded px-2 py-1 text-sm font-mono shadow-lg outline-none min-w-[100px]"
+          style={{
+            left: editingText.position.x,
+            top: editingText.position.y - 30,
+            zIndex: 1000,
+          }}
         />
       )}
     </div>

@@ -40,7 +40,7 @@ export function AnimatedToolbar({
   const [isAnimating, setIsAnimating] = useState(false);
   const [expandedTool, setExpandedTool] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const longPressTimer = useRef<NodeJS.Timeout>();
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartY, setDragStartY] = useState(0);
 
