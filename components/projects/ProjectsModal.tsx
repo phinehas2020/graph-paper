@@ -11,7 +11,7 @@ import { Save, FolderOpen, Trash2, Plus, X, Loader2, Calendar } from 'lucide-rea
 interface ProjectsModalProps {
   isOpen: boolean
   onClose: () => void
-  onLoadProject: (projectData: any) => void
+  onLoadProject: (projectData: any, projectId?: string, projectTitle?: string) => void
   currentProjectData: any
   user: any
 }
@@ -132,7 +132,7 @@ export function ProjectsModal({
     console.log('Loading project:', project.title)
     console.log('Project canvas data:', project.canvas_data)
     try {
-      onLoadProject(project.canvas_data)
+      onLoadProject(project.canvas_data, project.id, project.title)
       onClose()
       console.log('Project loaded successfully')
     } catch (error) {

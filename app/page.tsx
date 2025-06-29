@@ -15,6 +15,7 @@ import { useIsMobile } from '@/hooks/use-is-mobile';
 import { useAuth } from '@/hooks/use-auth';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { ProjectsModal } from '@/components/projects/ProjectsModal';
+import { supabase } from '@/lib/supabase';
 import useStore from '@/src/model/useStore';
 import {
   PenLine,
@@ -419,6 +420,10 @@ export default function EnhancedGraphPaper() {
   const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
+  
+  // Current project tracking
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [currentProjectTitle, setCurrentProjectTitle] = useState<string>('');
 
   const [lastTouchDistance, setLastTouchDistance] = useState<number>(0);
   const [isMultiTouch, setIsMultiTouch] = useState(false);
@@ -2004,14 +2009,45 @@ export default function EnhancedGraphPaper() {
         }
       } else if ((e.metaKey || e.ctrlKey) && pressedKey === 's') {
         e.preventDefault();
-        // Open Projects modal for saving/loading
-        if (isAuthenticated) {
-          setIsProjectsModalOpen(true);
-          triggerFeedback();
-        } else {
-          // If not authenticated, open auth modal first
+        // Quick save current project
+        if (!isAuthenticated) {
           setIsAuthModalOpen(true);
-          triggerFeedback();
+          return;
+        }
+
+        // If we have a current project, update it
+        if (currentProjectId) {
+          (async () => {
+            try {
+              console.log('Updating existing project:', currentProjectTitle, currentProjectId);
+              
+              const { error } = await supabase
+                .from('projects')
+                .update({
+                  canvas_data: currentState,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', currentProjectId);
+
+              if (error) throw error;
+              
+              console.log('Project updated successfully');
+              triggerFeedback();
+              
+              // Show a brief success message
+              setStatusMessage(`Saved "${currentProjectTitle}"`);
+              setTimeout(() => setStatusMessage(''), 2000);
+              
+            } catch (error: any) {
+              console.error('Error updating project:', error);
+              setStatusMessage('Failed to save project');
+              setTimeout(() => setStatusMessage(''), 3000);
+            }
+          })();
+        } else {
+          // No current project, open modal to create new one
+          console.log('No current project, opening save dialog');
+          setIsProjectsModalOpen(true);
         }
       } else if (pressedKey === 'g' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
@@ -2062,6 +2098,8 @@ export default function EnhancedGraphPaper() {
     isAuthenticated, // Added for Cmd+S shortcut
     setIsProjectsModalOpen, // Added for Cmd+S shortcut
     setIsAuthModalOpen, // Added for Cmd+S shortcut
+    currentProjectId, // Added for quick save
+    currentProjectTitle, // Added for quick save
   ]);
 
   useEffect(() => {
@@ -2293,7 +2331,7 @@ export default function EnhancedGraphPaper() {
     triggerFeedback();
   }, [triggerFeedback]);
 
-  const handleLoadProject = useCallback((projectData: any) => {
+  const handleLoadProject = useCallback((projectData: any, projectId?: string, projectTitle?: string) => {
     console.log('handleLoadProject called with data:', projectData);
     
     if (projectData && typeof projectData === 'object') {
@@ -2315,12 +2353,60 @@ export default function EnhancedGraphPaper() {
       console.log('Setting loaded state:', loadedState);
       setHistory([loadedState]);
       setHistoryIndex(0);
+      
+      // Track the current project
+      if (projectId && projectTitle) {
+        setCurrentProjectId(projectId);
+        setCurrentProjectTitle(projectTitle);
+        console.log('Set current project:', projectTitle, projectId);
+      }
+      
       triggerFeedback();
       console.log('Project loaded and history updated');
     } else {
       console.error('Invalid project data:', projectData);
     }
   }, [triggerFeedback]);
+
+  const handleQuickSave = useCallback(async () => {
+    if (!isAuthenticated) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    // If we have a current project, update it
+    if (currentProjectId) {
+      try {
+        console.log('Updating existing project:', currentProjectTitle, currentProjectId);
+        
+        const { error } = await supabase
+          .from('projects')
+          .update({
+            canvas_data: currentState,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', currentProjectId);
+
+        if (error) throw error;
+        
+        console.log('Project updated successfully');
+        triggerFeedback();
+        
+        // Show a brief success message
+        setStatusMessage(`Saved "${currentProjectTitle}"`);
+        setTimeout(() => setStatusMessage(''), 2000);
+        
+      } catch (error: any) {
+        console.error('Error updating project:', error);
+        setStatusMessage('Failed to save project');
+        setTimeout(() => setStatusMessage(''), 3000);
+      }
+    } else {
+      // No current project, open modal to create new one
+      console.log('No current project, opening save dialog');
+      setIsProjectsModalOpen(true);
+    }
+  }, [isAuthenticated, currentProjectId, currentProjectTitle, currentState, triggerFeedback, setStatusMessage]);
 
   const deleteSelectedElements = useCallback(() => {
     if (selectedElementIndices.length === 0) return;
