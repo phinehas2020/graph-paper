@@ -33,22 +33,35 @@ export function ProjectsModal({
 
   useEffect(() => {
     if (isOpen && user) {
+      console.log('ProjectsModal opened with user:', user)
+      console.log('User ID:', user.id)
       loadProjects()
     }
   }, [isOpen, user])
 
   const loadProjects = async () => {
     setLoading(true)
+    setError('') // Clear any previous errors
     try {
+      console.log('Loading projects for user_id:', user.id)
+      
       const { data, error } = await supabase
         .from('projects')
         .select('*')
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error loading projects:', error)
+        throw error
+      }
+      
+      console.log('Projects loaded:', data)
+      console.log('Number of projects:', data?.length || 0)
+      
       setProjects(data || [])
     } catch (error: any) {
+      console.error('Load projects error:', error)
       setError(error.message)
     } finally {
       setLoading(false)
@@ -62,8 +75,12 @@ export function ProjectsModal({
     }
 
     setSaving(true)
+    setError('') // Clear any previous errors
     try {
-      const { error } = await supabase
+      console.log('Saving project with user_id:', user.id)
+      console.log('Project data:', { title: newProjectTitle.trim(), description: newProjectDescription.trim() })
+      
+      const { data, error } = await supabase
         .from('projects')
         .insert({
           user_id: user.id,
@@ -71,14 +88,24 @@ export function ProjectsModal({
           description: newProjectDescription.trim() || null,
           canvas_data: currentProjectData,
         })
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('Error saving project:', error)
+        throw error
+      }
+      
+      console.log('Project saved successfully:', data)
       
       setNewProjectTitle('')
       setNewProjectDescription('')
       setShowSaveForm(false)
-      loadProjects()
+      
+      // Reload projects to show the new one
+      await loadProjects()
+      console.log('Projects reloaded after save')
     } catch (error: any) {
+      console.error('Save project error:', error)
       setError(error.message)
     } finally {
       setSaving(false)
