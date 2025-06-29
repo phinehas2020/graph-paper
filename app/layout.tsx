@@ -60,31 +60,8 @@ export default async function RootLayout({
       </head>
       <body className={inter.className}>
         <ServiceWorkerRegister />
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystemTransition disableTransitionOnChange>
-          <div className="flex flex-col min-h-screen">
-            <header className="bg-gray-100 p-4">
-              <div className="container mx-auto flex justify-between items-center">
-                <Link href="/" className="text-2xl font-bold">
-                  Graph Paper
-                </Link>
-                <nav>
-                  {session ? (
-                    <Link href="/dashboard" className="mr-4">
-                      Dashboard
-                    </Link>
-                  ) : (
-                    <>
-                      <Link href="/login" className="mr-4">
-                        Login
-                      </Link>
-                      <Link href="/signup">Sign Up</Link>
-                    </>
-                  )}
-                </nav>
-              </div>
-            </header>
-            <main className="flex-grow">{children}</main>
-          </div>
+        <ThemeProvider attribute="class" defaultTheme="system" disableTransitionOnChange>
+          {children}
         </ThemeProvider>
       </body>
     </html>

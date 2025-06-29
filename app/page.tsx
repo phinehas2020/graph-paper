@@ -1880,6 +1880,15 @@ export default function EnhancedGraphPaper() {
       
       const pressedKey = e.key.toLowerCase();
 
+      // Check if user is typing in ANY input field (not just our text tool)
+      const activeElement = document.activeElement;
+      const isTypingInInput = activeElement && (
+        activeElement.tagName === 'INPUT' || 
+        activeElement.tagName === 'TEXTAREA' || 
+        (activeElement as HTMLElement).contentEditable === 'true' ||
+        activeElement.getAttribute('role') === 'textbox'
+      );
+
       // Handle text editing - HIGHEST PRIORITY
       if (isTextEditing && editingText) {
         console.log('In text editing mode, handling key:', e.key);
@@ -1921,6 +1930,12 @@ export default function EnhancedGraphPaper() {
         
         // For all other keys during text editing, let them through normally
         console.log('Allowing key through for text input:', e.key);
+        return;
+      }
+
+      // If user is typing in any input field, don't handle tool shortcuts
+      if (isTypingInInput) {
+        console.log('User is typing in an input field, ignoring tool shortcuts');
         return;
       }
 
@@ -2332,13 +2347,13 @@ export default function EnhancedGraphPaper() {
       console.log('Text content:', editingText.currentText);
       console.log('Text position:', editingText.position);
       
-      // Focus the input when editingText is first created
+      // Focus the input when editingText is first created (only when text is empty)
       if (editingText.currentText === '' && textInputRef.current) {
         console.log('Focusing new text input');
         setTimeout(() => {
-          if (textInputRef.current) {
+          if (textInputRef.current && editingText && editingText.currentText === '') {
             textInputRef.current.focus();
-            textInputRef.current.select();
+            // Don't select all text - just focus
           }
         }, 50);
       }
