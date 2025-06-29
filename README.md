@@ -9,9 +9,9 @@ Transform your 2D floor plans into stunning 3D models with just a few clicks!
 ### Quick Start Guide
 
 1. **Start the application:**
-   ```bash
+   \`\`\`bash
    npm run dev
-   ```
+   \`\`\`
 
 2. **Open the Floor Plan Designer:**
    Navigate to `http://localhost:3000/three`
@@ -58,24 +58,24 @@ Transform your 2D floor plans into stunning 3D models with just a few clicks!
 - npm or pnpm
 
 ### Installation
-```bash
+\`\`\`bash
 npm install --legacy-peer-deps
-```
+\`\`\`
 
 ### Development
-```bash
+\`\`\`bash
 npm run dev
-```
+\`\`\`
 
 ### Build
-```bash
+\`\`\`bash
 npm run build
-```
+\`\`\`
 
 ### Test
-```bash
+\`\`\`bash
 npm test
-```
+\`\`\`
 
 ## Project Structure
 - `app/` – Next.js app directory (pages, layouts, global styles)
@@ -130,4 +130,4 @@ MIT
 
 ---
 
-Built with ❤️ using modern web technologies. Start designing your dream floor plans today! 
+Built with ❤️ using modern web technologies. Start designing your dream floor plans today!

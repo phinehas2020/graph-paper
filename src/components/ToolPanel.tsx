@@ -152,4 +152,4 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       </CardContent>
     </Card>
   );
-}; 
+};
