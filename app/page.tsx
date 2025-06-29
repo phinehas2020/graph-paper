@@ -12,6 +12,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-is-mobile';
+import { useAuth } from '@/hooks/use-auth';
+import { AuthModal } from '@/components/auth/AuthModal';
+import { ProjectsModal } from '@/components/projects/ProjectsModal';
 import useStore from '@/src/model/useStore';
 import {
   PenLine,
@@ -44,6 +47,15 @@ import {
   Package,
   Zap,
   Wrench,
+  Minus,
+  Plus,
+  Type,
+  Eraser,
+  Droplets,
+  User,
+  LogOut,
+  Save,
+  FolderOpen,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -402,6 +414,11 @@ export default function EnhancedGraphPaper() {
   const [isTextEditing, setIsTextEditing] = useState(false);
   const [textInputStartTime, setTextInputStartTime] = useState<number>(0);
   const textInputRef = useRef<HTMLInputElement>(null);
+
+  // Authentication and modal states
+  const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
 
   const [lastTouchDistance, setLastTouchDistance] = useState<number>(0);
   const [isMultiTouch, setIsMultiTouch] = useState(false);
@@ -2241,6 +2258,29 @@ export default function EnhancedGraphPaper() {
     triggerFeedback();
   }, [triggerFeedback]);
 
+  const handleLoadProject = useCallback((projectData: any) => {
+    if (projectData && typeof projectData === 'object') {
+      // Ensure all required arrays exist in the loaded data
+      const loadedState: CanvasState = {
+        lines: projectData.lines || [],
+        arcs: projectData.arcs || [],
+        rectangles: projectData.rectangles || [],
+        circles: projectData.circles || [],
+        arrows: projectData.arrows || [],
+        texts: projectData.texts || [],
+        measurements: projectData.measurements || [],
+        electricalOutlets: projectData.electricalOutlets || [],
+        plumbingFixtures: projectData.plumbingFixtures || [],
+        electricalWires: projectData.electricalWires || [],
+        plumbingPipes: projectData.plumbingPipes || [],
+      };
+      
+      setHistory([loadedState]);
+      setHistoryIndex(0);
+      triggerFeedback();
+    }
+  }, [triggerFeedback]);
+
   const deleteSelectedElements = useCallback(() => {
     if (selectedElementIndices.length === 0) return;
 
@@ -2437,6 +2477,55 @@ export default function EnhancedGraphPaper() {
             {isMobile && (
               <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm mt-2">
                 <CardContent className="p-2">
+                  {/* User Account Section */}
+                  <div className="mb-3 space-y-2">
+                    {isAuthenticated ? (
+                      <>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <User className="h-4 w-4" />
+                          <span className="truncate">{user?.email}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setIsProjectsModalOpen(true);
+                              setIsToolMenuOpen(false);
+                            }}
+                            size="sm"
+                            className="flex-1"
+                          >
+                            <Save className="h-4 w-4 mr-1" />
+                            Projects
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              signOut();
+                              triggerFeedback();
+                            }}
+                            size="sm"
+                          >
+                            <LogOut className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsAuthModalOpen(true);
+                          setIsToolMenuOpen(false);
+                        }}
+                        className="w-full"
+                        size="sm"
+                      >
+                        <User className="h-4 w-4 mr-2" />
+                        Sign In / Sign Up
+                      </Button>
+                    )}
+                  </div>
+
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -2472,6 +2561,54 @@ export default function EnhancedGraphPaper() {
           </>
         )}
       </div>
+
+      {/* Desktop User Account Controls */}
+      {!isMobile && (
+        <div className="absolute top-6 left-6 z-10">
+          <Card className="shadow-lg border-0 bg-white/95 backdrop-blur-sm">
+            <CardContent className="p-3">
+              {isAuthenticated ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <User className="h-4 w-4" />
+                    <span className="truncate max-w-[200px]">{user?.email}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsProjectsModalOpen(true)}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      <FolderOpen className="h-4 w-4 mr-2" />
+                      Projects
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        signOut();
+                        triggerFeedback();
+                      }}
+                      size="sm"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  size="sm"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  Sign In / Sign Up
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Status Message */}
       {statusMessage && (
@@ -2559,6 +2696,25 @@ export default function EnhancedGraphPaper() {
           }}
         />
       )}
+      
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={() => {
+          setIsAuthModalOpen(false);
+          triggerFeedback();
+        }}
+      />
+
+      {/* Projects Modal */}
+      <ProjectsModal
+        isOpen={isProjectsModalOpen}
+        onClose={() => setIsProjectsModalOpen(false)}
+        onLoadProject={handleLoadProject}
+        currentProjectData={currentState}
+        user={user}
+      />
     </div>
   );
 }
