@@ -2002,6 +2002,17 @@ export default function EnhancedGraphPaper() {
         } else {
           undo();
         }
+      } else if ((e.metaKey || e.ctrlKey) && pressedKey === 's') {
+        e.preventDefault();
+        // Open Projects modal for saving/loading
+        if (isAuthenticated) {
+          setIsProjectsModalOpen(true);
+          triggerFeedback();
+        } else {
+          // If not authenticated, open auth modal first
+          setIsAuthModalOpen(true);
+          triggerFeedback();
+        }
       } else if (pressedKey === 'g' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         setShowGrid((s) => !s);
@@ -2048,6 +2059,9 @@ export default function EnhancedGraphPaper() {
     textInputStartTime, // Added for text input timing
     measurePoints, // Added for measure tool
     keepMeasurements, // Added for measure tool
+    isAuthenticated, // Added for Cmd+S shortcut
+    setIsProjectsModalOpen, // Added for Cmd+S shortcut
+    setIsAuthModalOpen, // Added for Cmd+S shortcut
   ]);
 
   useEffect(() => {
