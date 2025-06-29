@@ -129,8 +129,16 @@ export function ProjectsModal({
   }
 
   const loadProject = (project: Project) => {
-    onLoadProject(project.canvas_data)
-    onClose()
+    console.log('Loading project:', project.title)
+    console.log('Project canvas data:', project.canvas_data)
+    try {
+      onLoadProject(project.canvas_data)
+      onClose()
+      console.log('Project loaded successfully')
+    } catch (error) {
+      console.error('Error loading project:', error)
+      setError('Failed to load project: ' + (error as Error).message)
+    }
   }
 
   if (!isOpen) return null

@@ -1878,6 +1878,12 @@ export default function EnhancedGraphPaper() {
       console.log('isTextEditing:', isTextEditing);
       console.log('editingText:', editingText);
       
+      // Guard against undefined key
+      if (!e.key) {
+        console.log('Key is undefined, ignoring event');
+        return;
+      }
+      
       const pressedKey = e.key.toLowerCase();
 
       // Check if user is typing in ANY input field (not just our text tool)
@@ -2274,6 +2280,8 @@ export default function EnhancedGraphPaper() {
   }, [triggerFeedback]);
 
   const handleLoadProject = useCallback((projectData: any) => {
+    console.log('handleLoadProject called with data:', projectData);
+    
     if (projectData && typeof projectData === 'object') {
       // Ensure all required arrays exist in the loaded data
       const loadedState: CanvasState = {
@@ -2290,9 +2298,13 @@ export default function EnhancedGraphPaper() {
         plumbingPipes: projectData.plumbingPipes || [],
       };
       
+      console.log('Setting loaded state:', loadedState);
       setHistory([loadedState]);
       setHistoryIndex(0);
       triggerFeedback();
+      console.log('Project loaded and history updated');
+    } else {
+      console.error('Invalid project data:', projectData);
     }
   }, [triggerFeedback]);
 
