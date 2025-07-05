@@ -1,12 +1,12 @@
 import React from 'react';
 import { render, act, screen, fireEvent } from '@testing-library/react';
 import FloorTool, { calculatePolygonArea, isClockwise } from './FloorTool';
-import useStore from '@/src/model/useStore'; // Import default export
-import { Point, Model } from '@/src/model/types';
+import * as storeModule from '@/src/model/useStore'; // Import as namespace
+import { Point } from '@/src/model/types';
 
 // Mock the store
 const mockAddFloor = jest.fn();
-let mockStoreState: Model;
+let mockStoreState: storeModule.Model;
 
 // Deep clone helper
 const deepClone = <T extends unknown>(obj: T): T => JSON.parse(JSON.stringify(obj));

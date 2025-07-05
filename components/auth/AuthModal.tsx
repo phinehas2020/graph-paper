@@ -245,4 +245,4 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       </Card>
     </div>
   )
-} 
+}

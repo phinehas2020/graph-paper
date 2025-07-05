@@ -120,4 +120,4 @@ export function calculateAreaDisplay(width: number, height: number): string {
 export function calculatePerimeterDisplay(width: number, height: number): string {
   const perimeter = 2 * (width + height);
   return formatMeasurement(perimeter);
-} 
+}

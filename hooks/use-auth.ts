@@ -34,4 +34,4 @@ export function useAuth() {
     signOut,
     isAuthenticated: !!user,
   }
-} 
+}

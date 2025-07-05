@@ -353,4 +353,4 @@ export class ElectricalCodeChecker {
     const capacity = wireCapacities[wireType] || 15;
     return circuitLoad <= capacity * 0.8; // 80% rule
   }
-} 
+}
