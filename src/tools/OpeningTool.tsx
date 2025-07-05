@@ -55,14 +55,12 @@ const OpeningTool: React.FC<OpeningToolProps> = ({
 
     const openingData: Omit<Opening, 'id'> = {
       type,
-      width: Number(width),
-      height: Number(height),
-      elevation: Number(elevation), // Relative to wall base
-      position: Number(position), // Distance from wall start point along its length
+      position: { x: Number(position), y: 0 }, // Position along wall
+      dimensions: { width: Number(width), height: Number(height) },
     };
 
     console.log("Adding opening to wall:", selectedWall.id, openingData);
-    addOpening(selectedWall.id, openingData);
+    addFlatOpening(selectedWall.id, openingData);
     // Optionally close the form/tool after adding
     // onClose();
     // Or reset for another opening on the same wall
