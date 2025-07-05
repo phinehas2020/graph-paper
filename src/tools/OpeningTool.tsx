@@ -1,6 +1,6 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import useStore from '@/src/model/useStore';
-import { Wall, Opening } from '@/src/model/types';
+import { Wall, FlatOpening } from '@/src/model/types';
 
 interface OpeningToolProps {
   isActive: boolean;
@@ -18,7 +18,7 @@ const OpeningTool: React.FC<OpeningToolProps> = ({
   // clickPositionAlongWall,
   onClose
 }) => {
-  const { addOpening } = useStore.getState();
+  const { addFlatOpening } = useStore.getState();
 
   const [type, setType] = useState<'window' | 'door'>('window');
   const [width, setWidth] = useState<number>(1); // Default width 1m or 1ft
@@ -53,7 +53,7 @@ const OpeningTool: React.FC<OpeningToolProps> = ({
       return;
     }
 
-    const openingData: Omit<Opening, 'id'> = {
+    const openingData: Omit<FlatOpening, 'id'> = {
       type,
       width: Number(width),
       height: Number(height),
