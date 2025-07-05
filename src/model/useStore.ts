@@ -348,6 +348,61 @@ const useStore = create<StoreState>()(
     deleteElectricalWire: (id) => set(produce((draft: Model) => {
       draft.electricalWires = draft.electricalWires.filter(w => w.id !== id);
     })),
+    addElectricalCircuit: (circuitData) => {
+      const id = generateId();
+      set(produce((draft: Model) => {
+        draft.electricalCircuits.push({ ...circuitData, id });
+      }));
+      return id;
+    },
+    updateElectricalCircuit: (id, updates) => set(produce((draft: Model) => {
+      const circuit = draft.electricalCircuits.find(c => c.id === id);
+      if (circuit) {
+        Object.assign(circuit, updates);
+      }
+    })),
+    deleteElectricalCircuit: (id) => set(produce((draft: Model) => {
+      draft.electricalCircuits = draft.electricalCircuits.filter(c => c.id !== id);
+    })),
+    addElectricalPanel: (panelData) => {
+      const id = generateId();
+      set(produce((draft: Model) => {
+        draft.electricalPanels.push({ ...panelData, id });
+      }));
+      return id;
+    },
+    updateElectricalPanel: (id, updates) => set(produce((draft: Model) => {
+      const panel = draft.electricalPanels.find(p => p.id === id);
+      if (panel) {
+        Object.assign(panel, updates);
+      }
+    })),
+    deleteElectricalPanel: (id) => set(produce((draft: Model) => {
+      draft.electricalPanels = draft.electricalPanels.filter(p => p.id !== id);
+    })),
+    addWireRun: (wireRunData) => {
+      const id = generateId();
+      set(produce((draft: Model) => {
+        draft.wireRuns.push({ ...wireRunData, id });
+      }));
+      return id;
+    },
+    updateWireRun: (id, updates) => set(produce((draft: Model) => {
+      const wireRun = draft.wireRuns.find(w => w.id === id);
+      if (wireRun) {
+        Object.assign(wireRun, updates);
+      }
+    })),
+    deleteWireRun: (id) => set(produce((draft: Model) => {
+      draft.wireRuns = draft.wireRuns.filter(w => w.id !== id);
+    })),
+    calculateWireRuns: () => {
+      // Wire run calculation logic
+      console.log('Calculating wire runs...');
+    },
+    updateWirePrices: (prices) => set(produce((draft: Model) => {
+      Object.assign(draft.settings.wirePrices, prices);
+    })),
     addPlumbingFixture: (fixtureData) => {
       const id = generateId();
       set(produce((draft: Model) => {
@@ -452,11 +507,18 @@ const useStore = create<StoreState>()(
     selectElectricalOutlets: () => get().electricalOutlets,
     selectElectricalSwitches: () => get().electricalSwitches,
     selectElectricalWires: () => get().electricalWires,
+    selectElectricalCircuits: () => get().electricalCircuits,
+    selectElectricalPanels: () => get().electricalPanels,
+    selectWireRuns: () => get().wireRuns,
+    selectElectricalProject: () => get().electricalProject,
     selectPlumbingFixtures: () => get().plumbingFixtures,
     selectPlumbingPipes: () => get().plumbingPipes,
     selectBuildingCodeViolations: () => get().buildingCodeViolations,
     selectElectricalOutletById: (id) => get().electricalOutlets.find(o => o.id === id),
     selectElectricalSwitchById: (id) => get().electricalSwitches.find(s => s.id === id),
+    selectElectricalCircuitById: (id) => get().electricalCircuits.find(c => c.id === id),
+    selectElectricalPanelById: (id) => get().electricalPanels.find(p => p.id === id),
+    selectWireRunById: (id) => get().wireRuns.find(w => w.id === id),
     selectPlumbingFixtureById: (id) => get().plumbingFixtures.find(f => f.id === id),
   })
 );

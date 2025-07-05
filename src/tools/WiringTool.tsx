@@ -117,7 +117,7 @@ const WiringTool: React.FC<WiringToolProps> = ({
     }
     
     // Create a main circuit if none exists
-    let mainCircuit = circuits.find(c => c.type === 'general');
+    let mainCircuit = circuits.find((c: ElectricalCircuit) => c.type === 'general');
     if (!mainCircuit) {
       const circuitId = addElectricalCircuit({
         name: 'General Outlets',
@@ -202,7 +202,7 @@ const WiringTool: React.FC<WiringToolProps> = ({
     // Find nearest wall
     let nearestWallId = '';
     let minDistance = Infinity;
-    walls.forEach(wall => {
+    walls.forEach((wall: FlatPiece) => {
       const distance = Math.sqrt(
         Math.pow(point.x - wall.position.x, 2) + 
         Math.pow(point.y - wall.position.y, 2)
@@ -245,7 +245,7 @@ const WiringTool: React.FC<WiringToolProps> = ({
     // Find nearest wall
     let nearestWallId = '';
     let minDistance = Infinity;
-    walls.forEach(wall => {
+    walls.forEach((wall: FlatPiece) => {
       const distance = Math.sqrt(
         Math.pow(point.x - wall.position.x, 2) + 
         Math.pow(point.y - wall.position.y, 2)
