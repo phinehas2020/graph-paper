@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import { Model, Point, Measurement, TextElement, Wall, Floor, FlatPiece, FlatOpening, Connection, ElectricalOutlet, ElectricalSwitch, ElectricalWire, PlumbingFixture, PlumbingPipe, BuildingCodeViolation } from './types';
+import { Model, Point, Measurement, TextElement, Wall, Floor, FlatPiece, FlatOpening, Connection, ElectricalOutlet, ElectricalSwitch, ElectricalWire, ElectricalCircuit, ElectricalPanel, WireRun, ElectricalProject, PlumbingFixture, PlumbingPipe, BuildingCodeViolation } from './types';
 
 // Helper for ID generation
 const generateId = () => Date.now().toString() + Math.random().toString(36).substring(2, 9);
@@ -15,6 +15,10 @@ const initialState: Model = {
   electricalOutlets: [],
   electricalSwitches: [],
   electricalWires: [],
+  electricalCircuits: [],
+  electricalPanels: [],
+  wireRuns: [],
+  electricalProject: undefined,
   plumbingFixtures: [],
   plumbingPipes: [],
   buildingCodeViolations: [],
@@ -26,6 +30,13 @@ const initialState: Model = {
     isTextEditing: false,
     mode: 'traditional',
     buildingCodeEnabled: true,
+    wireTracking: true,
+    wirePrices: {
+      '14AWG': 0.45,
+      '12AWG': 0.65,
+      '10AWG': 0.95,
+      '8AWG': 1.35
+    }
   },
 };
 
@@ -69,6 +80,17 @@ interface StoreActions {
   addElectricalWire: (wireData: Omit<ElectricalWire, 'id'>) => string;
   updateElectricalWire: (id: string, updates: Partial<Omit<ElectricalWire, 'id'>>) => void;
   deleteElectricalWire: (id: string) => void;
+  addElectricalCircuit: (circuitData: Omit<ElectricalCircuit, 'id'>) => string;
+  updateElectricalCircuit: (id: string, updates: Partial<Omit<ElectricalCircuit, 'id'>>) => void;
+  deleteElectricalCircuit: (id: string) => void;
+  addElectricalPanel: (panelData: Omit<ElectricalPanel, 'id'>) => string;
+  updateElectricalPanel: (id: string, updates: Partial<Omit<ElectricalPanel, 'id'>>) => void;
+  deleteElectricalPanel: (id: string) => void;
+  addWireRun: (wireRunData: Omit<WireRun, 'id'>) => string;
+  updateWireRun: (id: string, updates: Partial<Omit<WireRun, 'id'>>) => void;
+  deleteWireRun: (id: string) => void;
+  calculateWireRuns: () => void;
+  updateWirePrices: (prices: { [key: string]: number }) => void;
   addPlumbingFixture: (fixtureData: Omit<PlumbingFixture, 'id'>) => string;
   updatePlumbingFixture: (id: string, updates: Partial<Omit<PlumbingFixture, 'id'>>) => void;
   deletePlumbingFixture: (id: string) => void;
@@ -103,11 +125,18 @@ interface StoreSelectors {
   selectElectricalOutlets: () => ElectricalOutlet[];
   selectElectricalSwitches: () => ElectricalSwitch[];
   selectElectricalWires: () => ElectricalWire[];
+  selectElectricalCircuits: () => ElectricalCircuit[];
+  selectElectricalPanels: () => ElectricalPanel[];
+  selectWireRuns: () => WireRun[];
+  selectElectricalProject: () => ElectricalProject | undefined;
   selectPlumbingFixtures: () => PlumbingFixture[];
   selectPlumbingPipes: () => PlumbingPipe[];
   selectBuildingCodeViolations: () => BuildingCodeViolation[];
   selectElectricalOutletById: (id: string) => ElectricalOutlet | undefined;
   selectElectricalSwitchById: (id: string) => ElectricalSwitch | undefined;
+  selectElectricalCircuitById: (id: string) => ElectricalCircuit | undefined;
+  selectElectricalPanelById: (id: string) => ElectricalPanel | undefined;
+  selectWireRunById: (id: string) => WireRun | undefined;
   selectPlumbingFixtureById: (id: string) => PlumbingFixture | undefined;
 }
 

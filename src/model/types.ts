@@ -55,6 +55,8 @@ export interface ElectricalOutlet {
   amperage: number;
   height: number; // Height from floor in inches
   circuitId?: string;
+  roomType?: string; // For code compliance
+  wallId?: string; // Reference to wall it's attached to
 }
 
 export interface ElectricalSwitch {
@@ -63,6 +65,8 @@ export interface ElectricalSwitch {
   type: 'single' | 'double' | 'triple' | 'dimmer' | 'fan' | 'timer';
   height: number; // Height from floor in inches
   controlsOutletId?: string;
+  circuitId?: string;
+  wallId?: string; // Reference to wall it's attached to
 }
 
 export interface ElectricalWire {
@@ -73,6 +77,78 @@ export interface ElectricalWire {
   voltage: number;
   amperage: number;
   path: Point[];
+  length?: number; // Calculated wire length in feet
+  cost?: number; // Calculated cost based on wire type and length
+}
+
+// New enhanced electrical types
+export interface ElectricalCircuit {
+  id: string;
+  name: string;
+  breakerSize: number; // Amperage rating
+  wireType: '12AWG' | '14AWG' | '10AWG' | '8AWG';
+  voltage: number;
+  outletIds: string[];
+  switchIds: string[];
+  wireIds: string[];
+  currentLoad: number; // Current calculated load in amps
+  maxLoad: number; // Maximum safe load (80% of breaker rating)
+  panelId: string;
+  circuitNumber: number;
+  type: 'general' | 'kitchen' | 'bathroom' | 'laundry' | 'lighting' | 'appliance';
+}
+
+export interface ElectricalPanel {
+  id: string;
+  name: string;
+  position: Point;
+  type: 'main' | 'sub';
+  amperage: number; // Panel amperage rating
+  voltage: number;
+  circuits: ElectricalCircuit[];
+  totalLoad: number; // Total calculated load
+  maxLoad: number; // Maximum safe load
+  busySlots: number; // Number of used breaker slots
+  totalSlots: number; // Total available breaker slots
+}
+
+export interface WireRun {
+  id: string;
+  name: string;
+  startPoint: Point;
+  endPoint: Point;
+  path: Point[];
+  wireType: '12AWG' | '14AWG' | '10AWG' | '8AWG';
+  wireCount: number; // Number of wires in this run
+  length: number; // Total length in feet
+  cost: number; // Total cost for this run
+  circuitId: string;
+  followsWalls: boolean; // Whether this run follows wall paths
+}
+
+export interface WireCostCalculation {
+  wireType: '12AWG' | '14AWG' | '10AWG' | '8AWG';
+  pricePerFoot: number;
+  totalLength: number;
+  totalCost: number;
+}
+
+export interface ElectricalCodeViolation extends BuildingCodeViolation {
+  codeSection: string; // NEC code section reference
+  recommendedFix: string;
+}
+
+export interface ElectricalProject {
+  id: string;
+  name: string;
+  panels: ElectricalPanel[];
+  circuits: ElectricalCircuit[];
+  wireRuns: WireRun[];
+  totalWireCost: number;
+  totalOutlets: number;
+  totalSwitches: number;
+  codeViolations: ElectricalCodeViolation[];
+  wireUsageSummary: WireCostCalculation[];
 }
 
 export interface PlumbingFixture {
@@ -148,6 +224,10 @@ export interface Model {
   electricalOutlets: ElectricalOutlet[];
   electricalSwitches: ElectricalSwitch[];
   electricalWires: ElectricalWire[];
+  electricalCircuits: ElectricalCircuit[];
+  electricalPanels: ElectricalPanel[];
+  wireRuns: WireRun[];
+  electricalProject?: ElectricalProject;
   plumbingFixtures: PlumbingFixture[];
   plumbingPipes: PlumbingPipe[];
   buildingCodeViolations: BuildingCodeViolation[];
@@ -159,5 +239,7 @@ export interface Model {
     isTextEditing: boolean; // New setting to track text editing state
     mode: 'traditional' | 'flat-layout' | 'residential'; // Updated mode setting
     buildingCodeEnabled: boolean; // Building code validation
+    wireTracking: boolean; // Enable wire usage tracking
+    wirePrices: { [key: string]: number }; // Wire prices per foot
   };
 }
