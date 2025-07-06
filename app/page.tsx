@@ -17,6 +17,7 @@ import { AuthModal } from '@/components/auth/AuthModal';
 import { ProjectsModal } from '@/components/projects/ProjectsModal';
 import { supabase } from '@/lib/supabase';
 import useStore from '@/src/model/useStore';
+import { formatMeasurement } from '@/src/tools/MeasurementUtils';
 import {
   PenLine,
   Move,
@@ -775,7 +776,7 @@ export default function EnhancedGraphPaper() {
           ctx.lineWidth = 3;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          const text = `${distance.toFixed(1)} units`;
+          const text = formatMeasurement(distance);
           ctx.strokeText(text, midX, midY - Math.max(8, 15 * zoom));
           ctx.fillText(text, midX, midY - Math.max(8, 15 * zoom));
           ctx.restore();
@@ -1075,7 +1076,7 @@ export default function EnhancedGraphPaper() {
           ctx.lineWidth = 3;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          const text = `${distance.toFixed(1)} units`;
+          const text = formatMeasurement(distance);
           ctx.strokeText(text, midX, midY - Math.max(8, 15 * zoom));
           ctx.fillText(text, midX, midY - Math.max(8, 15 * zoom));
           ctx.restore();

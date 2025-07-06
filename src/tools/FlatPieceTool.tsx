@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import useStore from '@/src/model/useStore';
 import { Point, FlatPiece } from '@/src/model/types';
+import { formatMeasurement } from './MeasurementUtils';
 
 interface FlatPieceToolProps {
   isActive: boolean;
@@ -162,12 +163,12 @@ const FlatPieceTool: React.FC<FlatPieceToolProps> = ({
 
       {isDrawing && startPoint && endPoint && (
         <div>
-          <p>Start: ({startPoint.x.toFixed(1)}, {startPoint.y.toFixed(1)})</p>
-          <p>End: ({endPoint.x.toFixed(1)}, {endPoint.y.toFixed(1)})</p>
+          <p>Start: ({formatMeasurement(startPoint.x)}, {formatMeasurement(startPoint.y)})</p>
+          <p>End: ({formatMeasurement(endPoint.x)}, {formatMeasurement(endPoint.y)})</p>
           {(() => {
             const previewDims = getPreviewDimensions();
             return previewDims ? (
-              <p>Size: {previewDims.width.toFixed(1)} x {previewDims.height.toFixed(1)}</p>
+              <p>Size: {formatMeasurement(previewDims.width)} x {formatMeasurement(previewDims.height)}</p>
             ) : null;
           })()}
         </div>

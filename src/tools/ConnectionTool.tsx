@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import useStore from '@/src/model/useStore';
 import { Point, FlatPiece, Connection } from '@/src/model/types';
+import { formatMeasurement } from './MeasurementUtils';
 
 interface ConnectionToolProps {
   isActive: boolean;
@@ -119,7 +120,7 @@ const ConnectionTool: React.FC<ConnectionToolProps> = ({ isActive }) => {
             step="0.5"
             style={{ marginLeft: '5px', padding: '2px', width: '60px' }}
           />
-          units
+          {formatMeasurement(connectionLength)}
         </label>
       </div>
 
@@ -141,7 +142,7 @@ const ConnectionTool: React.FC<ConnectionToolProps> = ({ isActive }) => {
                   selectedPiece2?.id === piece.id ? '2px solid #9c27b0' : '1px solid transparent'
               }}
             >
-              {piece.label || `${piece.type} ${piece.id.slice(-4)}`} ({piece.dimensions.width}x{piece.dimensions.height})
+              {piece.label || `${piece.type} ${piece.id.slice(-4)}`} ({formatMeasurement(piece.dimensions.width)}x{formatMeasurement(piece.dimensions.height)})
             </div>
           ))}
         </div>
