@@ -3,6 +3,10 @@ import useStore from '@/src/model/useStore';
 import { Point, FlatPiece, Connection, FlatOpening } from '@/src/model/types';
 import FlatPieceTool from '@/src/tools/FlatPieceTool';
 import ConnectionTool from '@/src/tools/ConnectionTool';
+import WiringTool from '@/src/tools/WiringTool';
+import PlumbingTool from '@/src/tools/PlumbingTool';
+import { WireRoutingEngine } from '@/src/tools/WireRoutingUtils';
+import { snapToGrid, findNearestWall, projectPointToWall } from '@/src/tools/SnapUtils';
 
 interface FlatLayoutCanvasProps {
   width: number;
@@ -28,6 +32,7 @@ const FlatLayoutCanvas: React.FC<FlatLayoutCanvasProps> = ({
   const [selectedPiece, setSelectedPiece] = useState<FlatPiece | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<Point | null>(null);
+  const [wirePreviewPath, setWirePreviewPath] = useState<Point[] | null>(null);
 
   const { 
     selectFlatPieces, 
@@ -35,11 +40,15 @@ const FlatLayoutCanvas: React.FC<FlatLayoutCanvasProps> = ({
     selectElectricalOutlets,
     selectElectricalSwitches,
     selectPlumbingFixtures,
+    selectWireRuns,
+    selectElectricalPanels,
     updateFlatPiece,
     addFlatOpening,
     addElectricalOutlet,
     addElectricalSwitch,
-    addPlumbingFixture
+    addPlumbingFixture,
+    addWireRun,
+    selectSettings,
   } = useStore();
 
   const flatPieces = selectFlatPieces();
@@ -47,6 +56,13 @@ const FlatLayoutCanvas: React.FC<FlatLayoutCanvasProps> = ({
   const outlets = selectElectricalOutlets();
   const switches = selectElectricalSwitches();
   const fixtures = selectPlumbingFixtures();
+  const wireRuns = selectWireRuns();
+  const panels = selectElectricalPanels();
+  const settings = selectSettings();
+
+  // Precompute walls and routing engine
+  const walls = React.useMemo(() => flatPieces.filter(p => p.type === 'wall'), [flatPieces]);
+  const routingEngine = React.useMemo(() => new WireRoutingEngine(walls, settings.gridSize), [walls, settings.gridSize]);
 
   const getCanvasPoint = useCallback((e: React.MouseEvent<HTMLCanvasElement>): Point => {
     const canvas = canvasRef.current!;
@@ -64,10 +80,7 @@ const FlatLayoutCanvas: React.FC<FlatLayoutCanvasProps> = ({
 
   const getSnappedPoint = useCallback((point: Point): Point => {
     const worldPoint = getWorldPoint(point);
-    return {
-      x: Math.round(worldPoint.x / gridSize) * gridSize,
-      y: Math.round(worldPoint.y / gridSize) * gridSize,
-    };
+    return snapToGrid(worldPoint, gridSize);
   }, [getWorldPoint, gridSize]);
 
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D) => {
@@ -341,6 +354,33 @@ const FlatLayoutCanvas: React.FC<FlatLayoutCanvasProps> = ({
     // Draw electrical elements
     drawElectricalOutlets(ctx);
     drawElectricalSwitches(ctx);
+    // Draw wire runs
+    wireRuns.forEach(run => {
+      ctx.strokeStyle = '#0ea5e9';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      run.path.forEach((pt, idx) => {
+        const sx = pt.x * zoom + panOffset.x;
+        const sy = pt.y * zoom + panOffset.y;
+        if (idx === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      });
+      ctx.stroke();
+    });
+
+    // Draw wire preview path
+    if (wirePreviewPath && wirePreviewPath.length > 1) {
+      ctx.strokeStyle = '#0ea5e9';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      wirePreviewPath.forEach((pt, idx) => {
+        const sx = pt.x * zoom + panOffset.x;
+        const sy = pt.y * zoom + panOffset.y;
+        if (idx === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
     // Draw plumbing elements
     drawPlumbingFixtures(ctx);
@@ -379,34 +419,61 @@ const FlatLayoutCanvas: React.FC<FlatLayoutCanvasProps> = ({
         });
       }
     } else if (currentTool === 'wiring') {
-      // Place electrical outlet
-      addElectricalOutlet({
-        position: snappedPoint,
+      // Snap placement to nearest wall edge for better UX
+      let placePoint = snappedPoint;
+      const nearest = findNearestWall(snappedPoint, walls);
+      if (nearest.wallId) {
+        const wall = walls.find(w => w.id === nearest.wallId)!;
+        placePoint = projectPointToWall(snappedPoint, wall);
+      }
+
+      const outletId = addElectricalOutlet({
+        position: placePoint,
         type: 'standard',
         voltage: 120,
         amperage: 15,
-        height: 18 // 18 inches from floor (standard outlet height)
+        height: 18
       });
+
+      // If there is a panel, auto route a wire run for preview functionality
+      const panel = useStore.getState().electricalPanels[0];
+      if (panel) {
+        const run = routingEngine.calculateWireRoute(panel.position, placePoint, '12AWG');
+        addWireRun({ ...run, circuitId: '' });
+      }
     } else if (currentTool === 'plumbing') {
-      // Place plumbing fixture
+      // Snap fixture near wall as a default rough-in
+      let placePoint = snappedPoint;
+      const nearest = findNearestWall(snappedPoint, walls);
+      if (nearest.wallId) {
+        const wall = walls.find(w => w.id === nearest.wallId)!;
+        placePoint = projectPointToWall(snappedPoint, wall);
+      }
+
       addPlumbingFixture({
-        position: snappedPoint,
+        position: placePoint,
         type: 'sink',
-        waterPressure: 40,
+        waterPressure: 60,
         drainSize: 1.5,
         hotWater: true,
         ventRequired: true
       });
     }
     // Other tools would be handled by their respective components
-  }, [currentTool, getCanvasPoint, getWorldPoint, getSnappedPoint, findPieceAtPoint, addElectricalOutlet, addPlumbingFixture]);
+  }, [currentTool, getCanvasPoint, getWorldPoint, getSnappedPoint, findPieceAtPoint, addElectricalOutlet, addPlumbingFixture, walls, routingEngine, addWireRun, zoom, panOffset]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging || !selectedPiece || !dragStart) return;
-
     const canvasPoint = getCanvasPoint(e);
-    const worldPoint = getWorldPoint(canvasPoint);
     const snappedPoint = getSnappedPoint(canvasPoint);
+
+    if (currentTool === 'wiring' && panels.length > 0) {
+      const path = routingEngine.calculateWireRoute(panels[0].position, snappedPoint, '12AWG').path;
+      setWirePreviewPath(path);
+    } else {
+      if (wirePreviewPath) setWirePreviewPath(null);
+    }
+
+    if (!isDragging || !selectedPiece || !dragStart) return;
 
     updateFlatPiece(selectedPiece.id, {
       position: {
@@ -414,11 +481,12 @@ const FlatLayoutCanvas: React.FC<FlatLayoutCanvasProps> = ({
         y: snappedPoint.y - dragStart.y
       }
     });
-  }, [isDragging, selectedPiece, dragStart, getCanvasPoint, getWorldPoint, getSnappedPoint, updateFlatPiece]);
+  }, [currentTool, panels, routingEngine, wirePreviewPath, isDragging, selectedPiece, dragStart, getCanvasPoint, getSnappedPoint, updateFlatPiece]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
     setDragStart(null);
+    // keep preview; it updates on move
   }, []);
 
   // Effect to redraw canvas when data changes
@@ -483,7 +551,7 @@ const FlatLayoutCanvas: React.FC<FlatLayoutCanvasProps> = ({
       </div>
 
       {/* Tool Panels */}
-      <div style={{ position: 'absolute', top: 10, right: 10 }}>
+      <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 12 }}>
         <FlatPieceTool 
           isActive={currentTool === 'floor-piece'}
           pieceType="floor"
@@ -495,6 +563,8 @@ const FlatLayoutCanvas: React.FC<FlatLayoutCanvasProps> = ({
         <ConnectionTool 
           isActive={currentTool === 'connection'}
         />
+        <WiringTool isActive={currentTool === 'wiring'} />
+        <PlumbingTool isActive={currentTool === 'plumbing'} />
       </div>
 
       {/* Instructions */}
