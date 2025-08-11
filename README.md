@@ -13,22 +13,19 @@ Transform your 2D floor plans into stunning 3D models with just a few clicks!
    npm run dev
    \`\`\`
 
-2. **Open the Floor Plan Designer:**
-   Navigate to `http://localhost:3000/three`
+2. **Open the editor:**
+   Navigate to `http://localhost:3000/three`.
 
-3. **Design your floor plan:**
-   - Press **F** to activate Floor tool - click to add points, click near first point to close
-   - Press **W** to activate Wall tool - click start, then end points to draw walls
-   - Press **S** for Select tool to interact with elements
-   - Press **ESC** to cancel current drawing
+3. **Design your floor plan in 2D:**
+   - Press **F** to activate the Floor tool. Click to add points and close the shape.
+   - Press **W** to activate the Wall tool. Click start and end points to draw walls.
+   - Press **S** for Select, **M** for Measure, or **T** for Text.
+   - Press **ESC** to cancel the current drawing.
 
-4. **Connect walls:**
-   - Click "Auto-Connect Walls" to automatically connect nearby endpoints
-   - Connected walls show in green with orange connection indicators
-
-5. **Build your 3D model:**
-   - Click "Build 3D Model" to see your creation in 3D!
-   - Use mouse to orbit, zoom, and explore
+4. **View in 3D:**
+   - Click **"Switch to 3D"** to see your plan rendered in Three.js.
+   - Use the mouse to orbit, zoom, and explore.
+   - Click **"Switch to 2D"** to return to editing.
 
 ## Features
 - **2D Floor Plan Designer:** Intuitive click-to-draw interface
