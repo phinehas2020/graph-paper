@@ -1,6 +1,27 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import { Model, Point, Measurement, TextElement, Wall, Floor, FlatPiece, FlatOpening, Connection, ElectricalOutlet, ElectricalSwitch, ElectricalWire, ElectricalCircuit, ElectricalPanel, WireRun, ElectricalProject, PlumbingFixture, PlumbingPipe, BuildingCodeViolation } from './types';
+import {
+  Model,
+  Point,
+  Measurement,
+  TextElement,
+  Wall,
+  Floor,
+  FlatPiece,
+  FlatOpening,
+  Connection,
+  ElectricalOutlet,
+  ElectricalSwitch,
+  ElectricalWire,
+  ElectricalCircuit,
+  ElectricalPanel,
+  WireRun,
+  ElectricalProject,
+  PlumbingFixture,
+  PlumbingPipe,
+  BuildingCodeViolation,
+} from './types';
+import { estimateMaterials } from '../tools/MaterialEstimator';
 
 // Helper for ID generation
 const generateId = () => Date.now().toString() + Math.random().toString(36).substring(2, 9);
@@ -22,6 +43,12 @@ const initialState: Model = {
   plumbingFixtures: [],
   plumbingPipes: [],
   buildingCodeViolations: [],
+  materials: {
+    totalWallLength: 0,
+    studCount: 0,
+    studPrice: 0,
+    totalStudCost: 0,
+  },
   settings: {
     gridVisible: true,
     gridSize: 1,
@@ -102,6 +129,7 @@ interface StoreActions {
   deleteBuildingCodeViolation: (id: string) => void;
   clearBuildingCodeViolations: () => void;
   validateBuildingCode: () => void;
+  updateStudPrice: (price: number) => void;
 }
 
 interface StoreSelectors {
@@ -138,6 +166,7 @@ interface StoreSelectors {
   selectElectricalPanelById: (id: string) => ElectricalPanel | undefined;
   selectWireRunById: (id: string) => WireRun | undefined;
   selectPlumbingFixtureById: (id: string) => PlumbingFixture | undefined;
+  selectMaterials: () => Model['materials'];
 }
 
 type StoreState = Model & StoreActions & StoreSelectors;
@@ -191,6 +220,7 @@ const useStore = create<StoreState>()(
       const id = generateId();
       set(produce((draft: Model) => {
         draft.walls.push({ ...wallData, id });
+        draft.materials = estimateMaterials(draft.walls, draft.materials.studPrice);
       }));
       return id;
     },
@@ -199,9 +229,11 @@ const useStore = create<StoreState>()(
       if (wall) {
         Object.assign(wall, updates);
       }
+      draft.materials = estimateMaterials(draft.walls, draft.materials.studPrice);
     })),
     deleteWall: (id) => set(produce((draft: Model) => {
       draft.walls = draft.walls.filter(w => w.id !== id);
+      draft.materials = estimateMaterials(draft.walls, draft.materials.studPrice);
     })),
     addFloor: (floorData) => {
       const id = generateId();
@@ -403,6 +435,9 @@ const useStore = create<StoreState>()(
     updateWirePrices: (prices) => set(produce((draft: Model) => {
       Object.assign(draft.settings.wirePrices, prices);
     })),
+    updateStudPrice: (price) => set(produce((draft: Model) => {
+      draft.materials = estimateMaterials(draft.walls, price);
+    })),
     addPlumbingFixture: (fixtureData) => {
       const id = generateId();
       set(produce((draft: Model) => {
@@ -520,7 +555,9 @@ const useStore = create<StoreState>()(
     selectElectricalPanelById: (id) => get().electricalPanels.find(p => p.id === id),
     selectWireRunById: (id) => get().wireRuns.find(w => w.id === id),
     selectPlumbingFixtureById: (id) => get().plumbingFixtures.find(f => f.id === id),
+    selectMaterials: () => get().materials,
   })
 );
 
 export default useStore;
+export type { Model } from './types';

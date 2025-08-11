@@ -211,6 +211,13 @@ export interface TextElement {
   rotation: number; // in degrees
 }
 
+export interface MaterialsEstimate {
+  totalWallLength: number;
+  studCount: number;
+  studPrice: number;
+  totalStudCost: number;
+}
+
 export interface Model {
   measurements: Measurement[];
   textElements: TextElement[];
@@ -231,6 +238,7 @@ export interface Model {
   plumbingFixtures: PlumbingFixture[];
   plumbingPipes: PlumbingPipe[];
   buildingCodeViolations: BuildingCodeViolation[];
+  materials: MaterialsEstimate;
   settings: {
     gridVisible: boolean;
     gridSize: number;

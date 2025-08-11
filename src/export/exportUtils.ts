@@ -15,6 +15,7 @@ export function downloadJSON() {
     flatPieces: state.flatPieces,
     connections: state.connections,
     settings: state.settings,
+    materials: state.materials,
   };
 
   const jsonString = JSON.stringify(modelData, null, 2);
