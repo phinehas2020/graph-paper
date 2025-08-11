@@ -169,6 +169,8 @@ export interface PlumbingPipe {
   diameter: number; // Inches
   material: 'PEX' | 'copper' | 'PVC' | 'cast iron';
   path: Point[];
+  length: number; // Total length in feet
+  cost: number; // Total cost for this pipe run
 }
 
 export interface BuildingCodeViolation {
@@ -241,5 +243,6 @@ export interface Model {
     buildingCodeEnabled: boolean; // Building code validation
     wireTracking: boolean; // Enable wire usage tracking
     wirePrices: { [key: string]: number }; // Wire prices per foot
+    pipePrices: { [key: string]: number }; // Pipe prices per foot
   };
 }

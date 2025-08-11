@@ -36,6 +36,12 @@ const initialState: Model = {
       '12AWG': 0.65,
       '10AWG': 0.95,
       '8AWG': 1.35
+    },
+    pipePrices: {
+      PEX: 0.5,
+      copper: 3.0,
+      PVC: 0.75,
+      'cast iron': 4.0
     }
   },
 };
@@ -91,6 +97,7 @@ interface StoreActions {
   deleteWireRun: (id: string) => void;
   calculateWireRuns: () => void;
   updateWirePrices: (prices: { [key: string]: number }) => void;
+  updatePipePrices: (prices: { [key: string]: number }) => void;
   addPlumbingFixture: (fixtureData: Omit<PlumbingFixture, 'id'>) => string;
   updatePlumbingFixture: (id: string, updates: Partial<Omit<PlumbingFixture, 'id'>>) => void;
   deletePlumbingFixture: (id: string) => void;
@@ -402,6 +409,9 @@ const useStore = create<StoreState>()(
     },
     updateWirePrices: (prices) => set(produce((draft: Model) => {
       Object.assign(draft.settings.wirePrices, prices);
+    })),
+    updatePipePrices: (prices) => set(produce((draft: Model) => {
+      Object.assign(draft.settings.pipePrices, prices);
     })),
     addPlumbingFixture: (fixtureData) => {
       const id = generateId();
