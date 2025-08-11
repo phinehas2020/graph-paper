@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import useStore from '@/src/model/useStore';
-import { Point, ElectricalOutlet, ElectricalSwitch, ElectricalCircuit, WireRun, FlatPiece } from '@/src/model/types';
+import { Point, ElectricalOutlet, ElectricalSwitch, ElectricalCircuit, FlatPiece } from '@/src/model/types';
 import { WireRoutingEngine, ElectricalCodeChecker } from './WireRoutingUtils';
-import { formatMeasurement, calculateAreaDisplay } from './MeasurementUtils';
+import { formatMeasurement } from './MeasurementUtils';
 
 interface WiringToolProps {
   isActive: boolean;
@@ -23,13 +23,13 @@ const WiringTool: React.FC<WiringToolProps> = ({
     addElectricalCircuit,
     addElectricalPanel,
     addWireRun,
-    updateWirePrices,
     selectFlatPieces,
     selectElectricalOutlets,
     selectElectricalSwitches,
     selectElectricalCircuits,
     selectElectricalPanels,
     selectWireRuns,
+    selectWireUsageSummary,
     selectSettings
   } = useStore();
 
@@ -49,6 +49,7 @@ const WiringTool: React.FC<WiringToolProps> = ({
   const circuits = selectElectricalCircuits();
   const panels = selectElectricalPanels();
   const wireRuns = selectWireRuns();
+  const wireUsageSummary = selectWireUsageSummary();
   const settings = selectSettings();
 
   // Get walls from flat pieces
@@ -58,28 +59,6 @@ const WiringTool: React.FC<WiringToolProps> = ({
   const wireRoutingEngine = useMemo(() => {
     return new WireRoutingEngine(walls, settings.gridSize);
   }, [walls, settings.gridSize]);
-
-  // Calculate total wire costs and usage
-  const wireUsageSummary = useMemo(() => {
-    const summary = {
-      totalCost: 0,
-      totalLength: 0,
-      wireTypes: {} as { [key: string]: { length: number; cost: number } }
-    };
-
-    wireRuns.forEach((run: WireRun) => {
-      summary.totalCost += run.cost;
-      summary.totalLength += run.length;
-      
-      if (!summary.wireTypes[run.wireType]) {
-        summary.wireTypes[run.wireType] = { length: 0, cost: 0 };
-      }
-      summary.wireTypes[run.wireType].length += run.length;
-      summary.wireTypes[run.wireType].cost += run.cost;
-    });
-
-    return summary;
-  }, [wireRuns]);
 
   // Check electrical code compliance
   const codeViolations = useMemo(() => {

@@ -128,6 +128,11 @@ interface StoreSelectors {
   selectElectricalCircuits: () => ElectricalCircuit[];
   selectElectricalPanels: () => ElectricalPanel[];
   selectWireRuns: () => WireRun[];
+  selectWireUsageSummary: () => {
+    totalCost: number;
+    totalLength: number;
+    wireTypes: { [key: string]: { length: number; cost: number } };
+  };
   selectElectricalProject: () => ElectricalProject | undefined;
   selectPlumbingFixtures: () => PlumbingFixture[];
   selectPlumbingPipes: () => PlumbingPipe[];
@@ -510,6 +515,24 @@ const useStore = create<StoreState>()(
     selectElectricalCircuits: () => get().electricalCircuits,
     selectElectricalPanels: () => get().electricalPanels,
     selectWireRuns: () => get().wireRuns,
+    selectWireUsageSummary: () => {
+      const summary: { totalCost: number; totalLength: number; wireTypes: { [key: string]: { length: number; cost: number } } } = {
+        totalCost: 0,
+        totalLength: 0,
+        wireTypes: {}
+      };
+      const runs = get().wireRuns;
+      runs.forEach((run) => {
+        summary.totalCost += run.cost;
+        summary.totalLength += run.length;
+        if (!summary.wireTypes[run.wireType]) {
+          summary.wireTypes[run.wireType] = { length: 0, cost: 0 };
+        }
+        summary.wireTypes[run.wireType].length += run.length;
+        summary.wireTypes[run.wireType].cost += run.cost;
+      });
+      return summary;
+    },
     selectElectricalProject: () => get().electricalProject,
     selectPlumbingFixtures: () => get().plumbingFixtures,
     selectPlumbingPipes: () => get().plumbingPipes,
