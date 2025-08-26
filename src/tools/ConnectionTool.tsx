@@ -75,7 +75,6 @@ const ConnectionTool: React.FC<ConnectionToolProps> = ({ isActive }) => {
     };
 
     const connectionId = addConnection(connectionData);
-    console.log(`ConnectionTool: Created connection: ${connectionId}`);
     
     resetConnectionState();
   }, [selectedPiece1, selectedPiece2, selectedEdge1, selectedEdge2, connectionLength, addConnection, resetConnectionState]);
