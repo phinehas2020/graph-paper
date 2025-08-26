@@ -1,41 +1,25 @@
 import React from 'react';
 import { render, act, screen, fireEvent } from '@testing-library/react';
 import FloorTool, { calculatePolygonArea, isClockwise } from './FloorTool';
-import * as storeModule from '@/src/model/useStore'; // Import as namespace
+import useStore from '@/src/model/useStore';
 import { Point } from '@/src/model/types';
 
-// Mock the store
+// Mock the entire useStore module
+jest.mock('@/src/model/useStore');
+
 const mockAddFloor = jest.fn();
-let mockStoreState: storeModule.Model;
 
-// Deep clone helper
-const deepClone = <T extends unknown>(obj: T): T => JSON.parse(JSON.stringify(obj));
+describe('FloorTool', () => {
+    beforeEach(() => {
+        // Reset mocks before each test
+        mockAddFloor.mockClear();
 
-let originalInitialState: storeModule.Model;
-
-// Setup before all tests in this file
-beforeAll(() => {
-  originalInitialState = deepClone(storeModule.useStore.getState());
-});
-
-beforeEach(() => {
-  // Reset store state to a deep copy of the original initial state
-  mockStoreState = deepClone(originalInitialState);
-
-  // Spy on getState and return our controlled state and mock actions
-  jest.spyOn(storeModule.useStore, 'getState').mockReturnValue({
-    ...mockStoreState,
-    addFloor: mockAddFloor,
-    // Ensure other actions/state properties used by the component are here if any
-    // For FloorTool, it primarily uses addFloor and reads initial state structure.
-  } as any); // Use 'as any' to simplify if full Model type with functions is complex
-
-  mockAddFloor.mockClear();
-});
-
-afterEach(() => {
-  jest.restoreAllMocks(); // Restore all mocks after each test
-});
+        // Setup the mock implementation for useStore
+        (useStore as unknown as jest.Mock).mockReturnValue({
+            addFloor: mockAddFloor,
+            // You can add other state properties if the component needs them
+        });
+    });
 
 
 describe('FloorTool Helper Functions', () => {
