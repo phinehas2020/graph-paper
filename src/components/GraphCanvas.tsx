@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AnimatedToolbar } from '@/components/AnimatedToolbar';
+import Header from '@/components/Header';
 import {
   Tooltip,
   TooltipContent,
@@ -2468,195 +2468,26 @@ export default function GraphCanvas() {
         />
       )}
 
-      {/* Tool Selection UI Container */}
-      <div
-        className={`absolute z-10 transition-all duration-700 ${
-          isMobile
-            ? isToolMenuOpen
-              ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2' // Mobile: Tool menu open (centered card)
-              : 'bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] left-1/2 -translate-x-1/2' // Mobile: Tool menu closed (button at bottom)
-            : 'top-6 right-6' // Desktop toolbar position
-        } ${isFirstLoad ? 'opacity-0 scale-95 translate-y-4' : 'opacity-100 scale-100 translate-y-0'}`}
-      >
-        {isMobile && !isToolMenuOpen ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setIsToolMenuOpen(true);
-              triggerFeedback();
-            }}
-            className="w-14 h-14 hover:bg-gray-100 active:scale-95"
-            aria-label="Select Tool"
-          >
-            {(() => {
-              const Icon = tools.find((t) => t.name === tool)?.icon;
-              return Icon ? (
-                <Icon className="w-6 h-6" />
-              ) : null;
-            })()}
-          </Button>
-        ) : (
-          <>
-            <AnimatedToolbar
-              tools={displayedTools.map(
-                ({ name, icon, label, shortcut, color }) => ({
-                  name,
-                  icon,
-                  label,
-                  shortcut,
-                  color,
-                }),
-              )}
-              activeTool={tool}
-              onToolChange={(selectedTool) => {
-                if (selectedTool === 'fullscreen') {
-                  toggleFullscreen();
-                  return;
-                }
-                setTool(selectedTool as Tool);
-                if (isMobile) setIsToolMenuOpen(false);
-              }}
-              isMobile={isMobile}
-              className={isMobile ? 'max-w-[calc(100vw-2rem)]' : ''}
-            />
+      <Header
+        tools={tools}
+        activeTool={tool}
+        onToolChange={setTool}
+        isMobile={isMobile}
+        isToolMenuOpen={isToolMenuOpen}
+        setIsToolMenuOpen={setIsToolMenuOpen}
+        triggerFeedback={triggerFeedback}
+        tool={tool}
+        toggleFullscreen={toggleFullscreen}
+        displayedTools={displayedTools}
+        isAuthenticated={isAuthenticated}
+        user={user}
+        signOut={signOut}
+        setIsProjectsModalOpen={setIsProjectsModalOpen}
+        setIsAuthModalOpen={setIsAuthModalOpen}
+        setDesignMode={setDesignMode}
+        designMode={designMode}
+      />
 
-            {/* Additional mobile controls */}
-            {isMobile && (
-              <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm mt-2">
-                <CardContent className="p-2">
-                  {/* User Account Section */}
-                  <div className="mb-3 space-y-2">
-                    {isAuthenticated ? (
-                      <>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <User className="h-4 w-4" />
-                          <span className="truncate">{user?.email}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setIsProjectsModalOpen(true);
-                              setIsToolMenuOpen(false);
-                            }}
-                            size="sm"
-                            className="flex-1"
-                          >
-                            <Save className="h-4 w-4 mr-1" />
-                            Projects
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              signOut();
-                              triggerFeedback();
-                            }}
-                            size="sm"
-                          >
-                            <LogOut className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setIsAuthModalOpen(true);
-                          setIsToolMenuOpen(false);
-                        }}
-                        className="w-full"
-                        size="sm"
-                      >
-                        <User className="h-4 w-4 mr-2" />
-                        Sign In / Sign Up
-                      </Button>
-                    )}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setDesignMode((prevMode) =>
-                        prevMode === 'graph' ? 'residential' : 'graph',
-                      );
-                      triggerFeedback();
-                    }}
-                    className="w-full mt-2 text-xs"
-                    size="sm"
-                  >
-                    {designMode === 'graph'
-                      ? 'Residential Builder'
-                      : 'Graph Paper'}
-                  </Button>
-                  
-                  <div className="flex justify-end pt-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setIsToolMenuOpen(false);
-                        triggerFeedback();
-                      }}
-                      className="w-8 h-8 hover:bg-gray-100 active:scale-95"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Desktop User Account Controls */}
-      {!isMobile && (
-        <div className="absolute top-6 left-6 z-10">
-          <Card className="shadow-lg border-0 bg-white/95 backdrop-blur-sm">
-            <CardContent className="p-3">
-              {isAuthenticated ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <User className="h-4 w-4" />
-                    <span className="truncate max-w-[200px]">{user?.email}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsProjectsModalOpen(true)}
-                      size="sm"
-                      className="flex-1"
-                    >
-                      <FolderOpen className="h-4 w-4 mr-2" />
-                      Projects
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        signOut();
-                        triggerFeedback();
-                      }}
-                      size="sm"
-                    >
-                      <LogOut className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => setIsAuthModalOpen(true)}
-                  size="sm"
-                >
-                  <User className="h-4 w-4 mr-2" />
-                  Sign In / Sign Up
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* Status Message */}
       {statusMessage && (
