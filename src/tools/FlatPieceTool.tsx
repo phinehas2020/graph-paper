@@ -63,7 +63,6 @@ const FlatPieceTool: React.FC<FlatPieceToolProps> = ({
         };
 
         const pieceId = addFlatPiece(newPiece);
-        console.log(`FlatPieceTool: Added ${pieceType} piece: ${pieceId}`);
         
         // Reset for next piece
         resetDrawingState();
@@ -78,7 +77,6 @@ const FlatPieceTool: React.FC<FlatPieceToolProps> = ({
 
   const handleFinishDrawing = useCallback(() => {
     if (isDrawing) {
-      console.log("FlatPieceTool: Finishing drawing session.");
     }
     resetDrawingState();
   }, [isDrawing, resetDrawingState]);

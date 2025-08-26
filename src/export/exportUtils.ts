@@ -30,5 +30,4 @@ export function downloadJSON() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  console.log("JSON model downloaded.");
 }

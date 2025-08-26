@@ -43,7 +43,6 @@ const WallTool: React.FC<WallToolProps> = ({ isActive /*, onDrawingUpdate */ }) 
         thickness: 0.15, // Default thickness
       };
       const newWallId = addWall(newWallDataOmitId);
-      console.log(`WallTool: Wall segment added: ${newWallId} from ${JSON.stringify(startPoint)} to ${JSON.stringify(point)}`);
 
       // Start a new wall segment from the current point
       setStartPoint(point);
@@ -63,7 +62,6 @@ const WallTool: React.FC<WallToolProps> = ({ isActive /*, onDrawingUpdate */ }) 
     // If a wall segment was just completed by a click, that segment is already saved.
     // This is more like an "Escape" or "Enter" key press to stop drawing further walls.
     if (isDrawing) {
-        console.log("WallTool: Finishing drawing session.");
     }
     resetDrawingState();
   }, [isDrawing, resetDrawingState]);

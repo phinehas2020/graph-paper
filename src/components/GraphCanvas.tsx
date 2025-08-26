@@ -20,6 +20,7 @@ import useStore from '@/src/model/useStore';
 import { formatMeasurement } from '@/src/tools/MeasurementUtils';
 import WiringPanel from './WiringPanel';
 import PlumbingPanel from './PlumbingPanel';
+import TextInputOverlay from './TextInputOverlay';
 import {
   PenLine,
   Move,
@@ -333,7 +334,6 @@ export default function GraphCanvas() {
   const [keepMeasurements, setKeepMeasurements] = useState(false);
   const [isTextEditing, setIsTextEditing] = useState(false);
   const [textInputStartTime, setTextInputStartTime] = useState<number>(0);
-  const textInputRef = useRef<HTMLInputElement>(null);
 
   // Authentication and modal states
   const { user, loading: authLoading, signOut, isAuthenticated } = useAuth();
@@ -1339,13 +1339,9 @@ export default function GraphCanvas() {
       setEraserStrokePoints([worldPoint]);
     } else if (tool === 'text') {
       // Simple text tool implementation
-      console.log('=== TEXT TOOL CLICKED ===');
-      console.log('Current editingText state:', editingText);
-      console.log('Click position:', point);
       
       // If already editing, save the current text first
       if (editingText) {
-        console.log('Already editing text, saving current text first');
         if (editingText.currentText.trim()) {
           const worldPosition = getWorldPoint(editingText.position);
           addToHistory({
@@ -1359,12 +1355,10 @@ export default function GraphCanvas() {
               },
             ],
           });
-          console.log('Saved text:', editingText.currentText.trim());
         }
       }
       
              // Start new text input
-       console.log('Starting new text input');
        setEditingText({
          position: point,
          currentText: '',
@@ -1797,14 +1791,9 @@ export default function GraphCanvas() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      console.log('=== KEYDOWN EVENT ===');
-      console.log('Key pressed:', e.key);
-      console.log('isTextEditing:', isTextEditing);
-      console.log('editingText:', editingText);
       
       // Guard against undefined key
       if (!e.key) {
-        console.log('Key is undefined, ignoring event');
         return;
       }
       
@@ -1821,10 +1810,8 @@ export default function GraphCanvas() {
 
       // Handle text editing - HIGHEST PRIORITY
       if (isTextEditing && editingText) {
-        console.log('In text editing mode, handling key:', e.key);
         
         if (e.key === 'Enter') {
-          console.log('Enter pressed - saving text');
           e.preventDefault();
           e.stopPropagation();
           
@@ -1841,7 +1828,6 @@ export default function GraphCanvas() {
                 },
               ],
             });
-            console.log('Text saved successfully:', editingText.currentText.trim());
           }
           
           setEditingText(null);
@@ -1850,7 +1836,6 @@ export default function GraphCanvas() {
         }
         
         if (e.key === 'Escape') {
-          console.log('Escape pressed - canceling text');
           e.preventDefault();
           e.stopPropagation();
           setEditingText(null);
@@ -1859,18 +1844,15 @@ export default function GraphCanvas() {
         }
         
         // For all other keys during text editing, let them through normally
-        console.log('Allowing key through for text input:', e.key);
         return;
       }
 
       // If user is typing in any input field, don't handle tool shortcuts
       if (isTypingInInput) {
-        console.log('User is typing in an input field, ignoring tool shortcuts');
         return;
       }
 
       // Only handle tool shortcuts if NOT editing text
-      console.log('Not editing text, checking for tool shortcuts');
       
       // Handle measure tool shortcuts
       if (tool === 'measure' && pressedKey === 'enter') {
@@ -1900,7 +1882,6 @@ export default function GraphCanvas() {
         (t) => t.shortcut && t.shortcut.toLowerCase() === pressedKey,
       );
       if (toolToSelect && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        console.log('Tool shortcut matched:', pressedKey, '-> switching to:', toolToSelect.name);
         e.preventDefault();
         if (toolToSelect.name === 'fullscreen') {
           toggleFullscreen();
@@ -1938,7 +1919,6 @@ export default function GraphCanvas() {
         if (currentProjectId) {
           (async () => {
             try {
-              console.log('Updating existing project:', currentProjectTitle, currentProjectId);
               
               const { error } = await supabase
                 .from('projects')
@@ -1950,7 +1930,6 @@ export default function GraphCanvas() {
 
               if (error) throw error;
               
-              console.log('Project updated successfully');
               triggerFeedback();
               
               // Show a brief success message
@@ -1965,7 +1944,6 @@ export default function GraphCanvas() {
           })();
         } else {
           // No current project, open modal to create new one
-          console.log('No current project, opening save dialog');
           setIsProjectsModalOpen(true);
         }
       } else if (pressedKey === 'g' && !e.metaKey && !e.ctrlKey && !e.altKey) {
@@ -2251,7 +2229,6 @@ export default function GraphCanvas() {
   }, [triggerFeedback]);
 
   const handleLoadProject = useCallback((projectData: any, projectId?: string, projectTitle?: string) => {
-    console.log('handleLoadProject called with data:', projectData);
     
     if (projectData && typeof projectData === 'object') {
       // Ensure all required arrays exist in the loaded data
@@ -2269,7 +2246,6 @@ export default function GraphCanvas() {
         plumbingPipes: projectData.plumbingPipes || [],
       };
       
-      console.log('Setting loaded state:', loadedState);
       setHistory([loadedState]);
       setHistoryIndex(0);
       
@@ -2277,11 +2253,9 @@ export default function GraphCanvas() {
       if (projectId && projectTitle) {
         setCurrentProjectId(projectId);
         setCurrentProjectTitle(projectTitle);
-        console.log('Set current project:', projectTitle, projectId);
       }
       
       triggerFeedback();
-      console.log('Project loaded and history updated');
     } else {
       console.error('Invalid project data:', projectData);
     }
@@ -2296,7 +2270,6 @@ export default function GraphCanvas() {
     // If we have a current project, update it
     if (currentProjectId) {
       try {
-        console.log('Updating existing project:', currentProjectTitle, currentProjectId);
         
         const { error } = await supabase
           .from('projects')
@@ -2308,7 +2281,6 @@ export default function GraphCanvas() {
 
         if (error) throw error;
         
-        console.log('Project updated successfully');
         triggerFeedback();
         
         // Show a brief success message
@@ -2322,7 +2294,6 @@ export default function GraphCanvas() {
       }
     } else {
       // No current project, open modal to create new one
-      console.log('No current project, opening save dialog');
       setIsProjectsModalOpen(true);
     }
   }, [isAuthenticated, currentProjectId, currentProjectTitle, currentState, triggerFeedback, setStatusMessage]);
@@ -2370,26 +2341,44 @@ export default function GraphCanvas() {
     triggerFeedback();
   };
 
-  // Debug editingText changes and handle focus
-  useEffect(() => {
-    console.log('=== EDITING TEXT STATE CHANGED ===');
-    console.log('New editingText state:', editingText);
+  const handleTextChange = (value: string) => {
     if (editingText) {
-      console.log('Text content:', editingText.currentText);
-      console.log('Text position:', editingText.position);
-      
-      // Focus the input when editingText is first created (only when text is empty)
-      if (editingText.currentText === '' && textInputRef.current) {
-        console.log('Focusing new text input');
-        setTimeout(() => {
-          if (textInputRef.current && editingText && editingText.currentText === '') {
-            textInputRef.current.focus();
-            // Don't select all text - just focus
-          }
-        }, 50);
-      }
+      setEditingText({ ...editingText, currentText: value });
     }
-  }, [editingText]);
+  };
+
+  const handleTextBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const timeSinceStart = Date.now() - textInputStartTime;
+    const hasText = editingText && editingText.currentText.trim();
+
+    if (timeSinceStart < 200 && !hasText) {
+      setTimeout(() => e.target.focus(), 10);
+      return;
+    }
+
+    if (editingText && hasText) {
+      const worldPosition = getWorldPoint(editingText.position);
+      addToHistory({
+        texts: [
+          ...currentState.texts,
+          {
+            position: worldPosition,
+            text: editingText.currentText.trim(),
+            color: currentColor,
+            fontSize: 16,
+          },
+        ],
+      });
+    }
+    setEditingText(null);
+    setIsTextEditing(false);
+  };
+
+  const handleTextKeyDown = (_: React.KeyboardEvent<HTMLInputElement>) => {
+    // Global keyboard handler manages Enter and Escape
+  };
+
+  // Text input overlay handles its own focus
 
   // Render Traditional Graph Paper Mode (default)
   return (
@@ -2686,73 +2675,11 @@ export default function GraphCanvas() {
 
       {/* Text Editing Input */}
       {editingText && (
-        <input
-          ref={textInputRef}
-          type="text"
-          value={editingText.currentText}
-          onChange={(e) => {
-            console.log('=== TEXT INPUT CHANGE ===');
-            console.log('Input value:', e.target.value);
-            console.log('Current editingText state:', editingText);
-            console.log('Setting new text state...');
-            setEditingText({ ...editingText, currentText: e.target.value });
-            console.log('Text state updated');
-          }}
-          onFocus={() => {
-            console.log('Text input focused');
-          }}
-          onBlur={(e) => {
-            console.log('Text input blurred, saving text');
-            
-            // Prevent immediate blur - only allow blur if enough time has passed or if there's actual text
-            const timeSinceStart = Date.now() - textInputStartTime;
-            const hasText = editingText && editingText.currentText.trim();
-            
-            if (timeSinceStart < 200 && !hasText) {
-              console.log('Preventing immediate blur - refocusing input');
-              // Refocus the input if blur happened too quickly
-              setTimeout(() => {
-                const input = e.target as HTMLInputElement;
-                if (input && editingText) {
-                  input.focus();
-                }
-              }, 10);
-              return;
-            }
-            
-            // Only save if we actually have some text
-            if (hasText) {
-              const worldPosition = getWorldPoint(editingText.position);
-              addToHistory({
-                texts: [
-                  ...currentState.texts,
-                  {
-                    position: worldPosition,
-                    text: editingText.currentText.trim(),
-                    color: currentColor,
-                    fontSize: 16,
-                  },
-                ],
-              });
-              console.log('Text saved on blur:', editingText.currentText.trim());
-            } else {
-              console.log('No text to save on blur');
-            }
-            setEditingText(null);
-            setIsTextEditing(false);
-          }}
-          onKeyDown={(e) => {
-            console.log('Text input onKeyDown:', e.key);
-            // Let the global keyboard handler deal with Enter and Escape
-          }}
-          placeholder="Enter text..."
-          autoFocus
-          className="absolute bg-white border-2 border-blue-500 rounded px-2 py-1 text-sm font-mono shadow-lg outline-none min-w-[100px]"
-          style={{
-            left: editingText.position.x,
-            top: editingText.position.y - 30,
-            zIndex: 1000,
-          }}
+        <TextInputOverlay
+          editingText={editingText}
+          onChange={handleTextChange}
+          onBlur={handleTextBlur}
+          onKeyDown={handleTextKeyDown}
         />
       )}
       

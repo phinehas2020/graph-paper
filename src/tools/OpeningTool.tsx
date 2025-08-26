@@ -59,7 +59,6 @@ const OpeningTool: React.FC<OpeningToolProps> = ({
       dimensions: { width: Number(width), height: Number(height) },
     };
 
-    console.log("Adding opening to wall:", selectedWall.id, openingData);
     addFlatOpening(selectedWall.id, openingData);
     // Optionally close the form/tool after adding
     // onClose();
