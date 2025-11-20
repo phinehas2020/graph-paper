@@ -3,6 +3,8 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
-  // Automatically clear mock calls and instances between every test
-  clearMocks: true,
+  transform: {
+    '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
+  },
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 };

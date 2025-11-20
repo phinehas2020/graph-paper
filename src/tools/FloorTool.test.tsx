@@ -3,6 +3,7 @@ import { render, act, screen, fireEvent } from '@testing-library/react';
 import FloorTool, { calculatePolygonArea, isClockwise } from './FloorTool';
 import useStore from '@/src/model/useStore';
 import { Point } from '@/src/model/types';
+import '@testing-library/jest-dom';
 
 // Mock the entire useStore module
 jest.mock('@/src/model/useStore');
@@ -128,4 +129,5 @@ describe('FloorTool Component Logic', () => {
 
   // More tests would require refactoring FloorTool to be more testable,
   // for example, by making it a custom hook or by providing a more interactive UI.
+});
 });

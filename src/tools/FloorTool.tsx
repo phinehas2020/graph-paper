@@ -42,7 +42,7 @@ export const isClockwise = (points: Point[]): boolean => {
 
 
 const FloorTool: React.FC<FloorToolProps> = ({ isActive }) => {
-  const { addFloor } = useStore.getState(); // Get actions directly for now
+  const { addFloor } = useStore();
 
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);

@@ -8,7 +8,7 @@ interface WallToolProps {
 }
 
 const WallTool: React.FC<WallToolProps> = ({ isActive /*, onDrawingUpdate */ }) => {
-  const { addWall } = useStore.getState();
+  const { addWall } = useStore();
 
   // currentWallPoints will store the start point of the current segment being drawn.
   // A wall is defined by two points. So, each click after the first one finalizes a wall segment.
