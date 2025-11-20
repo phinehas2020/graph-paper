@@ -307,6 +307,22 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       if (previewPoint) {
         const preview = gridToScreen(previewPoint.x, previewPoint.y);
         ctx.lineTo(preview.x, preview.y);
+
+        // Draw dimension line for current segment
+        const lastPoint = currentPoints[currentPoints.length - 1];
+        const start = gridToScreen(lastPoint.x, lastPoint.y);
+
+        const dist = Math.sqrt(
+          (previewPoint.x - lastPoint.x) ** 2 +
+          (previewPoint.y - lastPoint.y) ** 2
+        );
+
+        const midX = (start.x + preview.x) / 2;
+        const midY = (start.y + preview.y) / 2;
+
+        ctx.fillStyle = '#FF5722';
+        ctx.font = '12px Arial';
+        ctx.fillText(formatMeasurement(dist), midX + 10, midY + 10);
       }
       
       ctx.stroke();
@@ -334,6 +350,25 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       ctx.lineTo(end.x, end.y);
       ctx.stroke();
       ctx.setLineDash([]);
+
+      // Draw length preview
+      const dist = Math.sqrt(
+        (previewPoint.x - currentPoints[0].x) ** 2 +
+        (previewPoint.y - currentPoints[0].y) ** 2
+      );
+      const midX = (start.x + end.x) / 2;
+      const midY = (start.y + end.y) / 2;
+
+      ctx.fillStyle = 'white';
+      ctx.fillRect(midX - 20, midY - 10, 40, 20);
+      ctx.strokeStyle = '#FF5722';
+      ctx.strokeRect(midX - 20, midY - 10, 40, 20);
+
+      ctx.fillStyle = '#FF5722';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 12px Arial';
+      ctx.fillText(formatMeasurement(dist), midX, midY);
     }
     
     if (activeTool === 'measure' && currentPoints.length === 1 && previewPoint) {

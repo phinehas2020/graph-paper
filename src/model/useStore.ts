@@ -154,7 +154,10 @@ interface StoreSelectors {
 
 type StoreState = Model & StoreActions & StoreSelectors;
 
+import { temporal } from 'zundo';
+
 const useStore = create<StoreState>()(
+  temporal(
   (set, get) => ({
     ...initialState,
 
@@ -548,7 +551,7 @@ const useStore = create<StoreState>()(
     selectElectricalPanelById: (id) => get().electricalPanels.find(p => p.id === id),
     selectWireRunById: (id) => get().wireRuns.find(w => w.id === id),
     selectPlumbingFixtureById: (id) => get().plumbingFixtures.find(f => f.id === id),
-  })
-);
+  }), { limit: 50 }
+));
 
 export default useStore;
