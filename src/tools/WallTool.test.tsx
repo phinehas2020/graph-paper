@@ -2,6 +2,7 @@ import React from 'react';
 import { render, act, screen, fireEvent } from '@testing-library/react';
 import WallTool from './WallTool';
 import useStore from '@/src/model/useStore';
+import '@testing-library/jest-dom';
 
 // Mock the entire useStore module
 jest.mock('@/src/model/useStore');
@@ -20,7 +21,6 @@ describe('WallTool Component Logic', () => {
     });
   });
 
-describe('WallTool Component Logic', () => {
   test('should render and be hidden when isActive is false', () => {
     const { container } = render(<WallTool isActive={false} />);
     expect(container.firstChild).toHaveStyle('display: none');

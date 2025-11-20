@@ -3,18 +3,30 @@ import { Wall, Floor } from '@/src/model/types';
 
 /**
  * Create a Three.js mesh representing a wall.
- * The wall is modelled as a box extruded between start and end points
- * with the given height and thickness.
+ * The wall is modelled as a box extruded between start and end points.
+ * It is extended slightly to ensure corners overlap.
  */
 export function wallToMesh(wall: Wall): THREE.Mesh {
   const dx = wall.end.x - wall.start.x;
   const dy = wall.end.y - wall.start.y;
   const length = Math.sqrt(dx * dx + dy * dy);
 
-  // Box geometry: length along X, height along Y, thickness along Z
-  const geometry = new THREE.BoxGeometry(length, wall.height, wall.thickness);
-  const material = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+  // Extend length by thickness to cover corners
+  // We add thickness/2 to each end effectively
+  const extendedLength = length + wall.thickness;
+
+  const geometry = new THREE.BoxGeometry(extendedLength, wall.height, wall.thickness);
+
+  // Improved material with better lighting response
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xe0e0e0,
+    roughness: 0.5,
+    metalness: 0.1
+  });
+
   const mesh = new THREE.Mesh(geometry, material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
 
   // Position wall at midpoint and rotate to match direction
   const midX = (wall.start.x + wall.end.x) / 2;
@@ -46,8 +58,15 @@ export function floorToMesh(floor: Floor): THREE.Mesh {
     depth: floor.thickness,
     bevelEnabled: false,
   });
-  const material = new THREE.MeshStandardMaterial({ color: 0x999999 });
+
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xf5f5f5,
+    roughness: 0.8,
+    metalness: 0.0
+  });
+
   const mesh = new THREE.Mesh(geometry, material);
+  mesh.receiveShadow = true;
 
   // Rotate so that extrusion is vertical (along Y)
   mesh.rotation.x = -Math.PI / 2;
@@ -55,4 +74,3 @@ export function floorToMesh(floor: Floor): THREE.Mesh {
 
   return mesh;
 }
-
