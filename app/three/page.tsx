@@ -5,8 +5,9 @@ import { Canvas2D } from '@/src/components/Canvas2D';
 import { Viewer } from '@/src/three/Viewer';
 import { ToolPanel } from '@/src/components/ToolPanel';
 import { Button } from '@/components/ui/button';
-import { Box, Layers } from 'lucide-react';
+import { Box, Layers, Undo, Redo } from 'lucide-react';
 import useStore from '@/src/model/useStore';
+import { useTemporalStore } from '@/src/model/useStore';
 
 type Tool = 'floor' | 'wall' | 'select' | 'measure' | 'text' | null;
 
@@ -17,6 +18,7 @@ export default function ThreePage() {
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
   const { walls, floors } = useStore();
+  const { undo, redo, pastStates, futureStates } = useTemporalStore((state: any) => state);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -48,6 +50,26 @@ export default function ThreePage() {
           <div className="text-xs text-gray-500 mr-4">
             {walls.length} Walls | {floors.length} Floors
           </div>
+          <div className="flex items-center gap-1 mr-2 border-r pr-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => undo()}
+              disabled={pastStates.length === 0}
+              title="Undo"
+            >
+              <Undo className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => redo()}
+              disabled={futureStates.length === 0}
+              title="Redo"
+            >
+              <Redo className="w-4 h-4" />
+            </Button>
+          </div>
           <Button
             variant={mode === '2d' ? "default" : "outline"}
             size="sm"
@@ -66,6 +88,11 @@ export default function ThreePage() {
             <Box className="w-4 h-4" />
             3D Viewer
           </Button>
+        </div>
+        <div className="ml-4 border-l pl-4">
+          <a href="/flat-layout" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+            Go to Flat Builder
+          </a>
         </div>
       </header>
 
