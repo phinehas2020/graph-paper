@@ -3,64 +3,6 @@ export interface Point {
   y: number;
 }
 
-export type AppMode = 'traditional';
-
-export type Tool =
-  | 'select'
-  | 'area-delete'
-  | 'line'
-  | 'rectangle'
-  | 'circle'
-  | 'arrow'
-  | 'text'
-  | 'arc'
-  | 'pan'
-  | 'measure'
-  | 'eraser'
-  | 'wiring'
-  | 'plumbing'
-  | 'fullscreen';
-
-export type EraserMode = 'partial' | 'whole';
-
-export interface Line {
-  start: Point;
-  end: Point;
-  color?: string;
-  thickness?: number;
-}
-
-export interface Arc {
-  start: Point;
-  end: Point;
-  control: Point;
-  color?: string;
-  thickness?: number;
-}
-
-export interface Rectangle {
-  start: Point;
-  end: Point;
-  color?: string;
-  thickness?: number;
-  filled?: boolean;
-}
-
-export interface CircleShape {
-  center: Point;
-  radius: number;
-  color?: string;
-  thickness?: number;
-  filled?: boolean;
-}
-
-export interface Arrow {
-  start: Point;
-  end: Point;
-  color?: string;
-  thickness?: number;
-}
-
 // Traditional CAD-style Types for Canvas2D
 export interface Wall {
   id: string;
@@ -227,22 +169,6 @@ export interface PlumbingPipe {
   diameter: number; // Inches
   material: 'PEX' | 'copper' | 'PVC' | 'cast iron';
   path: Point[];
-  length: number; // Total length in feet
-  cost: number; // Total cost for this pipe run
-}
-
-export interface CanvasState {
-  lines: Line[];
-  arcs: Arc[];
-  rectangles: Rectangle[];
-  circles: CircleShape[];
-  arrows: Arrow[];
-  texts: TextElement[];
-  measurements: Measurement[];
-  electricalOutlets: ElectricalOutlet[];
-  plumbingFixtures: PlumbingFixture[];
-  electricalWires: ElectricalWire[];
-  plumbingPipes: PlumbingPipe[];
 }
 
 export interface BuildingCodeViolation {
@@ -315,6 +241,5 @@ export interface Model {
     buildingCodeEnabled: boolean; // Building code validation
     wireTracking: boolean; // Enable wire usage tracking
     wirePrices: { [key: string]: number }; // Wire prices per foot
-    pipePrices: { [key: string]: number }; // Pipe prices per foot
   };
 }

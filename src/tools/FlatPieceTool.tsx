@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import useStore from '@/src/model/useStore';
 import { Point, FlatPiece } from '@/src/model/types';
-import { formatMeasurement } from './MeasurementUtils';
 
 interface FlatPieceToolProps {
   isActive: boolean;
@@ -63,6 +62,7 @@ const FlatPieceTool: React.FC<FlatPieceToolProps> = ({
         };
 
         const pieceId = addFlatPiece(newPiece);
+        console.log(`FlatPieceTool: Added ${pieceType} piece: ${pieceId}`);
         
         // Reset for next piece
         resetDrawingState();
@@ -77,6 +77,7 @@ const FlatPieceTool: React.FC<FlatPieceToolProps> = ({
 
   const handleFinishDrawing = useCallback(() => {
     if (isDrawing) {
+      console.log("FlatPieceTool: Finishing drawing session.");
     }
     resetDrawingState();
   }, [isDrawing, resetDrawingState]);
@@ -161,12 +162,12 @@ const FlatPieceTool: React.FC<FlatPieceToolProps> = ({
 
       {isDrawing && startPoint && endPoint && (
         <div>
-          <p>Start: ({formatMeasurement(startPoint.x)}, {formatMeasurement(startPoint.y)})</p>
-          <p>End: ({formatMeasurement(endPoint.x)}, {formatMeasurement(endPoint.y)})</p>
+          <p>Start: ({startPoint.x.toFixed(1)}, {startPoint.y.toFixed(1)})</p>
+          <p>End: ({endPoint.x.toFixed(1)}, {endPoint.y.toFixed(1)})</p>
           {(() => {
             const previewDims = getPreviewDimensions();
             return previewDims ? (
-              <p>Size: {formatMeasurement(previewDims.width)} x {formatMeasurement(previewDims.height)}</p>
+              <p>Size: {previewDims.width.toFixed(1)} x {previewDims.height.toFixed(1)}</p>
             ) : null;
           })()}
         </div>

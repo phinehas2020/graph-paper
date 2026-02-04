@@ -33,6 +33,8 @@ export function ProjectsModal({
 
   useEffect(() => {
     if (isOpen && user) {
+      console.log('ProjectsModal opened with user:', user)
+      console.log('User ID:', user.id)
       loadProjects()
     }
   }, [isOpen, user])
@@ -41,6 +43,7 @@ export function ProjectsModal({
     setLoading(true)
     setError('') // Clear any previous errors
     try {
+      console.log('Loading projects for user_id:', user.id)
       
       const { data, error } = await supabase
         .from('projects')
@@ -53,6 +56,8 @@ export function ProjectsModal({
         throw error
       }
       
+      console.log('Projects loaded:', data)
+      console.log('Number of projects:', data?.length || 0)
       
       setProjects(data || [])
     } catch (error: any) {
@@ -72,6 +77,8 @@ export function ProjectsModal({
     setSaving(true)
     setError('') // Clear any previous errors
     try {
+      console.log('Saving project with user_id:', user.id)
+      console.log('Project data:', { title: newProjectTitle.trim(), description: newProjectDescription.trim() })
       
       const { data, error } = await supabase
         .from('projects')
@@ -88,6 +95,7 @@ export function ProjectsModal({
         throw error
       }
       
+      console.log('Project saved successfully:', data)
       
       setNewProjectTitle('')
       setNewProjectDescription('')
@@ -95,6 +103,7 @@ export function ProjectsModal({
       
       // Reload projects to show the new one
       await loadProjects()
+      console.log('Projects reloaded after save')
     } catch (error: any) {
       console.error('Save project error:', error)
       setError(error.message)
@@ -120,9 +129,12 @@ export function ProjectsModal({
   }
 
   const loadProject = (project: Project) => {
+    console.log('Loading project:', project.title)
+    console.log('Project canvas data:', project.canvas_data)
     try {
       onLoadProject(project.canvas_data, project.id, project.title)
       onClose()
+      console.log('Project loaded successfully')
     } catch (error) {
       console.error('Error loading project:', error)
       setError('Failed to load project: ' + (error as Error).message)

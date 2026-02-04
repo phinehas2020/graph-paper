@@ -36,12 +36,6 @@ const initialState: Model = {
       '12AWG': 0.65,
       '10AWG': 0.95,
       '8AWG': 1.35
-    },
-    pipePrices: {
-      PEX: 0.5,
-      copper: 3.0,
-      PVC: 0.75,
-      'cast iron': 4.0
     }
   },
 };
@@ -97,7 +91,6 @@ interface StoreActions {
   deleteWireRun: (id: string) => void;
   calculateWireRuns: () => void;
   updateWirePrices: (prices: { [key: string]: number }) => void;
-  updatePipePrices: (prices: { [key: string]: number }) => void;
   addPlumbingFixture: (fixtureData: Omit<PlumbingFixture, 'id'>) => string;
   updatePlumbingFixture: (id: string, updates: Partial<Omit<PlumbingFixture, 'id'>>) => void;
   deletePlumbingFixture: (id: string) => void;
@@ -135,11 +128,6 @@ interface StoreSelectors {
   selectElectricalCircuits: () => ElectricalCircuit[];
   selectElectricalPanels: () => ElectricalPanel[];
   selectWireRuns: () => WireRun[];
-  selectWireUsageSummary: () => {
-    totalCost: number;
-    totalLength: number;
-    wireTypes: { [key: string]: { length: number; cost: number } };
-  };
   selectElectricalProject: () => ElectricalProject | undefined;
   selectPlumbingFixtures: () => PlumbingFixture[];
   selectPlumbingPipes: () => PlumbingPipe[];
@@ -233,9 +221,11 @@ const useStore = create<StoreState>()(
     })),
     connectWalls: (wallId1, wallId2) => {
       // Connect walls logic
+      console.log(`Connecting walls ${wallId1} and ${wallId2}`);
     },
     autoConnectNearbyWalls: (threshold) => {
       // Auto connect nearby walls logic
+      console.log(`Auto connecting walls within ${threshold} feet`);
     },
 
     // Flat Layout Actions
@@ -305,6 +295,7 @@ const useStore = create<StoreState>()(
     })),
     stitchPieces: () => {
       // Stitching logic for flat layout pieces
+      console.log('Stitching pieces together...');
     },
 
     // House Design Actions
@@ -407,12 +398,10 @@ const useStore = create<StoreState>()(
     })),
     calculateWireRuns: () => {
       // Wire run calculation logic
+      console.log('Calculating wire runs...');
     },
     updateWirePrices: (prices) => set(produce((draft: Model) => {
       Object.assign(draft.settings.wirePrices, prices);
-    })),
-    updatePipePrices: (prices) => set(produce((draft: Model) => {
-      Object.assign(draft.settings.pipePrices, prices);
     })),
     addPlumbingFixture: (fixtureData) => {
       const id = generateId();
@@ -494,6 +483,7 @@ const useStore = create<StoreState>()(
         }
       }
       
+      console.log('Building code validation completed');
     },
 
     // Selectors
@@ -520,24 +510,6 @@ const useStore = create<StoreState>()(
     selectElectricalCircuits: () => get().electricalCircuits,
     selectElectricalPanels: () => get().electricalPanels,
     selectWireRuns: () => get().wireRuns,
-    selectWireUsageSummary: () => {
-      const summary: { totalCost: number; totalLength: number; wireTypes: { [key: string]: { length: number; cost: number } } } = {
-        totalCost: 0,
-        totalLength: 0,
-        wireTypes: {}
-      };
-      const runs = get().wireRuns;
-      runs.forEach((run) => {
-        summary.totalCost += run.cost;
-        summary.totalLength += run.length;
-        if (!summary.wireTypes[run.wireType]) {
-          summary.wireTypes[run.wireType] = { length: 0, cost: 0 };
-        }
-        summary.wireTypes[run.wireType].length += run.length;
-        summary.wireTypes[run.wireType].cost += run.cost;
-      });
-      return summary;
-    },
     selectElectricalProject: () => get().electricalProject,
     selectPlumbingFixtures: () => get().plumbingFixtures,
     selectPlumbingPipes: () => get().plumbingPipes,

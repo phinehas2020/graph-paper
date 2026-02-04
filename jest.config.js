@@ -1,10 +1,9 @@
 module.exports = {
+  preset: 'ts-jest',
   testEnvironment: 'jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
-  transform: {
-    '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
-  },
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  // Automatically clear mock calls and instances between every test
+  clearMocks: true,
 };

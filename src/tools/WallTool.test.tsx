@@ -1,26 +1,42 @@
 import React from 'react';
 import { render, act, screen, fireEvent } from '@testing-library/react';
 import WallTool from './WallTool';
-import useStore from '@/src/model/useStore';
-import '@testing-library/jest-dom';
+import * as storeModule from '@/src/model/useStore'; // Import as namespace
+import { Point } from '@/src/model/types';
 
-// Mock the entire useStore module
-jest.mock('@/src/model/useStore');
-
+// Mock the store
 const mockAddWall = jest.fn();
+let mockStoreState: storeModule.Model;
+
+// Deep clone helper
+const deepClone = <T extends unknown>(obj: T): T => JSON.parse(JSON.stringify(obj));
+
+let originalInitialState: storeModule.Model;
+
+// Setup before all tests in this file
+beforeAll(() => {
+  originalInitialState = deepClone(storeModule.useStore.getState());
+});
+
+beforeEach(() => {
+  // Reset store state to a deep copy of the original initial state
+  mockStoreState = deepClone(originalInitialState);
+
+  // Spy on getState and return our controlled state and mock actions
+  jest.spyOn(storeModule.useStore, 'getState').mockReturnValue({
+    ...mockStoreState,
+    addWall: mockAddWall,
+    // Ensure other actions/state properties used by the component are here if any
+  } as any);
+
+  mockAddWall.mockClear();
+});
+
+afterEach(() => {
+  jest.restoreAllMocks(); // Restore all mocks
+});
 
 describe('WallTool Component Logic', () => {
-  beforeEach(() => {
-    // Reset mocks before each test
-    mockAddWall.mockClear();
-
-    // Setup the mock implementation for useStore
-    (useStore as unknown as jest.Mock).mockReturnValue({
-      addWall: mockAddWall,
-      // You can add other state properties if the component needs them
-    });
-  });
-
   test('should render and be hidden when isActive is false', () => {
     const { container } = render(<WallTool isActive={false} />);
     expect(container.firstChild).toHaveStyle('display: none');

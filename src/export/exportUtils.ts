@@ -5,7 +5,6 @@ import useStore from '@/src/model/useStore';
  */
 export function downloadJSON() {
   const state = useStore.getState();
-  const wireSummary = state.selectWireUsageSummary();
 
   // Create a serializable version of the state.
   // The Zustand store might contain functions (actions, selectors).
@@ -16,8 +15,6 @@ export function downloadJSON() {
     flatPieces: state.flatPieces,
     connections: state.connections,
     settings: state.settings,
-    wireRuns: state.wireRuns,
-    wireUsageSummary: wireSummary,
   };
 
   const jsonString = JSON.stringify(modelData, null, 2);
@@ -30,4 +27,5 @@ export function downloadJSON() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  console.log("JSON model downloaded.");
 }

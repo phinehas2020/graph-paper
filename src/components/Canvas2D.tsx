@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import useStore from '@/src/model/useStore';
-import { formatMeasurement } from '@/src/tools/MeasurementUtils';
 import { Point, Wall, Floor, Measurement, TextElement } from '@/src/model/types';
 
 interface Canvas2DProps {
@@ -225,7 +224,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       ctx.strokeStyle = '#9C27B0';
       ctx.lineWidth = 1;
       
-      const text = measurement.label || formatMeasurement(distance);
+      const text = measurement.label || `${distance.toFixed(2)} ${measurement.units === 'metric' ? 'm' : 'ft'}`;
       ctx.font = '12px Arial';
       const textMetrics = ctx.measureText(text);
       const textWidth = textMetrics.width;
@@ -359,7 +358,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       
       ctx.fillStyle = '#9C27B0';
       ctx.font = '12px Arial';
-      const text = formatMeasurement(distance);
+      const text = `${distance.toFixed(2)} ${settings.units === 'metric' ? 'm' : 'ft'}`;
       const textWidth = ctx.measureText(text).width;
       
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
