@@ -42,7 +42,7 @@ export const isClockwise = (points: Point[]): boolean => {
 
 
 const FloorTool: React.FC<FloorToolProps> = ({ isActive }) => {
-  const { addFloor } = useStore();
+  const { addFloor } = useStore.getState(); // Get actions directly for now
 
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
@@ -112,9 +112,11 @@ const FloorTool: React.FC<FloorToolProps> = ({ isActive }) => {
         // onDrawingUpdate?.([], false);
         return;
       }
+       console.log("FloorTool: Points were counter-clockwise, automatically reversed.");
     }
 
     const area = calculatePolygonArea(finalPoints);
+    console.log(`FloorTool: Calculated area: ${area}`); // For debugging
 
     // Add floor to store (using default elevation/thickness for now)
     addFloor({
@@ -123,6 +125,7 @@ const FloorTool: React.FC<FloorToolProps> = ({ isActive }) => {
       thickness: 0.2, // Default thickness
     });
 
+    console.log("FloorTool: Floor added successfully.");
     setCurrentPoints([]);
     setIsDrawing(false);
     setError(null);
