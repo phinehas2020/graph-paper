@@ -240,9 +240,10 @@ export function PlannerWorkspace() {
   const setViewportMode = usePlannerViewerStore(
     (state) => state.setViewportMode,
   );
-  const walls = usePlannerSceneStore((state) => state.walls);
-  const floors = usePlannerSceneStore((state) => state.floors);
-  const settings = usePlannerSceneStore((state) => state.settings);
+  const wallNodes = usePlannerSceneStore((state) => state.wallNodes);
+  const floorNodes = usePlannerSceneStore((state) => state.floorNodes);
+  const openingNodes = usePlannerSceneStore((state) => state.openingNodes);
+  const rootNodeIds = usePlannerSceneStore((state) => state.rootNodeIds);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -267,22 +268,17 @@ export function PlannerWorkspace() {
     return () => resizeObserver.disconnect();
   }, [viewportMode]);
 
-  const openingCount = useMemo(
-    () => walls.reduce((total, wall) => total + (wall.openings?.length ?? 0), 0),
-    [walls],
-  );
-
   const stats = useMemo(
     () => [
-      { label: 'Walls', value: walls.length.toString().padStart(2, '0') },
-      { label: 'Floors', value: floors.length.toString().padStart(2, '0') },
-      { label: 'Grid', value: settings.gridVisible ? 'On' : 'Off' },
+      { label: 'Roots', value: rootNodeIds.length.toString().padStart(2, '0') },
+      { label: 'Walls', value: wallNodes.length.toString().padStart(2, '0') },
+      { label: 'Floors', value: floorNodes.length.toString().padStart(2, '0') },
       {
         label: 'Openings',
-        value: openingCount.toString().padStart(2, '0'),
+        value: openingNodes.length.toString().padStart(2, '0'),
       },
     ],
-    [floors.length, openingCount, settings.gridVisible, walls.length],
+    [floorNodes.length, openingNodes.length, rootNodeIds.length, wallNodes.length],
   );
 
   const draftPanel = (

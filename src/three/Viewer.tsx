@@ -14,21 +14,27 @@ import usePlannerViewerStore from '@/src/planner/stores/usePlannerViewerStore';
 import { floorToMesh, wallToMesh } from './meshes';
 
 function DraftScene() {
-  const walls = usePlannerSceneStore((state) => state.walls);
-  const floors = usePlannerSceneStore((state) => state.floors);
+  const wallNodes = usePlannerSceneStore((state) => state.wallNodes);
+  const floorNodes = usePlannerSceneStore((state) => state.floorNodes);
   const selectedElement = usePlannerViewerStore((state) => state.selectedElement);
+  const walls = useMemo(
+    () => wallNodes.map((node) => node.entity),
+    [wallNodes],
+  );
 
-  const floorMeshes = useMemo(() => floors.map(floorToMesh), [floors]);
+  const floorMeshes = useMemo(
+    () => floorNodes.map((node) => floorToMesh(node.entity)),
+    [floorNodes],
+  );
   const wallMeshes = useMemo(
-    () => walls.map((wall) => wallToMesh(wall, walls, selectedElement)),
-    [selectedElement, walls],
+    () => wallNodes.map((node) => wallToMesh(node.entity, walls, selectedElement)),
+    [selectedElement, wallNodes, walls],
   );
   const hasGeometry = floorMeshes.length > 0 || wallMeshes.length > 0;
 
   return (
     <>
       <color attach="background" args={['#edf4fa']} />
-      <fog attach="fog" args={['#edf4fa', 18, 42]} />
 
       <ambientLight intensity={0.65} />
       <hemisphereLight
@@ -75,10 +81,10 @@ function DraftScene() {
       <Bounds fit clip observe margin={1.25}>
         <group>
           {floorMeshes.map((mesh, index) => (
-            <primitive object={mesh} key={`floor-${floors[index].id}`} />
+            <primitive object={mesh} key={`floor-${floorNodes[index].id}`} />
           ))}
           {wallMeshes.map((mesh, index) => (
-            <primitive object={mesh} key={`wall-${walls[index].id}`} />
+            <primitive object={mesh} key={`wall-${wallNodes[index].id}`} />
           ))}
 
           {!hasGeometry && (

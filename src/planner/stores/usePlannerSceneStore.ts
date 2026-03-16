@@ -1,5 +1,163 @@
+import { create } from 'zustand';
 import useStore from '@/src/model/useStore';
+import {
+  Floor,
+  Measurement,
+  Model,
+  PlannerFloorNode,
+  PlannerOpeningNode,
+  PlannerSceneNode,
+  PlannerWallNode,
+  TextElement,
+  Wall,
+  WallOpening,
+} from '@/src/model/types';
 
-const usePlannerSceneStore = useStore;
+type LegacyPlannerStoreState = ReturnType<typeof useStore.getState>;
+
+type PlannerSceneActionKeys =
+  | 'addMeasurement'
+  | 'updateMeasurement'
+  | 'deleteMeasurement'
+  | 'addTextElement'
+  | 'updateTextElement'
+  | 'deleteTextElement'
+  | 'updateSettings'
+  | 'clearTemporaryMeasurements'
+  | 'addWall'
+  | 'updateWall'
+  | 'deleteWall'
+  | 'addWallOpening'
+  | 'updateWallOpening'
+  | 'deleteWallOpening'
+  | 'addFloor'
+  | 'updateFloor'
+  | 'deleteFloor'
+  | 'connectWalls'
+  | 'autoConnectNearbyWalls'
+  | 'undoPlanner'
+  | 'redoPlanner';
+
+type PlannerSceneActions = Pick<
+  LegacyPlannerStoreState,
+  PlannerSceneActionKeys
+>;
+
+interface PlannerSceneSnapshot {
+  measurements: Measurement[];
+  textElements: TextElement[];
+  settings: Model['settings'];
+  walls: Wall[];
+  floors: Floor[];
+  wallNodes: PlannerWallNode[];
+  floorNodes: PlannerFloorNode[];
+  openingNodes: PlannerOpeningNode[];
+  nodes: Record<string, PlannerSceneNode>;
+  rootNodeIds: string[];
+}
+
+export interface PlannerSceneStoreState
+  extends PlannerSceneSnapshot,
+    PlannerSceneActions {}
+
+function buildPlannerSceneSnapshot(
+  state: LegacyPlannerStoreState,
+): PlannerSceneSnapshot {
+  const nodes: Record<string, PlannerSceneNode> = {};
+  const floorNodes: PlannerFloorNode[] = [];
+  const wallNodes: PlannerWallNode[] = [];
+  const openingNodes: PlannerOpeningNode[] = [];
+  const rootNodeIds: string[] = [];
+
+  state.floors.forEach((floor) => {
+    const floorNode: PlannerFloorNode = {
+      id: floor.id,
+      type: 'floor',
+      parentId: null,
+      childIds: [],
+      entity: floor,
+    };
+
+    floorNodes.push(floorNode);
+    rootNodeIds.push(floorNode.id);
+    nodes[floorNode.id] = floorNode;
+  });
+
+  state.walls.forEach((wall) => {
+    const openingIds = (wall.openings ?? []).map((opening) => opening.id);
+    const wallNode: PlannerWallNode = {
+      id: wall.id,
+      type: 'wall',
+      parentId: null,
+      childIds: openingIds,
+      entity: wall,
+    };
+
+    wallNodes.push(wallNode);
+    rootNodeIds.push(wallNode.id);
+    nodes[wallNode.id] = wallNode;
+
+    (wall.openings ?? []).forEach((opening) => {
+      const openingNode: PlannerOpeningNode = {
+        id: opening.id,
+        type: 'opening',
+        parentId: wall.id,
+        childIds: [],
+        entity: opening,
+      };
+
+      openingNodes.push(openingNode);
+      nodes[openingNode.id] = openingNode;
+    });
+  });
+
+  return {
+    measurements: state.measurements,
+    textElements: state.textElements,
+    settings: state.settings,
+    walls: state.walls,
+    floors: state.floors,
+    wallNodes,
+    floorNodes,
+    openingNodes,
+    nodes,
+    rootNodeIds,
+  };
+}
+
+const plannerSceneActions: PlannerSceneActions = {
+  addMeasurement: (...args) => useStore.getState().addMeasurement(...args),
+  updateMeasurement: (...args) => useStore.getState().updateMeasurement(...args),
+  deleteMeasurement: (...args) => useStore.getState().deleteMeasurement(...args),
+  addTextElement: (...args) => useStore.getState().addTextElement(...args),
+  updateTextElement: (...args) => useStore.getState().updateTextElement(...args),
+  deleteTextElement: (...args) => useStore.getState().deleteTextElement(...args),
+  updateSettings: (...args) => useStore.getState().updateSettings(...args),
+  clearTemporaryMeasurements: (...args) =>
+    useStore.getState().clearTemporaryMeasurements(...args),
+  addWall: (...args) => useStore.getState().addWall(...args),
+  updateWall: (...args) => useStore.getState().updateWall(...args),
+  deleteWall: (...args) => useStore.getState().deleteWall(...args),
+  addWallOpening: (...args) => useStore.getState().addWallOpening(...args),
+  updateWallOpening: (...args) => useStore.getState().updateWallOpening(...args),
+  deleteWallOpening: (...args) => useStore.getState().deleteWallOpening(...args),
+  addFloor: (...args) => useStore.getState().addFloor(...args),
+  updateFloor: (...args) => useStore.getState().updateFloor(...args),
+  deleteFloor: (...args) => useStore.getState().deleteFloor(...args),
+  connectWalls: (...args) => useStore.getState().connectWalls(...args),
+  autoConnectNearbyWalls: (...args) =>
+    useStore.getState().autoConnectNearbyWalls(...args),
+  undoPlanner: (...args) => useStore.getState().undoPlanner(...args),
+  redoPlanner: (...args) => useStore.getState().redoPlanner(...args),
+};
+
+const usePlannerSceneStore = create<PlannerSceneStoreState>()(() => ({
+  ...buildPlannerSceneSnapshot(useStore.getState()),
+  ...plannerSceneActions,
+}));
+
+useStore.subscribe((state) => {
+  usePlannerSceneStore.setState(buildPlannerSceneSnapshot(state));
+});
 
 export default usePlannerSceneStore;

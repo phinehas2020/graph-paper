@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { PlannerInspector } from '@/src/components/PlannerInspector';
+import { PlannerOpeningNode, PlannerWallNode } from '@/src/model/types';
 import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
 import usePlannerViewerStore from '@/src/planner/stores/usePlannerViewerStore';
 
@@ -17,7 +18,7 @@ export function PlannerSelectionInspector({
   const setSelectedElement = usePlannerViewerStore(
     (state) => state.setSelectedElement,
   );
-  const walls = usePlannerSceneStore((state) => state.walls);
+  const nodes = usePlannerSceneStore((state) => state.nodes);
   const updateWall = usePlannerSceneStore((state) => state.updateWall);
   const updateWallOpening = usePlannerSceneStore(
     (state) => state.updateWallOpening,
@@ -28,20 +29,21 @@ export function PlannerSelectionInspector({
       return null;
     }
 
-    return walls.find((wall) => wall.id === selectedElement.wallId) ?? null;
-  }, [selectedElement, walls]);
+    const wallNode = nodes[selectedElement.wallId] as PlannerWallNode | undefined;
+    return wallNode?.type === 'wall' ? wallNode.entity : null;
+  }, [nodes, selectedElement]);
 
   const selectedOpening = useMemo(() => {
     if (selectedElement?.type !== 'opening') {
       return null;
     }
 
-    return (
-      selectedWall?.openings?.find(
-        (opening) => opening.id === selectedElement.openingId,
-      ) ?? null
-    );
-  }, [selectedElement, selectedWall]);
+    const openingNode = nodes[selectedElement.openingId] as
+      | PlannerOpeningNode
+      | undefined;
+
+    return openingNode?.type === 'opening' ? openingNode.entity : null;
+  }, [nodes, selectedElement]);
 
   useEffect(() => {
     if (!selectedElement) {

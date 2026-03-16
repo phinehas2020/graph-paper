@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { formatMeasurement } from '@/src/tools/MeasurementUtils';
 import { Point, Wall, WallOpening } from '@/src/model/types';
 import usePlannerEditorStore from '@/src/planner/stores/usePlannerEditorStore';
@@ -222,8 +222,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   );
 
   const { 
-    walls,
-    floors,
+    wallNodes,
+    floorNodes,
     measurements,
     textElements,
     settings,
@@ -236,6 +236,14 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     updateSettings,
     autoConnectNearbyWalls 
   } = usePlannerSceneStore();
+  const walls = useMemo(
+    () => wallNodes.map((node) => node.entity),
+    [wallNodes],
+  );
+  const floors = useMemo(
+    () => floorNodes.map((node) => node.entity),
+    [floorNodes],
+  );
 
   // Convert screen coordinates to grid coordinates
   const screenToGrid = useCallback((screenX: number, screenY: number): Point => {

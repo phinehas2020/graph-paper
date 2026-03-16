@@ -308,6 +308,27 @@ export type PlannerSelection =
       openingId: string;
     };
 
+export type PlannerSceneNodeType = 'floor' | 'wall' | 'opening';
+
+interface PlannerSceneNodeBase<
+  TType extends PlannerSceneNodeType,
+  TEntity,
+> {
+  id: string;
+  type: TType;
+  parentId: string | null;
+  childIds: string[];
+  entity: TEntity;
+}
+
+export type PlannerFloorNode = PlannerSceneNodeBase<'floor', Floor>;
+export type PlannerWallNode = PlannerSceneNodeBase<'wall', Wall>;
+export type PlannerOpeningNode = PlannerSceneNodeBase<'opening', WallOpening>;
+export type PlannerSceneNode =
+  | PlannerFloorNode
+  | PlannerWallNode
+  | PlannerOpeningNode;
+
 export interface Model {
   measurements: Measurement[];
   textElements: TextElement[];
