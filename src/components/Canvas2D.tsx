@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import useStore from '@/src/model/useStore';
 import { formatMeasurement } from '@/src/tools/MeasurementUtils';
-import { Point, Wall, WallOpening } from '@/src/model/types';
+import { PlannerSelection, Point, Wall, WallOpening } from '@/src/model/types';
 
 interface Canvas2DProps {
   width: number;
@@ -9,12 +9,18 @@ interface Canvas2DProps {
   activeTool: 'floor' | 'wall' | 'door' | 'window' | 'select' | 'measure' | 'text' | null;
   snapToFloorEdges?: boolean;
   onToolAction?: (action: string, data: any) => void;
+  selectedElement?: PlannerSelection | null;
+  onSelectionChange?: (selection: PlannerSelection | null) => void;
 }
 
 const GRID_SIZE = 20; // pixels per grid unit
 const CONNECTION_THRESHOLD = 0.5; // grid units
 const FLOOR_EDGE_SNAP_THRESHOLD = 0.75; // grid units
 const OPENING_PLACEMENT_THRESHOLD = 0.8; // grid units
+const WALL_SELECTION_THRESHOLD = 0.75; // grid units
+const OPENING_SELECTION_THRESHOLD = 0.95; // grid units
+const DEFAULT_WALL_COLOR = '#f5f3ef';
+const SELECTION_COLOR = '#f59e0b';
 
 function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
@@ -127,6 +133,27 @@ function projectPointToSegment(point: Point, start: Point, end: Point): Point {
   };
 }
 
+function getPointToSegmentDistance(point: Point, start: Point, end: Point) {
+  const projectedPoint = projectPointToSegment(point, start, end);
+  return {
+    projectedPoint,
+    distance: distanceBetweenPoints(point, projectedPoint),
+  };
+}
+
+function hexToRgba(color: string, alpha: number) {
+  const normalized = color.replace('#', '');
+  if (normalized.length !== 6) {
+    return `rgba(148, 163, 184, ${alpha})`;
+  }
+
+  const red = Number.parseInt(normalized.slice(0, 2), 16);
+  const green = Number.parseInt(normalized.slice(2, 4), 16);
+  const blue = Number.parseInt(normalized.slice(4, 6), 16);
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
 interface WallPlacement {
   wall: Wall;
   point: Point;
@@ -179,13 +206,14 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   height, 
   activeTool, 
   snapToFloorEdges = true,
-  onToolAction 
+  onToolAction,
+  selectedElement = null,
+  onSelectionChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
-  const [draggedWall, setDraggedWall] = useState<{wallId: string, endpoint: 'start' | 'end'} | null>(null);
   const [editingText, setEditingText] = useState<{id: string, text: string} | null>(null);
   const [textInput, setTextInput] = useState('');
   
@@ -374,13 +402,53 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     };
   }, []);
 
+  const findClosestWallHit = useCallback((point: Point): Wall | null => {
+    let closestWall: Wall | null = null;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+
+    walls.forEach((wall) => {
+      const threshold = Math.max(WALL_SELECTION_THRESHOLD, wall.thickness * 2.8);
+      const { distance } = getPointToSegmentDistance(point, wall.start, wall.end);
+
+      if (distance <= threshold && distance < smallestDistance) {
+        closestWall = wall;
+        smallestDistance = distance;
+      }
+    });
+
+    return closestWall;
+  }, [walls]);
+
+  const findClosestOpeningHit = useCallback((point: Point): { wallId: string; openingId: string } | null => {
+    let closestOpening: { wallId: string; openingId: string } | null = null;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+
+    walls.forEach((wall) => {
+      (wall.openings ?? []).forEach((opening) => {
+        const endpoints = getWallOpeningEndpoints(wall, opening);
+        const { distance } = getPointToSegmentDistance(point, endpoints.start, endpoints.end);
+
+        if (distance <= OPENING_SELECTION_THRESHOLD && distance < smallestDistance) {
+          closestOpening = {
+            wallId: wall.id,
+            openingId: opening.id,
+          };
+          smallestDistance = distance;
+        }
+      });
+    });
+
+    return closestOpening;
+  }, [walls]);
+
   const drawOpeningSymbol = useCallback((
     ctx: CanvasRenderingContext2D,
     wall: Wall,
     opening: WallOpening,
-    options?: { preview?: boolean },
+    options?: { preview?: boolean; selected?: boolean },
   ) => {
     const preview = options?.preview ?? false;
+    const selected = options?.selected ?? false;
     const openingEndpoints = getWallOpeningEndpoints(wall, opening);
     const start = gridToScreen(openingEndpoints.start.x, openingEndpoints.start.y);
     const end = gridToScreen(openingEndpoints.end.x, openingEndpoints.end.y);
@@ -395,8 +463,16 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       return;
     }
 
-    const doorStroke = preview ? 'rgba(249, 115, 22, 0.95)' : '#1d4ed8';
-    const windowStroke = preview ? 'rgba(34, 197, 94, 0.95)' : '#0ea5e9';
+    const doorStroke = selected
+      ? SELECTION_COLOR
+      : preview
+        ? 'rgba(249, 115, 22, 0.95)'
+        : '#1d4ed8';
+    const windowStroke = selected
+      ? SELECTION_COLOR
+      : preview
+        ? 'rgba(34, 197, 94, 0.95)'
+        : '#0ea5e9';
     const unitX = screenDx / screenLength;
     const unitY = screenDy / screenLength;
     const normalX = -unitY;
@@ -406,8 +482,12 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    ctx.strokeStyle = preview ? 'rgba(255, 247, 237, 0.98)' : 'rgba(255, 255, 255, 0.98)';
-    ctx.lineWidth = wallWidth + (preview ? 8 : 6);
+    ctx.strokeStyle = selected
+      ? 'rgba(255, 245, 230, 0.98)'
+      : preview
+        ? 'rgba(255, 247, 237, 0.98)'
+        : 'rgba(255, 255, 255, 0.98)';
+    ctx.lineWidth = wallWidth + (selected ? 10 : preview ? 8 : 6);
     ctx.beginPath();
     ctx.moveTo(start.x, start.y);
     ctx.lineTo(end.x, end.y);
@@ -422,7 +502,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const arcRadius = screenLength;
 
       ctx.strokeStyle = doorStroke;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = selected ? 2.8 : 2;
 
       ctx.beginPath();
       ctx.moveTo(start.x - normalX * (wallWidth * 0.42), start.y - normalY * (wallWidth * 0.42));
@@ -446,7 +526,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       ctx.stroke();
     } else {
       ctx.strokeStyle = windowStroke;
-      ctx.lineWidth = Math.max(3, wallWidth * 0.45);
+      ctx.lineWidth = Math.max(selected ? 4 : 3, wallWidth * 0.45);
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
@@ -558,6 +638,14 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     walls.forEach(wall => {
       const start = gridToScreen(wall.start.x, wall.start.y);
       const end = gridToScreen(wall.end.x, wall.end.y);
+      const isSelectedWall =
+        selectedElement?.type === 'wall'
+          ? selectedElement.wallId === wall.id
+          : selectedElement?.type === 'opening' && selectedElement.wallId === wall.id;
+      const selectedOpeningId =
+        selectedElement?.type === 'opening' && selectedElement.wallId === wall.id
+          ? selectedElement.openingId
+          : null;
 
       const dx = end.x - start.x;
       const dy = end.y - start.y;
@@ -567,48 +655,53 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const normalY = length === 0 ? 0 : dx / length;
       const labelX = (start.x + end.x) / 2 + normalX * 20;
       const labelY = (start.y + end.y) / 2 + normalY * 20;
+      const wallColor = wall.color ?? DEFAULT_WALL_COLOR;
 
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.24)';
-      ctx.lineWidth = wallWidth + 10;
+      ctx.strokeStyle = isSelectedWall
+        ? 'rgba(245, 158, 11, 0.28)'
+        : hexToRgba(wallColor, 0.18);
+      ctx.lineWidth = wallWidth + (isSelectedWall ? 14 : 10);
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
       ctx.stroke();
 
-      ctx.strokeStyle = '#2f6fb0';
-      ctx.lineWidth = wallWidth + 2;
+      ctx.strokeStyle = isSelectedWall ? SELECTION_COLOR : '#2f6fb0';
+      ctx.lineWidth = wallWidth + (isSelectedWall ? 3 : 2);
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
       ctx.stroke();
 
-      ctx.strokeStyle = '#f8fbff';
+      ctx.strokeStyle = wallColor;
       ctx.lineWidth = wallWidth - 1;
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
       ctx.stroke();
 
-      drawNode(ctx, start.x, start.y, '#3092ec');
-      drawNode(ctx, end.x, end.y, '#3092ec');
+      drawNode(ctx, start.x, start.y, isSelectedWall ? SELECTION_COLOR : '#3092ec');
+      drawNode(ctx, end.x, end.y, isSelectedWall ? SELECTION_COLOR : '#3092ec');
 
       (wall.openings ?? []).forEach((opening) => {
-        drawOpeningSymbol(ctx, wall, opening);
+        drawOpeningSymbol(ctx, wall, opening, {
+          selected: selectedOpeningId === opening.id,
+        });
       });
 
       drawPillLabel(ctx, formatMeasurement(length / GRID_SIZE), labelX, labelY, {
         background: 'rgba(255, 255, 255, 0.92)',
-        border: '#bfdbfe',
-        color: '#2563eb',
+        border: isSelectedWall ? '#fcd34d' : '#bfdbfe',
+        color: isSelectedWall ? '#b45309' : '#2563eb',
       });
 
       ctx.restore();
     });
-  }, [walls, drawOpeningSymbol, gridToScreen]);
+  }, [walls, drawOpeningSymbol, gridToScreen, selectedElement]);
 
   const drawMeasurements = useCallback((ctx: CanvasRenderingContext2D) => {
     measurements.forEach(measurement => {
@@ -911,6 +1004,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
               elevation: 0,
               thickness: 0.2
             });
+            onSelectionChange?.(null);
             setCurrentPoints([]);
             setIsDrawing(false);
             setPreviewPoint(null);
@@ -933,6 +1027,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
           end: wallPoint,
           height: 3,
           thickness: 0.15,
+          color: DEFAULT_WALL_COLOR,
           openings: [],
         });
         
@@ -940,6 +1035,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         autoConnectNearbyWalls(CONNECTION_THRESHOLD);
         
         // Start new wall from current point
+        onSelectionChange?.(null);
         setCurrentPoints([wallPoint]);
         onToolAction?.('wall-completed', { wallId, start: currentPoints[0], end: wallPoint });
       }
@@ -951,6 +1047,11 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         const opening = createOpeningPayload(activeTool, placement);
         if (opening) {
           const openingId = addWallOpening(placement.wall.id, opening);
+          onSelectionChange?.({
+            type: 'opening',
+            wallId: placement.wall.id,
+            openingId,
+          });
           onToolAction?.('opening-added', {
             openingId,
             wallId: placement.wall.id,
@@ -996,13 +1097,28 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     }
     
     if (activeTool === 'select') {
-      // Check if clicking on wall endpoint for dragging connections
-      const nearby = findNearbyEndpoint(rawPoint);
-      if (nearby) {
-        setDraggedWall({ wallId: nearby.wallId, endpoint: nearby.endpoint });
+      const openingHit = findClosestOpeningHit(rawPoint);
+      if (openingHit) {
+        onSelectionChange?.({
+          type: 'opening',
+          wallId: openingHit.wallId,
+          openingId: openingHit.openingId,
+        });
+        return;
       }
+
+      const wallHit = findClosestWallHit(rawPoint);
+      if (wallHit) {
+        onSelectionChange?.({
+          type: 'wall',
+          wallId: wallHit.id,
+        });
+        return;
+      }
+
+      onSelectionChange?.(null);
     }
-  }, [activeTool, addFloor, addMeasurement, addTextElement, addWall, addWallOpening, autoConnectNearbyWalls, createOpeningPayload, currentPoints, findClosestWallPlacement, findNearbyEndpoint, isDrawing, onToolAction, resolveWallPoint, screenToGrid, settings.measurementMode, settings.units, updateSettings]);
+  }, [activeTool, addFloor, addMeasurement, addTextElement, addWall, addWallOpening, autoConnectNearbyWalls, createOpeningPayload, currentPoints, findClosestOpeningHit, findClosestWallHit, findClosestWallPlacement, isDrawing, onSelectionChange, onToolAction, resolveWallPoint, screenToGrid, settings.measurementMode, settings.units, updateSettings]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rawPoint = screenToGrid(e.clientX, e.clientY);
@@ -1014,10 +1130,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   }, [activeTool, isDrawing, resolveWallPoint, screenToGrid]);
 
   const handleMouseUp = useCallback(() => {
-    if (draggedWall) {
-      setDraggedWall(null);
-    }
-  }, [draggedWall]);
+    return undefined;
+  }, []);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -1031,7 +1145,6 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         setCurrentPoints([]);
         setIsDrawing(false);
         setPreviewPoint(null);
-        setDraggedWall(null);
       }
     }
     if (e.key === 'Enter' && activeTool === 'wall' && isDrawing) {

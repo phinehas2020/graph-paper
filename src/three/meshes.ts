@@ -302,7 +302,7 @@ export function wallToMesh(wall: Wall, walls: Wall[]): THREE.Group {
   const geometry = createWallGeometry(wall, totalLength, openings);
 
   const material = new THREE.MeshStandardMaterial({
-    color: 0xf5f3ef,
+    color: new THREE.Color(wall.color ?? 0xf5f3ef),
     roughness: 0.88,
     metalness: 0.02,
   });

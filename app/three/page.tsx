@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   DraftingCompass,
@@ -12,7 +12,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Canvas2D } from '@/src/components/Canvas2D';
+import { PlannerInspector } from '@/src/components/PlannerInspector';
 import { ToolPanel } from '@/src/components/ToolPanel';
+import { PlannerSelection } from '@/src/model/types';
 import { Viewer } from '@/src/three/Viewer';
 import useStore from '@/src/model/useStore';
 import { useIsMobile } from '@/hooks/use-is-mobile';
@@ -39,14 +41,45 @@ export default function ThreePage() {
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [showGuide, setShowGuide] = useState(true);
   const [snapToFloorEdges, setSnapToFloorEdges] = useState(true);
+  const [selectedElement, setSelectedElement] = useState<PlannerSelection | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
-  const { walls, floors, settings } = useStore();
+  const walls = useStore((state) => state.walls);
+  const floors = useStore((state) => state.floors);
+  const settings = useStore((state) => state.settings);
+  const updateWall = useStore((state) => state.updateWall);
+  const updateWallOpening = useStore((state) => state.updateWallOpening);
+  const undoPlanner = useStore((state) => state.undoPlanner);
+  const redoPlanner = useStore((state) => state.redoPlanner);
   const openingCount = useMemo(
     () => walls.reduce((total, wall) => total + (wall.openings?.length ?? 0), 0),
     [walls],
   );
+  const selectedWall = useMemo(() => {
+    if (!selectedElement) {
+      return null;
+    }
+
+    return walls.find((wall) => wall.id === selectedElement.wallId) ?? null;
+  }, [selectedElement, walls]);
+  const selectedOpening = useMemo(() => {
+    if (selectedElement?.type !== 'opening') {
+      return null;
+    }
+
+    return (
+      selectedWall?.openings?.find((opening) => opening.id === selectedElement.openingId) ??
+      null
+    );
+  }, [selectedElement, selectedWall]);
+  const inspectorPositionClass = useMemo(() => {
+    if (isMobile) {
+      return 'inset-x-4 bottom-4';
+    }
+
+    return showGuide ? 'right-5 top-32 w-[320px]' : 'right-5 top-5 w-[320px]';
+  }, [isMobile, showGuide]);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -84,6 +117,59 @@ export default function ThreePage() {
       setSnapToFloorEdges(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!selectedElement) {
+      return;
+    }
+
+    if (!selectedWall) {
+      setSelectedElement(null);
+      return;
+    }
+
+    if (selectedElement.type === 'opening' && !selectedOpening) {
+      setSelectedElement(null);
+    }
+  }, [selectedElement, selectedOpening, selectedWall]);
+
+  useEffect(() => {
+    const handleUndoShortcuts = (event: KeyboardEvent) => {
+      const target = event.target;
+      const isEditableTarget =
+        target instanceof HTMLElement &&
+        (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable
+        );
+
+      if (isEditableTarget || settings.isTextEditing) {
+        return;
+      }
+
+      const hasCommandModifier = event.metaKey || event.ctrlKey;
+      if (!hasCommandModifier || event.altKey) {
+        return;
+      }
+
+      const lowerKey = event.key.toLowerCase();
+      if (lowerKey === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        undoPlanner();
+        return;
+      }
+
+      if ((lowerKey === 'z' && event.shiftKey) || (!event.metaKey && lowerKey === 'y')) {
+        event.preventDefault();
+        redoPlanner();
+      }
+    };
+
+    window.addEventListener('keydown', handleUndoShortcuts);
+    return () => window.removeEventListener('keydown', handleUndoShortcuts);
+  }, [redoPlanner, settings.isTextEditing, undoPlanner]);
 
   const toggleGuide = () => {
     const nextValue = !showGuide;
@@ -256,7 +342,34 @@ export default function ThreePage() {
                     height={dimensions.height}
                     activeTool={activeTool}
                     snapToFloorEdges={snapToFloorEdges}
+                    selectedElement={selectedElement}
+                    onSelectionChange={setSelectedElement}
                   />
+
+                  {selectedWall && (
+                    <div className={`absolute z-20 ${inspectorPositionClass}`}>
+                      <PlannerInspector
+                        selectedWall={selectedWall}
+                        selectedOpening={selectedOpening}
+                        onWallColorChange={(color) => updateWall(selectedWall.id, { color })}
+                        onOpeningWidthChange={(width) => {
+                          if (selectedElement?.type === 'opening') {
+                            updateWallOpening(selectedElement.wallId, selectedElement.openingId, { width });
+                          }
+                        }}
+                        onOpeningHeightChange={(height) => {
+                          if (selectedElement?.type === 'opening') {
+                            updateWallOpening(selectedElement.wallId, selectedElement.openingId, { height });
+                          }
+                        }}
+                        onOpeningBottomChange={(bottom) => {
+                          if (selectedElement?.type === 'opening') {
+                            updateWallOpening(selectedElement.wallId, selectedElement.openingId, { bottom });
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
 
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-end justify-between gap-3 p-4 md:p-5">
                     {showGuide && (

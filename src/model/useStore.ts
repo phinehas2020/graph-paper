@@ -4,6 +4,74 @@ import { Model, Measurement, TextElement, Wall, Floor, FlatPiece, FlatOpening, C
 
 // Helper for ID generation
 const generateId = () => Date.now().toString() + Math.random().toString(36).substring(2, 9);
+const DEFAULT_WALL_COLOR = '#f5f3ef';
+const PLANNER_HISTORY_LIMIT = 80;
+
+type PlannerSnapshot = Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors'>;
+
+const clonePlannerSnapshot = (
+  source: Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors'>,
+): PlannerSnapshot => structuredClone({
+  measurements: source.measurements,
+  textElements: source.textElements,
+  walls: source.walls,
+  floors: source.floors,
+});
+
+function getWallLength(wall: Wall) {
+  return Math.hypot(wall.end.x - wall.start.x, wall.end.y - wall.start.y);
+}
+
+function getOpeningCenterDistance(wall: Wall, opening: WallOpening) {
+  return getWallLength(wall) * opening.offset;
+}
+
+function clampWallOpening(
+  wall: Wall,
+  opening: WallOpening,
+  openingId?: string,
+): WallOpening {
+  const wallLength = getWallLength(wall);
+  if (wallLength <= 0) {
+    return {
+      ...opening,
+      width: 0.8,
+      height: Math.max(0.8, Math.min(opening.height, wall.height)),
+      bottom: Math.max(0, Math.min(opening.bottom, Math.max(0, wall.height - 0.8))),
+      offset: 0.5,
+    };
+  }
+
+  const bottom = Math.max(0, Math.min(opening.bottom, Math.max(0, wall.height - 0.8)));
+  const maxHeight = Math.max(0.8, wall.height - bottom - 0.08);
+  const height = Math.max(0.8, Math.min(opening.height, maxHeight));
+  const center = Math.max(0, Math.min(wallLength, opening.offset * wallLength));
+
+  let maxWidth = Math.max(0.8, wallLength - 0.4);
+  maxWidth = Math.min(maxWidth, Math.max(0.8, center * 2), Math.max(0.8, (wallLength - center) * 2));
+
+  for (const sibling of wall.openings ?? []) {
+    if (sibling.id === openingId) {
+      continue;
+    }
+
+    const siblingCenter = getOpeningCenterDistance(wall, sibling);
+    const clearance = Math.abs(siblingCenter - center) - sibling.width / 2 - 0.25;
+    maxWidth = Math.min(maxWidth, Math.max(0.8, clearance * 2));
+  }
+
+  const width = Math.max(0.8, Math.min(opening.width, maxWidth));
+  const halfRatio = width / (2 * wallLength);
+  const offset = Math.max(halfRatio, Math.min(1 - halfRatio, opening.offset));
+
+  return {
+    ...opening,
+    width,
+    height,
+    bottom,
+    offset,
+  };
+}
 
 const initialState: Model = {
   measurements: [],
@@ -101,6 +169,8 @@ interface StoreActions {
   calculateWireRuns: () => void;
   updateWirePrices: (prices: { [key: string]: number }) => void;
   updatePipePrices: (prices: { [key: string]: number }) => void;
+  undoPlanner: () => void;
+  redoPlanner: () => void;
   addPlumbingFixture: (fixtureData: Omit<PlumbingFixture, 'id'>) => string;
   updatePlumbingFixture: (id: string, updates: Partial<Omit<PlumbingFixture, 'id'>>) => void;
   deletePlumbingFixture: (id: string) => void;
@@ -156,43 +226,71 @@ interface StoreSelectors {
   selectPlumbingFixtureById: (id: string) => PlumbingFixture | undefined;
 }
 
-type StoreState = Model & StoreActions & StoreSelectors;
+interface PlannerHistoryState {
+  plannerHistoryPast: PlannerSnapshot[];
+  plannerHistoryFuture: PlannerSnapshot[];
+}
+
+type StoreState = Model & PlannerHistoryState & StoreActions & StoreSelectors;
+
+function pushPlannerHistorySnapshot(draft: StoreState) {
+  draft.plannerHistoryPast.push(clonePlannerSnapshot(draft));
+  if (draft.plannerHistoryPast.length > PLANNER_HISTORY_LIMIT) {
+    draft.plannerHistoryPast.shift();
+  }
+  draft.plannerHistoryFuture = [];
+}
+
+function restorePlannerSnapshot(draft: StoreState, snapshot: PlannerSnapshot) {
+  draft.measurements = snapshot.measurements;
+  draft.textElements = snapshot.textElements;
+  draft.walls = snapshot.walls;
+  draft.floors = snapshot.floors;
+}
 
 const useStore = create<StoreState>()(
   (set, get) => ({
     ...initialState,
+    plannerHistoryPast: [],
+    plannerHistoryFuture: [],
 
     // Actions
     addMeasurement: (measurementData) => {
       const id = generateId();
-      set(produce((draft: Model) => {
+      set(produce((draft: StoreState) => {
+        pushPlannerHistorySnapshot(draft);
         draft.measurements.push({ ...measurementData, id });
       }));
       return id;
     },
-    updateMeasurement: (id, updates) => set(produce((draft: Model) => {
+    updateMeasurement: (id, updates) => set(produce((draft: StoreState) => {
       const measurement = draft.measurements.find(m => m.id === id);
       if (measurement) {
+        pushPlannerHistorySnapshot(draft);
         Object.assign(measurement, updates);
       }
     })),
-    deleteMeasurement: (id) => set(produce((draft: Model) => {
+    deleteMeasurement: (id) => set(produce((draft: StoreState) => {
+      pushPlannerHistorySnapshot(draft);
       draft.measurements = draft.measurements.filter(m => m.id !== id);
     })),
     addTextElement: (textData) => {
       const id = generateId();
-      set(produce((draft: Model) => {
+      set(produce((draft: StoreState) => {
+        pushPlannerHistorySnapshot(draft);
         draft.textElements.push({ ...textData, id });
       }));
       return id;
     },
-    updateTextElement: (id, updates) => set(produce((draft: Model) => {
+    updateTextElement: (id, updates) => set(produce((draft: StoreState) => {
       const textElement = draft.textElements.find(t => t.id === id);
       if (textElement) {
+        pushPlannerHistorySnapshot(draft);
         Object.assign(textElement, updates);
       }
     })),
-    deleteTextElement: (id) => set(produce((draft: Model) => {
+    deleteTextElement: (id) => set(produce((draft: StoreState) => {
+      pushPlannerHistorySnapshot(draft);
       draft.textElements = draft.textElements.filter(t => t.id !== id);
     })),
     updateSettings: (settings) => set(produce((draft: Model) => {
@@ -205,64 +303,74 @@ const useStore = create<StoreState>()(
     // Traditional CAD Actions for Canvas2D
     addWall: (wallData) => {
       const id = generateId();
-      set(produce((draft: Model) => {
+      set(produce((draft: StoreState) => {
+        pushPlannerHistorySnapshot(draft);
         draft.walls.push({
           ...wallData,
           id,
+          color: wallData.color ?? DEFAULT_WALL_COLOR,
           openings: wallData.openings ?? [],
         });
       }));
       return id;
     },
-    updateWall: (id, updates) => set(produce((draft: Model) => {
+    updateWall: (id, updates) => set(produce((draft: StoreState) => {
       const wall = draft.walls.find(w => w.id === id);
       if (wall) {
+        pushPlannerHistorySnapshot(draft);
         Object.assign(wall, updates);
       }
     })),
-    deleteWall: (id) => set(produce((draft: Model) => {
+    deleteWall: (id) => set(produce((draft: StoreState) => {
+      pushPlannerHistorySnapshot(draft);
       draft.walls = draft.walls.filter(w => w.id !== id);
     })),
     addWallOpening: (wallId, openingData) => {
       const id = generateId();
-      set(produce((draft: Model) => {
+      set(produce((draft: StoreState) => {
         const wall = draft.walls.find(w => w.id === wallId);
         if (wall) {
+          pushPlannerHistorySnapshot(draft);
           if (!wall.openings) {
             wall.openings = [];
           }
-          wall.openings.push({ ...openingData, id });
+          wall.openings.push(clampWallOpening(wall, { ...openingData, id }, id));
         }
       }));
       return id;
     },
-    updateWallOpening: (wallId, openingId, updates) => set(produce((draft: Model) => {
+    updateWallOpening: (wallId, openingId, updates) => set(produce((draft: StoreState) => {
       const wall = draft.walls.find(w => w.id === wallId);
       const opening = wall?.openings?.find(o => o.id === openingId);
-      if (opening) {
-        Object.assign(opening, updates);
+      if (wall && opening) {
+        pushPlannerHistorySnapshot(draft);
+        Object.assign(opening, clampWallOpening(wall, { ...opening, ...updates }, openingId));
       }
     })),
-    deleteWallOpening: (wallId, openingId) => set(produce((draft: Model) => {
+    deleteWallOpening: (wallId, openingId) => set(produce((draft: StoreState) => {
       const wall = draft.walls.find(w => w.id === wallId);
       if (wall?.openings) {
+        pushPlannerHistorySnapshot(draft);
         wall.openings = wall.openings.filter(o => o.id !== openingId);
       }
     })),
     addFloor: (floorData) => {
       const id = generateId();
-      set(produce((draft: Model) => {
+      set(produce((draft: StoreState) => {
+        pushPlannerHistorySnapshot(draft);
         draft.floors.push({ ...floorData, id });
       }));
       return id;
     },
-    updateFloor: (id, updates) => set(produce((draft: Model) => {
+    updateFloor: (id, updates) => set(produce((draft: StoreState) => {
       const floor = draft.floors.find(f => f.id === id);
       if (floor) {
+        pushPlannerHistorySnapshot(draft);
         Object.assign(floor, updates);
       }
     })),
-    deleteFloor: (id) => set(produce((draft: Model) => {
+    deleteFloor: (id) => set(produce((draft: StoreState) => {
+      pushPlannerHistorySnapshot(draft);
       draft.floors = draft.floors.filter(f => f.id !== id);
     })),
     connectWalls: (wallId1, wallId2) => {
@@ -447,6 +555,24 @@ const useStore = create<StoreState>()(
     })),
     updatePipePrices: (prices) => set(produce((draft: Model) => {
       Object.assign(draft.settings.pipePrices, prices);
+    })),
+    undoPlanner: () => set(produce((draft: StoreState) => {
+      const previous = draft.plannerHistoryPast.pop();
+      if (!previous) {
+        return;
+      }
+
+      draft.plannerHistoryFuture.push(clonePlannerSnapshot(draft));
+      restorePlannerSnapshot(draft, previous);
+    })),
+    redoPlanner: () => set(produce((draft: StoreState) => {
+      const next = draft.plannerHistoryFuture.pop();
+      if (!next) {
+        return;
+      }
+
+      draft.plannerHistoryPast.push(clonePlannerSnapshot(draft));
+      restorePlannerSnapshot(draft, next);
     })),
     addPlumbingFixture: (fixtureData) => {
       const id = generateId();

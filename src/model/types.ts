@@ -78,6 +78,7 @@ export interface Wall {
   end: Point;
   height: number;
   thickness: number;
+  color?: string;
   openings: WallOpening[];
   connected?: boolean;
   connections?: {
@@ -295,6 +296,17 @@ export interface TextElement {
   color: string;
   rotation: number; // in degrees
 }
+
+export type PlannerSelection =
+  | {
+      type: 'wall';
+      wallId: string;
+    }
+  | {
+      type: 'opening';
+      wallId: string;
+      openingId: string;
+    };
 
 export interface Model {
   measurements: Measurement[];

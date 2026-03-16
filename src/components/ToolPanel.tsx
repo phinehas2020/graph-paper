@@ -149,12 +149,12 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       className={cn(
         compact
           ? 'panel-surface panel-glow w-[68px] overflow-hidden border-slate-200/80 bg-white/88'
-          : 'panel-surface panel-glow w-[272px] overflow-hidden border-slate-200/80 bg-white/85',
+          : 'panel-surface panel-glow w-[228px] overflow-hidden border-slate-200/80 bg-white/85',
         className,
       )}
     >
       {!compact && (
-        <CardHeader className="space-y-3 border-b border-slate-100/90 p-4">
+        <CardHeader className="space-y-3 border-b border-slate-100/90 p-3.5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-400">
@@ -175,7 +175,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
         </CardHeader>
       )}
 
-      <CardContent className={cn('space-y-2 p-3', compact && 'p-1.5')}>
+      <CardContent className={cn('space-y-2 p-2.5', compact && 'p-1.5')}>
         {tools.map((tool) => {
           const Icon = tool.icon;
           const isActive = activeTool === tool.id;
@@ -188,7 +188,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
               className={cn(
                 compact
                   ? 'h-14 w-full rounded-[18px] border border-transparent px-0 py-0'
-                  : 'h-auto w-full justify-start rounded-2xl border border-transparent px-3 py-3 text-left transition-all duration-200',
+                  : 'h-auto w-full justify-start rounded-2xl border border-transparent px-2.5 py-3 text-left transition-all duration-200',
                 isActive
                   ? 'border-sky-200 bg-sky-50/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_12px_24px_-18px_rgba(14,116,144,0.6)]'
                   : 'hover:border-slate-200 hover:bg-slate-50/90',
