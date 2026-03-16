@@ -17,7 +17,10 @@ function DraftScene() {
   const floors = useStore((state) => state.floors);
 
   const floorMeshes = useMemo(() => floors.map(floorToMesh), [floors]);
-  const wallMeshes = useMemo(() => walls.map(wallToMesh), [walls]);
+  const wallMeshes = useMemo(
+    () => walls.map((wall) => wallToMesh(wall, walls)),
+    [walls],
+  );
   const hasGeometry = floorMeshes.length > 0 || wallMeshes.length > 0;
 
   return (

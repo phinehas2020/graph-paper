@@ -7,12 +7,14 @@ interface Canvas2DProps {
   width: number;
   height: number;
   activeTool: 'floor' | 'wall' | 'select' | 'measure' | 'text' | null;
+  snapToFloorEdges?: boolean;
   onToolAction?: (action: string, data: any) => void;
 }
 
 const GRID_SIZE = 20; // pixels per grid unit
 const SNAP_THRESHOLD = 10; // pixels
 const CONNECTION_THRESHOLD = 0.5; // grid units
+const FLOOR_EDGE_SNAP_THRESHOLD = 0.75; // grid units
 
 function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
@@ -91,10 +93,45 @@ function drawNode(
   ctx.restore();
 }
 
+function distanceBetweenPoints(pointA: Point, pointB: Point): number {
+  return Math.sqrt((pointA.x - pointB.x) ** 2 + (pointA.y - pointB.y) ** 2);
+}
+
+function getPolylineLength(points: Point[]): number {
+  if (points.length < 2) {
+    return 0;
+  }
+
+  let totalLength = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    totalLength += distanceBetweenPoints(points[index - 1], points[index]);
+  }
+  return totalLength;
+}
+
+function projectPointToSegment(point: Point, start: Point, end: Point): Point {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSquared = dx * dx + dy * dy;
+
+  if (lengthSquared === 0) {
+    return start;
+  }
+
+  const t = ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared;
+  const clampedT = Math.max(0, Math.min(1, t));
+
+  return {
+    x: start.x + dx * clampedT,
+    y: start.y + dy * clampedT,
+  };
+}
+
 export const Canvas2D: React.FC<Canvas2DProps> = ({ 
   width, 
   height, 
   activeTool, 
+  snapToFloorEdges = true,
   onToolAction 
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -146,20 +183,68 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   }, [width, height]);
 
   // Find nearby wall endpoints for snapping
-  const findNearbyEndpoint = useCallback((point: Point): {wallId: string, endpoint: 'start' | 'end', point: Point} | null => {
+  const findNearbyEndpoint = useCallback((point: Point): {wallId: string, endpoint: 'start' | 'end', point: Point, distance: number} | null => {
     for (const wall of walls) {
-      const startDist = Math.sqrt((wall.start.x - point.x) ** 2 + (wall.start.y - point.y) ** 2);
-      const endDist = Math.sqrt((wall.end.x - point.x) ** 2 + (wall.end.y - point.y) ** 2);
+      const startDist = distanceBetweenPoints(wall.start, point);
+      const endDist = distanceBetweenPoints(wall.end, point);
       
       if (startDist <= CONNECTION_THRESHOLD) {
-        return { wallId: wall.id, endpoint: 'start', point: wall.start };
+        return { wallId: wall.id, endpoint: 'start', point: wall.start, distance: startDist };
       }
       if (endDist <= CONNECTION_THRESHOLD) {
-        return { wallId: wall.id, endpoint: 'end', point: wall.end };
+        return { wallId: wall.id, endpoint: 'end', point: wall.end, distance: endDist };
       }
     }
     return null;
   }, [walls]);
+
+  const findClosestFloorEdgePoint = useCallback((point: Point): { point: Point; distance: number } | null => {
+    let closest: { point: Point; distance: number } | null = null;
+
+    floors.forEach((floor) => {
+      if (floor.points.length < 2) {
+        return;
+      }
+
+      for (let index = 0; index < floor.points.length; index += 1) {
+        const start = floor.points[index];
+        const end = floor.points[(index + 1) % floor.points.length];
+        const projectedPoint = projectPointToSegment(point, start, end);
+        const distance = distanceBetweenPoints(point, projectedPoint);
+
+        if (distance <= FLOOR_EDGE_SNAP_THRESHOLD) {
+          if (!closest || distance < closest.distance) {
+            closest = {
+              point: projectedPoint,
+              distance,
+            };
+          }
+        }
+      }
+    });
+
+    return closest;
+  }, [floors]);
+
+  const resolveWallPoint = useCallback((point: Point): Point => {
+    let resolvedPoint = point;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    const nearbyEndpoint = findNearbyEndpoint(point);
+    if (nearbyEndpoint) {
+      resolvedPoint = nearbyEndpoint.point;
+      bestDistance = nearbyEndpoint.distance;
+    }
+
+    if (snapToFloorEdges) {
+      const floorEdgePoint = findClosestFloorEdgePoint(point);
+      if (floorEdgePoint && floorEdgePoint.distance < bestDistance) {
+        resolvedPoint = floorEdgePoint.point;
+      }
+    }
+
+    return resolvedPoint;
+  }, [findClosestFloorEdgePoint, findNearbyEndpoint, snapToFloorEdges]);
 
   // Drawing functions
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D) => {
@@ -413,6 +498,38 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       if (previewPoint) {
         const preview = gridToScreen(previewPoint.x, previewPoint.y);
         ctx.lineTo(preview.x, preview.y);
+
+        const lastPoint = currentPoints[currentPoints.length - 1];
+        const segmentLength = distanceBetweenPoints(lastPoint, previewPoint);
+        const segmentMidpoint = gridToScreen(
+          (lastPoint.x + previewPoint.x) / 2,
+          (lastPoint.y + previewPoint.y) / 2,
+        );
+
+        drawPillLabel(
+          ctx,
+          `Segment ${formatMeasurement(segmentLength)}`,
+          segmentMidpoint.x,
+          segmentMidpoint.y - 18,
+          {
+            background: 'rgba(255, 247, 237, 0.96)',
+            border: '#fdba74',
+            color: '#c2410c',
+          },
+        );
+
+        const livePathLength = getPolylineLength([...currentPoints, previewPoint]);
+        drawPillLabel(
+          ctx,
+          `Run ${formatMeasurement(livePathLength)}`,
+          preview.x + 56,
+          preview.y - 20,
+          {
+            background: 'rgba(255, 255, 255, 0.96)',
+            border: '#fed7aa',
+            color: '#9a3412',
+          },
+        );
       }
       
       ctx.stroke();
@@ -444,13 +561,25 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       );
       drawPillLabel(
         ctx,
-        formatMeasurement(previewDistance),
+        `Wall ${formatMeasurement(previewDistance)}`,
         (start.x + end.x) / 2,
         (start.y + end.y) / 2 - 18,
         {
           background: 'rgba(255, 247, 237, 0.95)',
           border: '#fdba74',
           color: '#c2410c',
+        },
+      );
+
+      drawPillLabel(
+        ctx,
+        formatMeasurement(previewDistance),
+        end.x + 52,
+        end.y - 18,
+        {
+          background: 'rgba(255, 255, 255, 0.96)',
+          border: '#fdba74',
+          color: '#9a3412',
         },
       );
     }
@@ -520,17 +649,18 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
   // Event handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    const point = screenToGrid(e.clientX, e.clientY);
+    const rawPoint = screenToGrid(e.clientX, e.clientY);
+    const wallPoint = activeTool === 'wall' ? resolveWallPoint(rawPoint) : rawPoint;
     
     if (activeTool === 'floor') {
       if (!isDrawing) {
-        setCurrentPoints([point]);
+        setCurrentPoints([rawPoint]);
         setIsDrawing(true);
       } else {
         // Check if clicking near first point to close
         if (currentPoints.length > 2) {
           const firstPoint = currentPoints[0];
-          const distance = Math.sqrt((firstPoint.x - point.x) ** 2 + (firstPoint.y - point.y) ** 2);
+          const distance = distanceBetweenPoints(firstPoint, rawPoint);
           if (distance < CONNECTION_THRESHOLD) {
             // Close floor
             addFloor({
@@ -545,19 +675,19 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
             return;
           }
         }
-        setCurrentPoints(prev => [...prev, point]);
+        setCurrentPoints(prev => [...prev, rawPoint]);
       }
     }
     
     if (activeTool === 'wall') {
       if (!isDrawing) {
-        setCurrentPoints([point]);
+        setCurrentPoints([wallPoint]);
         setIsDrawing(true);
       } else {
         // Complete wall
         const wallId = addWall({
           start: currentPoints[0],
-          end: point,
+          end: wallPoint,
           height: 3,
           thickness: 0.15
         });
@@ -566,35 +696,35 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         autoConnectNearbyWalls(CONNECTION_THRESHOLD);
         
         // Start new wall from current point
-        setCurrentPoints([point]);
-        onToolAction?.('wall-completed', { wallId, start: currentPoints[0], end: point });
+        setCurrentPoints([wallPoint]);
+        onToolAction?.('wall-completed', { wallId, start: currentPoints[0], end: wallPoint });
       }
     }
     
     if (activeTool === 'measure') {
       if (!isDrawing) {
-        setCurrentPoints([point]);
+        setCurrentPoints([rawPoint]);
         setIsDrawing(true);
       } else {
         // Complete measurement
         const measurementId = addMeasurement({
           start: currentPoints[0],
-          end: point,
+          end: rawPoint,
           showDimensions: true,
           units: settings.units,
           temporary: settings.measurementMode === 'temporary'
         });
         
         // Start new measurement from current point (like wall tool)
-        setCurrentPoints([point]);
-        onToolAction?.('measurement-completed', { measurementId, start: currentPoints[0], end: point });
+        setCurrentPoints([rawPoint]);
+        onToolAction?.('measurement-completed', { measurementId, start: currentPoints[0], end: rawPoint });
       }
     }
     
     if (activeTool === 'text') {
       // Add text element
       const textId = addTextElement({
-        position: point,
+        position: rawPoint,
         text: 'Text',
         fontSize: 16,
         color: '#000000',
@@ -603,25 +733,26 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       setEditingText({ id: textId, text: 'Text' });
       setTextInput('Text');
       updateSettings({ isTextEditing: true });
-      onToolAction?.('text-added', { id: textId, position: point });
+      onToolAction?.('text-added', { id: textId, position: rawPoint });
     }
     
     if (activeTool === 'select') {
       // Check if clicking on wall endpoint for dragging connections
-      const nearby = findNearbyEndpoint(point);
+      const nearby = findNearbyEndpoint(rawPoint);
       if (nearby) {
         setDraggedWall({ wallId: nearby.wallId, endpoint: nearby.endpoint });
       }
     }
-  }, [activeTool, isDrawing, currentPoints, screenToGrid, addFloor, addWall, addMeasurement, addTextElement, updateSettings, autoConnectNearbyWalls, findNearbyEndpoint, settings.units, settings.measurementMode, onToolAction]);
+  }, [activeTool, isDrawing, currentPoints, screenToGrid, resolveWallPoint, addFloor, addWall, addMeasurement, addTextElement, updateSettings, autoConnectNearbyWalls, findNearbyEndpoint, settings.units, settings.measurementMode, onToolAction]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const point = screenToGrid(e.clientX, e.clientY);
+    const rawPoint = screenToGrid(e.clientX, e.clientY);
+    const point = activeTool === 'wall' ? resolveWallPoint(rawPoint) : rawPoint;
     
     if (isDrawing) {
       setPreviewPoint(point);
     }
-  }, [isDrawing, screenToGrid]);
+  }, [activeTool, isDrawing, resolveWallPoint, screenToGrid]);
 
   const handleMouseUp = useCallback(() => {
     if (draggedWall) {

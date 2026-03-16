@@ -36,6 +36,7 @@ export default function ThreePage() {
   const isMobile = useIsMobile();
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [showGuide, setShowGuide] = useState(true);
+  const [snapToFloorEdges, setSnapToFloorEdges] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
@@ -69,6 +70,13 @@ export default function ThreePage() {
     if (hidden === 'true') {
       setShowGuide(false);
     }
+
+    const snapPreference = window.localStorage.getItem(
+      'graph-paper-floor-edge-snap',
+    );
+    if (snapPreference === 'false') {
+      setSnapToFloorEdges(false);
+    }
   }, []);
 
   const toggleGuide = () => {
@@ -77,6 +85,15 @@ export default function ThreePage() {
     window.localStorage.setItem(
       'graph-paper-guide-hidden',
       nextValue ? 'false' : 'true',
+    );
+  };
+
+  const toggleFloorEdgeSnap = () => {
+    const nextValue = !snapToFloorEdges;
+    setSnapToFloorEdges(nextValue);
+    window.localStorage.setItem(
+      'graph-paper-floor-edge-snap',
+      nextValue ? 'true' : 'false',
     );
   };
 
@@ -121,6 +138,15 @@ export default function ThreePage() {
                 type="button"
                 variant="outline"
                 className="rounded-full border-slate-200 bg-white/90 px-4"
+                onClick={toggleFloorEdgeSnap}
+              >
+                Edge Snap {snapToFloorEdges ? 'On' : 'Off'}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full border-slate-200 bg-white/90 px-4"
                 onClick={toggleGuide}
               >
                 {showGuide ? (
@@ -159,7 +185,7 @@ export default function ThreePage() {
             className="h-full overflow-hidden rounded-[26px] border border-slate-200/80 bg-white/65"
           >
             <ResizablePanel defaultSize={58} minSize={28}>
-              <section className="canvas-fade flex h-full gap-3 overflow-hidden p-3 md:gap-4 md:p-4">
+              <section className={`canvas-fade flex h-full overflow-hidden p-3 ${showGuide ? 'gap-3 md:gap-4 md:p-4' : 'gap-2 md:gap-2.5 md:p-3'}`}>
                 {!isMobile && (
                   <aside className="hidden md:block">
                     <ToolPanel
@@ -198,6 +224,9 @@ export default function ThreePage() {
                           Snap 0.5&apos;
                         </span>
                         <span className="blueprint-chip">
+                          Edge Snap {snapToFloorEdges ? 'On' : 'Off'}
+                        </span>
+                        <span className="blueprint-chip">
                           {settings.gridVisible ? 'Grid Visible' : 'Grid Hidden'}
                         </span>
                       </div>
@@ -216,6 +245,7 @@ export default function ThreePage() {
                     width={dimensions.width}
                     height={dimensions.height}
                     activeTool={activeTool}
+                    snapToFloorEdges={snapToFloorEdges}
                   />
 
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-end justify-between gap-3 p-4 md:p-5">

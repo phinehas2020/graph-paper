@@ -1,16 +1,50 @@
 import * as THREE from 'three';
 import { Wall, Floor } from '@/src/model/types';
 
+const WALL_JOIN_EPSILON = 0.001;
+
+function pointsMatch(pointA: { x: number; y: number }, pointB: { x: number; y: number }) {
+  return (
+    Math.abs(pointA.x - pointB.x) < WALL_JOIN_EPSILON &&
+    Math.abs(pointA.y - pointB.y) < WALL_JOIN_EPSILON
+  );
+}
+
+function getWallEndpointExtension(
+  wall: Wall,
+  endpoint: 'start' | 'end',
+  walls: Wall[],
+) {
+  const point = endpoint === 'start' ? wall.start : wall.end;
+  const hasConnectedNeighbor = walls.some((candidateWall) => {
+    if (candidateWall.id === wall.id) {
+      return false;
+    }
+
+    return (
+      pointsMatch(point, candidateWall.start) ||
+      pointsMatch(point, candidateWall.end)
+    );
+  });
+
+  return hasConnectedNeighbor ? wall.thickness / 2 : 0;
+}
+
 /**
  * Create a Three.js mesh representing a wall.
  * The wall is modelled as a box extruded between start and end points.
  * It is extended slightly to ensure corners overlap.
  */
-export function wallToMesh(wall: Wall): THREE.Mesh {
+export function wallToMesh(wall: Wall, walls: Wall[]): THREE.Mesh {
   const dx = wall.end.x - wall.start.x;
   const dy = wall.end.y - wall.start.y;
-  const length = Math.sqrt(dx * dx + dy * dy);
-  const geometry = new THREE.BoxGeometry(length, wall.height, wall.thickness);
+  const baseLength = Math.sqrt(dx * dx + dy * dy);
+  const directionX = baseLength === 0 ? 0 : dx / baseLength;
+  const directionZ = baseLength === 0 ? 0 : dy / baseLength;
+  const startExtension = getWallEndpointExtension(wall, 'start', walls);
+  const endExtension = getWallEndpointExtension(wall, 'end', walls);
+  const totalLength = baseLength + startExtension + endExtension;
+  const geometry = new THREE.BoxGeometry(totalLength, wall.height, wall.thickness);
 
   const material = new THREE.MeshStandardMaterial({
     color: 0xf5f3ef,
@@ -29,11 +63,15 @@ export function wallToMesh(wall: Wall): THREE.Mesh {
   mesh.add(edges);
 
   // Position wall at midpoint and rotate to match direction
-  const midX = (wall.start.x + wall.end.x) / 2;
-  const midZ = (wall.start.y + wall.end.y) / 2;
+  const midX =
+    (wall.start.x + wall.end.x) / 2 +
+    ((endExtension - startExtension) / 2) * directionX;
+  const midZ =
+    (wall.start.y + wall.end.y) / 2 +
+    ((endExtension - startExtension) / 2) * directionZ;
   mesh.position.set(midX, wall.height / 2, midZ);
 
-  const angle = Math.atan2(dy, dx);
+  const angle = -Math.atan2(dy, dx);
   mesh.rotation.y = angle;
 
   return mesh;
