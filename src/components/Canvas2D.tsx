@@ -1135,7 +1135,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       onToolAction?.('text-added', { id: textId, position: rawPoint });
     }
     
-    if (activeTool === 'select') {
+    if (activeTool === 'select' || activeTool === null) {
       const openingHit = findClosestOpeningHit(rawPoint);
       if (openingHit) {
         setSelectedElement({

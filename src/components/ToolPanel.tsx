@@ -115,7 +115,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
                     ? 'border-slate-900 bg-slate-900 text-white hover:bg-slate-900 hover:text-white'
                     : 'border-slate-200/80 bg-white/82 text-slate-700 hover:border-slate-300 hover:bg-slate-50',
                 )}
-                onClick={() => handleToolChange(isActive ? null : tool.id)}
+                onClick={() => handleToolChange(tool.id)}
               >
                 {compact ? (
                   <>

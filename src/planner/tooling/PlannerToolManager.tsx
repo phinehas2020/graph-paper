@@ -55,6 +55,8 @@ export function PlannerToolManager() {
         event.preventDefault();
         if (activeTool === 'select' || activeTool === null) {
           clearSelection();
+          selectTool('select');
+          return;
         }
         selectTool(null);
         return;
