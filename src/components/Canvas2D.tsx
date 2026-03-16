@@ -15,6 +15,7 @@ interface Canvas2DProps {
 
 const GRID_SIZE = 20; // pixels per grid unit
 const CONNECTION_THRESHOLD = 0.5; // grid units
+const FLOOR_CLOSE_THRESHOLD = 0.75; // grid units
 const FLOOR_EDGE_SNAP_THRESHOLD = 0.75; // grid units
 const OPENING_PLACEMENT_THRESHOLD = 0.8; // grid units
 const WALL_SELECTION_THRESHOLD = 0.75; // grid units
@@ -318,6 +319,26 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
     return resolvedPoint;
   }, [findClosestFloorEdgePoint, findNearbyEndpoint, snapToFloorEdges]);
+
+  const resolveFloorPoint = useCallback((point: Point): Point => {
+    if (!isDrawing || currentPoints.length === 0) {
+      return point;
+    }
+
+    if (currentPoints.length > 2) {
+      const firstPoint = currentPoints[0];
+      if (distanceBetweenPoints(point, firstPoint) <= FLOOR_CLOSE_THRESHOLD) {
+        return firstPoint;
+      }
+    }
+
+    const lastPoint = currentPoints[currentPoints.length - 1];
+    if (distanceBetweenPoints(point, lastPoint) <= CONNECTION_THRESHOLD) {
+      return lastPoint;
+    }
+
+    return point;
+  }, [currentPoints, isDrawing]);
 
   const findClosestWallPlacement = useCallback((point: Point): WallPlacement | null => {
     let closestPlacement: WallPlacement | null = null;
@@ -986,18 +1007,25 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   // Event handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const rawPoint = screenToGrid(e.clientX, e.clientY);
+    const floorPoint = activeTool === 'floor' ? resolveFloorPoint(rawPoint) : rawPoint;
     const wallPoint = activeTool === 'wall' ? resolveWallPoint(rawPoint) : rawPoint;
     
     if (activeTool === 'floor') {
       if (!isDrawing) {
-        setCurrentPoints([rawPoint]);
+        setCurrentPoints([floorPoint]);
         setIsDrawing(true);
       } else {
+        const lastPoint = currentPoints[currentPoints.length - 1];
+
+        if (distanceBetweenPoints(lastPoint, floorPoint) <= CONNECTION_THRESHOLD) {
+          return;
+        }
+
         // Check if clicking near first point to close
         if (currentPoints.length > 2) {
           const firstPoint = currentPoints[0];
-          const distance = distanceBetweenPoints(firstPoint, rawPoint);
-          if (distance < CONNECTION_THRESHOLD) {
+          const distance = distanceBetweenPoints(firstPoint, floorPoint);
+          if (distance <= FLOOR_CLOSE_THRESHOLD) {
             // Close floor
             addFloor({
               points: currentPoints,
@@ -1012,7 +1040,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
             return;
           }
         }
-        setCurrentPoints(prev => [...prev, rawPoint]);
+        setCurrentPoints(prev => [...prev, floorPoint]);
       }
     }
     
@@ -1118,16 +1146,20 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
       onSelectionChange?.(null);
     }
-  }, [activeTool, addFloor, addMeasurement, addTextElement, addWall, addWallOpening, autoConnectNearbyWalls, createOpeningPayload, currentPoints, findClosestOpeningHit, findClosestWallHit, findClosestWallPlacement, isDrawing, onSelectionChange, onToolAction, resolveWallPoint, screenToGrid, settings.measurementMode, settings.units, updateSettings]);
+  }, [activeTool, addFloor, addMeasurement, addTextElement, addWall, addWallOpening, autoConnectNearbyWalls, createOpeningPayload, currentPoints, findClosestOpeningHit, findClosestWallHit, findClosestWallPlacement, isDrawing, onSelectionChange, onToolAction, resolveFloorPoint, resolveWallPoint, screenToGrid, settings.measurementMode, settings.units, updateSettings]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rawPoint = screenToGrid(e.clientX, e.clientY);
-    const point = activeTool === 'wall' ? resolveWallPoint(rawPoint) : rawPoint;
+    const point = activeTool === 'wall'
+      ? resolveWallPoint(rawPoint)
+      : activeTool === 'floor'
+        ? resolveFloorPoint(rawPoint)
+        : rawPoint;
     
     if (isDrawing || activeTool === 'door' || activeTool === 'window') {
       setPreviewPoint(point);
     }
-  }, [activeTool, isDrawing, resolveWallPoint, screenToGrid]);
+  }, [activeTool, isDrawing, resolveFloorPoint, resolveWallPoint, screenToGrid]);
 
   const handleMouseUp = useCallback(() => {
     return undefined;

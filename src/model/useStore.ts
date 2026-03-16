@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { produce } from 'immer';
+import { current, isDraft, produce } from 'immer';
 import { Model, Measurement, TextElement, Wall, Floor, FlatPiece, FlatOpening, Connection, ElectricalOutlet, ElectricalSwitch, ElectricalWire, ElectricalCircuit, ElectricalPanel, WireRun, ElectricalProject, PlumbingFixture, PlumbingPipe, BuildingCodeViolation, WallOpening } from './types';
 
 // Helper for ID generation
@@ -9,13 +9,22 @@ const PLANNER_HISTORY_LIMIT = 80;
 
 type PlannerSnapshot = Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors'>;
 
+function clonePlannerSlice<T>(value: T): T {
+  const plainValue = isDraft(value) ? current(value as never) : value;
+  if (typeof globalThis.structuredClone === 'function') {
+    return globalThis.structuredClone(plainValue) as T;
+  }
+
+  return JSON.parse(JSON.stringify(plainValue)) as T;
+}
+
 const clonePlannerSnapshot = (
   source: Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors'>,
-): PlannerSnapshot => structuredClone({
-  measurements: source.measurements,
-  textElements: source.textElements,
-  walls: source.walls,
-  floors: source.floors,
+): PlannerSnapshot => ({
+  measurements: clonePlannerSlice(source.measurements),
+  textElements: clonePlannerSlice(source.textElements),
+  walls: clonePlannerSlice(source.walls),
+  floors: clonePlannerSlice(source.floors),
 });
 
 function getWallLength(wall: Wall) {
