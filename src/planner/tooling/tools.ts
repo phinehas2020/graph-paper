@@ -22,8 +22,8 @@ export interface PlannerToolDefinition {
 export const PLANNER_TOOLS: PlannerToolDefinition[] = [
   {
     id: 'select',
-    name: 'Select',
-    description: 'Adjust vertices and inspect edges',
+    name: 'Edit',
+    description: 'Select walls, doors, and windows',
     shortcut: 'S',
     accent: 'border-sky-100 bg-sky-50 text-sky-700',
   },

@@ -55,7 +55,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     <Card
       className={cn(
         compact
-          ? 'panel-surface panel-glow w-[88px] overflow-hidden border-slate-200/80 bg-white/88'
+          ? 'panel-surface panel-glow w-[104px] overflow-hidden border-slate-200/80 bg-white/88'
           : 'panel-surface panel-glow w-[228px] overflow-hidden border-slate-200/80 bg-white/85',
         className,
       )}
@@ -103,7 +103,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
                 aria-pressed={isActive}
                 className={cn(
                   compact
-                    ? 'group relative h-14 w-full rounded-[20px] border px-0 py-0'
+                    ? 'group relative h-16 w-full rounded-[20px] border px-0 py-0'
                     : 'h-auto w-full justify-start rounded-[22px] border px-3 py-3 text-left',
                   isActive
                     ? 'border-slate-900 bg-slate-900 text-white hover:bg-slate-900 hover:text-white'
@@ -119,15 +119,25 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
                         isActive ? 'bg-sky-400' : 'bg-transparent',
                       )}
                     />
-                    <span
-                      className={cn(
-                        'flex size-11 items-center justify-center rounded-2xl border shadow-sm transition-colors',
-                        isActive
-                          ? 'border-white/10 bg-white/10 text-white'
-                          : tool.accent,
-                      )}
-                    >
-                      <Icon className="h-4.5 w-4.5" />
+                    <span className="flex flex-col items-center justify-center gap-1.5">
+                      <span
+                        className={cn(
+                          'flex size-10 items-center justify-center rounded-2xl border shadow-sm transition-colors',
+                          isActive
+                            ? 'border-white/10 bg-white/10 text-white'
+                            : tool.accent,
+                        )}
+                      >
+                        <Icon className="h-4.5 w-4.5" />
+                      </span>
+                      <span
+                        className={cn(
+                          'text-[11px] font-semibold',
+                          isActive ? 'text-white' : 'text-slate-700',
+                        )}
+                      >
+                        {tool.name}
+                      </span>
                     </span>
                   </>
                 ) : (
