@@ -1,16 +1,14 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import useStore from '@/src/model/useStore';
 import { formatMeasurement } from '@/src/tools/MeasurementUtils';
-import { PlannerSelection, Point, Wall, WallOpening } from '@/src/model/types';
+import { Point, Wall, WallOpening } from '@/src/model/types';
+import usePlannerEditorStore from '@/src/planner/stores/usePlannerEditorStore';
+import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
+import usePlannerViewerStore from '@/src/planner/stores/usePlannerViewerStore';
 
 interface Canvas2DProps {
   width: number;
   height: number;
-  activeTool: 'floor' | 'wall' | 'door' | 'window' | 'select' | 'measure' | 'text' | null;
-  snapToFloorEdges?: boolean;
   onToolAction?: (action: string, data: any) => void;
-  selectedElement?: PlannerSelection | null;
-  onSelectionChange?: (selection: PlannerSelection | null) => void;
 }
 
 const GRID_SIZE = 20; // pixels per grid unit
@@ -202,14 +200,10 @@ function getWallOpeningEndpoints(wall: Wall, opening: WallOpening): { start: Poi
   };
 }
 
-export const Canvas2D: React.FC<Canvas2DProps> = ({ 
-  width, 
-  height, 
-  activeTool, 
-  snapToFloorEdges = true,
+export const Canvas2D: React.FC<Canvas2DProps> = ({
+  width,
+  height,
   onToolAction,
-  selectedElement = null,
-  onSelectionChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -217,7 +211,16 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
   const [editingText, setEditingText] = useState<{id: string, text: string} | null>(null);
   const [textInput, setTextInput] = useState('');
-  
+
+  const activeTool = usePlannerEditorStore((state) => state.activeTool);
+  const snapToFloorEdges = usePlannerEditorStore(
+    (state) => state.snapToFloorEdges,
+  );
+  const selectedElement = usePlannerViewerStore((state) => state.selectedElement);
+  const setSelectedElement = usePlannerViewerStore(
+    (state) => state.setSelectedElement,
+  );
+
   const { 
     walls,
     floors,
@@ -232,7 +235,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     updateTextElement,
     updateSettings,
     autoConnectNearbyWalls 
-  } = useStore();
+  } = usePlannerSceneStore();
 
   // Convert screen coordinates to grid coordinates
   const screenToGrid = useCallback((screenX: number, screenY: number): Point => {
@@ -1032,7 +1035,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
               elevation: 0,
               thickness: 0.2
             });
-            onSelectionChange?.(null);
+            setSelectedElement(null);
             setCurrentPoints([]);
             setIsDrawing(false);
             setPreviewPoint(null);
@@ -1063,7 +1066,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         autoConnectNearbyWalls(CONNECTION_THRESHOLD);
         
         // Start new wall from current point
-        onSelectionChange?.(null);
+        setSelectedElement(null);
         setCurrentPoints([wallPoint]);
         onToolAction?.('wall-completed', { wallId, start: currentPoints[0], end: wallPoint });
       }
@@ -1075,7 +1078,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         const opening = createOpeningPayload(activeTool, placement);
         if (opening) {
           const openingId = addWallOpening(placement.wall.id, opening);
-          onSelectionChange?.({
+          setSelectedElement({
             type: 'opening',
             wallId: placement.wall.id,
             openingId,
@@ -1127,7 +1130,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     if (activeTool === 'select') {
       const openingHit = findClosestOpeningHit(rawPoint);
       if (openingHit) {
-        onSelectionChange?.({
+        setSelectedElement({
           type: 'opening',
           wallId: openingHit.wallId,
           openingId: openingHit.openingId,
@@ -1137,16 +1140,16 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
       const wallHit = findClosestWallHit(rawPoint);
       if (wallHit) {
-        onSelectionChange?.({
+        setSelectedElement({
           type: 'wall',
           wallId: wallHit.id,
         });
         return;
       }
 
-      onSelectionChange?.(null);
+      setSelectedElement(null);
     }
-  }, [activeTool, addFloor, addMeasurement, addTextElement, addWall, addWallOpening, autoConnectNearbyWalls, createOpeningPayload, currentPoints, findClosestOpeningHit, findClosestWallHit, findClosestWallPlacement, isDrawing, onSelectionChange, onToolAction, resolveFloorPoint, resolveWallPoint, screenToGrid, settings.measurementMode, settings.units, updateSettings]);
+  }, [activeTool, addFloor, addMeasurement, addTextElement, addWall, addWallOpening, autoConnectNearbyWalls, createOpeningPayload, currentPoints, findClosestOpeningHit, findClosestWallHit, findClosestWallPlacement, isDrawing, onToolAction, resolveFloorPoint, resolveWallPoint, screenToGrid, setSelectedElement, settings.measurementMode, settings.units, updateSettings]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rawPoint = screenToGrid(e.clientX, e.clientY);
@@ -1219,6 +1222,26 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     render();
   }, [render]);
 
+  const previousToolRef = useRef(activeTool);
+
+  useEffect(() => {
+    if (previousToolRef.current === activeTool) {
+      return;
+    }
+
+    if (editingText) {
+      updateTextElement(editingText.id, { text: textInput });
+      setEditingText(null);
+      setTextInput('');
+      updateSettings({ isTextEditing: false });
+    }
+
+    setCurrentPoints([]);
+    setIsDrawing(false);
+    setPreviewPoint(null);
+    previousToolRef.current = activeTool;
+  }, [activeTool, editingText, textInput, updateSettings, updateTextElement]);
+
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keydown', handleTextInput);
@@ -1236,7 +1259,10 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       style={{
         width: '100%',
         height: '100%',
-        cursor: activeTool === 'select' ? 'default' : 'crosshair',
+        cursor:
+          activeTool === 'select' || activeTool === null
+            ? 'default'
+            : 'crosshair',
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -1244,3 +1270,5 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     />
   );
 };
+
+export default Canvas2D;

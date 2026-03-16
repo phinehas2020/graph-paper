@@ -9,17 +9,19 @@ import {
   Grid,
   OrbitControls,
 } from '@react-three/drei';
-import useStore from '@/src/model/useStore';
+import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
+import usePlannerViewerStore from '@/src/planner/stores/usePlannerViewerStore';
 import { floorToMesh, wallToMesh } from './meshes';
 
 function DraftScene() {
-  const walls = useStore((state) => state.walls);
-  const floors = useStore((state) => state.floors);
+  const walls = usePlannerSceneStore((state) => state.walls);
+  const floors = usePlannerSceneStore((state) => state.floors);
+  const selectedElement = usePlannerViewerStore((state) => state.selectedElement);
 
   const floorMeshes = useMemo(() => floors.map(floorToMesh), [floors]);
   const wallMeshes = useMemo(
-    () => walls.map((wall) => wallToMesh(wall, walls)),
-    [walls],
+    () => walls.map((wall) => wallToMesh(wall, walls, selectedElement)),
+    [selectedElement, walls],
   );
   const hasGeometry = floorMeshes.length > 0 || wallMeshes.length > 0;
 
