@@ -64,7 +64,7 @@ function DraftBoardPanel({
       )}
     >
       {!isMobile && (
-        <aside className="hidden md:block">
+        <aside className="hidden min-h-0 shrink-0 md:flex md:max-h-full">
           <ToolPanel
             activeTool={activeTool}
             onToolChange={selectTool}
@@ -137,11 +137,11 @@ function DraftBoardPanel({
           )}
 
           {isMobile && (
-            <div className="panel-surface flex gap-2 overflow-x-auto px-3 py-3">
+            <div className="pointer-events-auto max-h-[65dvh] min-h-0 overflow-y-auto">
               <ToolPanel
                 activeTool={activeTool}
                 onToolChange={selectTool}
-                className="w-auto min-w-[240px]"
+                className="max-h-[65dvh]"
                 compact={!showGuide}
               />
             </div>

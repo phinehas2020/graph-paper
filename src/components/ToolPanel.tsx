@@ -54,14 +54,15 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
   return (
     <Card
       className={cn(
+        'pointer-events-auto flex max-h-full flex-col overflow-hidden',
         compact
-          ? 'panel-surface panel-glow w-[104px] overflow-hidden border-slate-200/80 bg-white/88'
-          : 'panel-surface panel-glow w-[228px] overflow-hidden border-slate-200/80 bg-white/85',
+          ? 'panel-surface panel-glow w-28 shrink-0 self-start overflow-hidden border-slate-200/80 bg-white/88'
+          : 'panel-surface panel-glow w-56 overflow-hidden border-slate-200/80 bg-white/85',
         className,
       )}
     >
       {!compact && (
-        <CardHeader className="space-y-3 border-b border-slate-100/90 p-3.5">
+        <CardHeader className="shrink-0 space-y-3 border-b border-slate-100/90 p-3.5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-400">
@@ -83,7 +84,12 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       )}
 
       <TooltipProvider delayDuration={90}>
-        <CardContent className={cn('space-y-2 p-2.5', compact && 'space-y-2 p-2')}>
+        <CardContent
+          className={cn(
+            'min-h-0 overflow-y-auto overscroll-contain space-y-2 p-2.5',
+            compact && 'space-y-2 p-2',
+          )}
+        >
           {compact && (
             <div className="rounded-[20px] border border-slate-200/80 bg-white/92 px-2 py-2 text-center shadow-sm">
               <p className="text-[10px] font-semibold text-slate-500">Tools</p>
