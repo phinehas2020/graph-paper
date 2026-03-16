@@ -7,11 +7,15 @@ import { ToolPanel } from '@/src/components/ToolPanel';
 import { Button } from '@/components/ui/button';
 import { Box, Layers } from 'lucide-react';
 import useStore from '@/src/model/useStore';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
 
 type Tool = 'floor' | 'wall' | 'select' | 'measure' | 'text' | null;
 
 export default function ThreePage() {
-  const [mode, setMode] = useState<'2d' | '3d'>('2d');
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -29,11 +33,19 @@ export default function ThreePage() {
     };
 
     updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, [mode]);
 
-  // Note: Keyboard shortcuts are handled by ToolPanel now globally
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions();
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   return (
     <div className="w-full h-screen flex flex-col bg-gray-50">
@@ -48,72 +60,52 @@ export default function ThreePage() {
           <div className="text-xs text-gray-500 mr-4">
             {walls.length} Walls | {floors.length} Floors
           </div>
-          <Button
-            variant={mode === '2d' ? "default" : "outline"}
-            size="sm"
-            onClick={() => setMode('2d')}
-            className="gap-2"
-          >
-            <Layers className="w-4 h-4" />
-            2D Editor
-          </Button>
-          <Button
-            variant={mode === '3d' ? "default" : "outline"}
-            size="sm"
-            onClick={() => setMode('3d')}
-            className="gap-2"
-          >
-            <Box className="w-4 h-4" />
-            3D Viewer
-          </Button>
         </div>
       </header>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar Tools (only visible in 2D) */}
-        {mode === '2d' && (
-          <aside className="w-64 bg-white border-r p-4 overflow-y-auto">
-            <ToolPanel
-              activeTool={activeTool}
-              onToolChange={setActiveTool}
-            />
+        <ResizablePanelGroup
+          direction="horizontal"
+          className="w-full h-full"
+        >
+          <ResizablePanel defaultSize={60} minSize={20}>
+            <div className="h-full w-full relative flex overflow-hidden" ref={containerRef}>
+              <aside className="bg-white/90 backdrop-blur-sm border p-2 absolute left-4 top-1/2 -translate-y-1/2 z-10 shadow-md border-gray-200 rounded-xl hidden md:block">
+                <ToolPanel
+                  activeTool={activeTool}
+                  onToolChange={setActiveTool}
+                  className="border-none shadow-none bg-transparent"
+                />
+              </aside>
 
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg text-xs text-blue-700">
-              <p className="font-semibold mb-1">Tip:</p>
-              <p>Use the Select tool to drag wall endpoints. Connected walls will move together.</p>
+              <main className="flex-1 bg-white relative overflow-hidden h-full w-full">
+                <div className="absolute inset-0">
+                  <Canvas2D
+                    width={dimensions.width}
+                    height={dimensions.height}
+                    activeTool={activeTool}
+                  />
+                </div>
+              </main>
             </div>
-          </aside>
-        )}
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={40} minSize={20}>
+             <div className="h-full w-full relative bg-gray-100">
+                <Viewer />
 
-        {/* Canvas Area */}
-        <main className="flex-1 bg-gray-100 relative overflow-hidden" ref={containerRef}>
-          {mode === '2d' ? (
-            <div className="absolute inset-0 flex items-center justify-center p-4">
-              <div className="bg-white shadow-lg rounded overflow-hidden">
-                 {/* We pass explicit dimensions or just let it fill if Canvas2D supports resizing */}
-                 <Canvas2D
-                   width={dimensions.width - (mode === '2d' ? 40 : 0)} // moderate padding
-                   height={dimensions.height - 40}
-                   activeTool={activeTool}
-                 />
-              </div>
-            </div>
-          ) : (
-            <div className="w-full h-full">
-              <Viewer />
-
-              {/* Overlay controls for 3D */}
-              <div className="absolute bottom-4 right-4 bg-white/90 p-2 rounded shadow backdrop-blur">
-                <p className="text-xs text-gray-500">
-                  Left Click + Drag to Rotate<br/>
-                  Right Click + Drag to Pan<br/>
-                  Scroll to Zoom
-                </p>
-              </div>
-            </div>
-          )}
-        </main>
+                {/* Overlay controls for 3D */}
+                <div className="absolute bottom-4 right-4 bg-white/90 p-2 rounded shadow backdrop-blur">
+                  <p className="text-xs text-gray-500">
+                    Left Click + Drag to Rotate<br/>
+                    Right Click + Drag to Pan<br/>
+                    Scroll to Zoom
+                  </p>
+                </div>
+             </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
-import GraphCanvas from '@/src/components/GraphCanvas';
+import ThreePage from './three/page';
 
 export default function HomePage() {
-  return <GraphCanvas />;
+  return <ThreePage />;
 }
