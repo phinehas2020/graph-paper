@@ -54,10 +54,10 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
   return (
     <Card
       className={cn(
-        'pointer-events-auto flex max-h-full flex-col overflow-hidden',
+        'pointer-events-auto flex max-h-full flex-none flex-col overflow-hidden',
         compact
-          ? 'panel-surface panel-glow w-28 shrink-0 self-start overflow-hidden border-slate-200/80 bg-white/88'
-          : 'panel-surface panel-glow w-56 overflow-hidden border-slate-200/80 bg-white/85',
+          ? 'panel-surface panel-glow w-[112px] min-w-[112px] max-w-[112px] self-start overflow-hidden border-slate-200/80 bg-white/88'
+          : 'panel-surface panel-glow w-56 min-w-56 max-w-56 self-start overflow-hidden border-slate-200/80 bg-white/85',
         className,
       )}
     >

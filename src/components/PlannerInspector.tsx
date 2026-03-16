@@ -58,7 +58,7 @@ export function PlannerInspector({
   const bottomLabel = selectedOpening?.type === 'window' ? 'Sill Height' : 'Base Height';
 
   return (
-    <div className="panel-surface panel-glow flex h-full w-full flex-col overflow-hidden border border-white/80 bg-white/88 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl">
+    <div className="panel-surface panel-glow flex h-full min-h-0 w-full flex-col overflow-hidden border border-white/80 bg-white/88 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl">
       <div className="flex items-start justify-between gap-3 px-4 pb-1 pt-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">

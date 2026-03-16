@@ -65,7 +65,7 @@ export function PlannerSelectionInspector({
   }
 
   return (
-    <div className={cn(className)}>
+    <div className={cn('pointer-events-auto', className)}>
       <PlannerInspector
         selectedWall={selectedWall}
         selectedOpening={selectedOpening}

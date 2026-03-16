@@ -50,11 +50,15 @@ function DraftBoardPanel({
 
   const inspectorPositionClass = useMemo(() => {
     if (isMobile) {
-      return 'inset-x-4 bottom-4';
+      return 'inset-x-4 top-24 bottom-4';
     }
 
-    return showGuide ? 'right-5 top-32 w-[320px]' : 'right-5 top-5 w-[320px]';
+    return showGuide
+      ? 'right-5 top-32 bottom-5 w-[320px]'
+      : 'right-5 top-5 bottom-5 w-[320px]';
   }, [isMobile, showGuide]);
+
+  const compactToolRailWidthClass = showGuide ? 'w-56 min-w-56 max-w-56' : 'w-[112px] min-w-[112px] max-w-[112px]';
 
   return (
     <section
@@ -64,7 +68,12 @@ function DraftBoardPanel({
       )}
     >
       {!isMobile && (
-        <aside className="hidden min-h-0 shrink-0 md:flex md:max-h-full">
+        <aside
+          className={cn(
+            'hidden min-h-0 shrink-0 md:flex md:max-h-full',
+            compactToolRailWidthClass,
+          )}
+        >
           <ToolPanel
             activeTool={activeTool}
             onToolChange={selectTool}
@@ -137,7 +146,12 @@ function DraftBoardPanel({
           )}
 
           {isMobile && (
-            <div className="pointer-events-auto max-h-[65dvh] min-h-0 overflow-y-auto">
+            <div
+              className={cn(
+                'pointer-events-auto max-h-[65dvh] min-h-0 overflow-y-auto',
+                compactToolRailWidthClass,
+              )}
+            >
               <ToolPanel
                 activeTool={activeTool}
                 onToolChange={selectTool}
