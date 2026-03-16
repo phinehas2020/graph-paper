@@ -10,23 +10,23 @@ export function wallToMesh(wall: Wall): THREE.Mesh {
   const dx = wall.end.x - wall.start.x;
   const dy = wall.end.y - wall.start.y;
   const length = Math.sqrt(dx * dx + dy * dy);
+  const geometry = new THREE.BoxGeometry(length, wall.height, wall.thickness);
 
-  // Extend length by thickness to cover corners
-  // We add thickness/2 to each end effectively
-  const extendedLength = length + wall.thickness;
-
-  const geometry = new THREE.BoxGeometry(extendedLength, wall.height, wall.thickness);
-
-  // Improved material with better lighting response
   const material = new THREE.MeshStandardMaterial({
-    color: 0xe0e0e0,
-    roughness: 0.5,
-    metalness: 0.1
+    color: 0xf5f3ef,
+    roughness: 0.88,
+    metalness: 0.02,
   });
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
+
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geometry),
+    new THREE.LineBasicMaterial({ color: 0xa1adb8 }),
+  );
+  mesh.add(edges);
 
   // Position wall at midpoint and rotate to match direction
   const midX = (wall.start.x + wall.end.x) / 2;
@@ -46,10 +46,10 @@ export function floorToMesh(floor: Floor): THREE.Mesh {
   const shape = new THREE.Shape();
   if (floor.points.length > 0) {
     const first = floor.points[0];
-    shape.moveTo(first.x, first.y);
+    shape.moveTo(first.x, -first.y);
     for (let i = 1; i < floor.points.length; i++) {
       const p = floor.points[i];
-      shape.lineTo(p.x, p.y);
+      shape.lineTo(p.x, -p.y);
     }
     shape.closePath();
   }
@@ -60,13 +60,19 @@ export function floorToMesh(floor: Floor): THREE.Mesh {
   });
 
   const material = new THREE.MeshStandardMaterial({
-    color: 0xf5f5f5,
-    roughness: 0.8,
-    metalness: 0.0
+    color: 0xf8fbff,
+    roughness: 0.95,
+    metalness: 0,
   });
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.receiveShadow = true;
+
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geometry),
+    new THREE.LineBasicMaterial({ color: 0xd5e0ea }),
+  );
+  mesh.add(edges);
 
   // Rotate so that extrusion is vertical (along Y)
   mesh.rotation.x = -Math.PI / 2;

@@ -2,47 +2,118 @@
 
 import React, { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Sky, Environment } from '@react-three/drei';
+import {
+  Bounds,
+  ContactShadows,
+  Environment,
+  Grid,
+  OrbitControls,
+} from '@react-three/drei';
 import useStore from '@/src/model/useStore';
-import { wallToMesh, floorToMesh } from './meshes';
+import { floorToMesh, wallToMesh } from './meshes';
 
-export function Viewer() {
+function DraftScene() {
   const walls = useStore((state) => state.walls);
   const floors = useStore((state) => state.floors);
 
-  const wallMeshes = useMemo(() => walls.map(wallToMesh), [walls]);
   const floorMeshes = useMemo(() => floors.map(floorToMesh), [floors]);
+  const wallMeshes = useMemo(() => walls.map(wallToMesh), [walls]);
+  const hasGeometry = floorMeshes.length > 0 || wallMeshes.length > 0;
 
+  return (
+    <>
+      <color attach="background" args={['#edf4fa']} />
+      <fog attach="fog" args={['#edf4fa', 18, 42]} />
+
+      <ambientLight intensity={0.65} />
+      <hemisphereLight
+        intensity={0.45}
+        color="#f9fdff"
+        groundColor="#d9e7f2"
+      />
+      <directionalLight
+        position={[10, 18, 8]}
+        intensity={1.45}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-near={0.5}
+        shadow-camera-far={60}
+        shadow-camera-left={-20}
+        shadow-camera-right={20}
+        shadow-camera-top={20}
+        shadow-camera-bottom={-20}
+      />
+
+      <Environment preset="apartment" />
+
+      <mesh
+        receiveShadow
+        position={[0, -0.026, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        <planeGeometry args={[120, 120]} />
+        <meshStandardMaterial color="#eef4f8" roughness={1} metalness={0} />
+      </mesh>
+
+      <Grid
+        position={[0, -0.02, 0]}
+        args={[80, 80]}
+        cellColor="#d3ddea"
+        sectionColor="#b9c7d8"
+        cellSize={1}
+        sectionSize={5}
+        infiniteGrid
+        fadeDistance={48}
+        fadeStrength={1.6}
+      />
+
+      <Bounds fit clip observe margin={1.25}>
+        <group>
+          {floorMeshes.map((mesh, index) => (
+            <primitive object={mesh} key={`floor-${floors[index].id}`} />
+          ))}
+          {wallMeshes.map((mesh, index) => (
+            <primitive object={mesh} key={`wall-${walls[index].id}`} />
+          ))}
+
+          {!hasGeometry && (
+            <mesh position={[0, 0.35, 0]} castShadow receiveShadow>
+              <boxGeometry args={[2.6, 0.12, 2.6]} />
+              <meshStandardMaterial color="#dce8f4" roughness={0.9} />
+            </mesh>
+          )}
+        </group>
+      </Bounds>
+
+      <ContactShadows
+        position={[0, -0.02, 0]}
+        scale={28}
+        blur={2.6}
+        opacity={0.3}
+        far={20}
+      />
+
+      <OrbitControls
+        makeDefault
+        enableDamping
+        dampingFactor={0.08}
+        minDistance={3}
+        maxDistance={36}
+        maxPolarAngle={Math.PI / 2.08}
+      />
+    </>
+  );
+}
+
+export function Viewer() {
   return (
     <Canvas
       shadows
-      camera={{ position: [10, 10, 10], fov: 50 }}
-      style={{ width: '100%', height: '100%', background: '#f0f0f0' }}
+      dpr={[1, 2]}
+      camera={{ position: [9, 8, 9], fov: 42 }}
+      style={{ width: '100%', height: '100%' }}
     >
-      <ambientLight intensity={0.6} />
-      <directionalLight
-        position={[20, 30, 10]}
-        intensity={1.2}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-      >
-        <orthographicCamera attach="shadow-camera" args={[-20, 20, 20, -20]} />
-      </directionalLight>
-
-      <Sky sunPosition={[20, 30, 10]} turbidity={0.5} rayleigh={0.5} />
-      <Environment preset="city" />
-
-      <group>
-        {floorMeshes.map((mesh, i) => (
-          <primitive object={mesh} key={`floor-${floors[i].id}`} />
-        ))}
-        {wallMeshes.map((mesh, i) => (
-          <primitive object={mesh} key={`wall-${walls[i].id}`} />
-        ))}
-      </group>
-
-      <gridHelper args={[50, 50, 0xdddddd, 0xeeeeee]} />
-      <OrbitControls makeDefault />
+      <DraftScene />
     </Canvas>
   );
 }

@@ -14,6 +14,83 @@ const GRID_SIZE = 20; // pixels per grid unit
 const SNAP_THRESHOLD = 10; // pixels
 const CONNECTION_THRESHOLD = 0.5; // grid units
 
+function drawRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius = 10,
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function drawPillLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  options?: {
+    background?: string;
+    border?: string;
+    color?: string;
+  },
+) {
+  const background = options?.background ?? 'rgba(255, 255, 255, 0.92)';
+  const border = options?.border ?? '#cbd5e1';
+  const color = options?.color ?? '#0f172a';
+
+  ctx.save();
+  ctx.font = '12px "IBM Plex Mono", monospace';
+  const textWidth = ctx.measureText(text).width;
+  const pillWidth = textWidth + 18;
+  const pillHeight = 22;
+
+  drawRoundedRect(ctx, x - pillWidth / 2, y - pillHeight / 2, pillWidth, pillHeight, 11);
+  ctx.fillStyle = background;
+  ctx.fill();
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y + 0.5);
+  ctx.restore();
+}
+
+function drawNode(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  fill: string,
+  outer = 'rgba(255, 255, 255, 0.96)',
+  radius = 6,
+) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, radius + 2, 0, Math.PI * 2);
+  ctx.fillStyle = outer;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.restore();
+}
+
 export const Canvas2D: React.FC<Canvas2DProps> = ({ 
   width, 
   height, 
@@ -87,103 +164,144 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   // Drawing functions
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D) => {
     if (!settings.gridVisible) return;
-    
-    ctx.strokeStyle = '#e0e0e0';
-    ctx.lineWidth = 1;
-    
+
     const gridSpacing = GRID_SIZE;
     const centerX = width / 2;
     const centerY = height / 2;
-    
+    const majorStep = gridSpacing * 5;
+
+    ctx.save();
+
     // Vertical lines
     for (let x = centerX % gridSpacing; x < width; x += gridSpacing) {
+      const isMajor = Math.abs((x - centerX) % majorStep) < 0.5;
       ctx.beginPath();
+      ctx.strokeStyle = isMajor ? '#c7d3df' : '#e3eaf2';
+      ctx.lineWidth = isMajor ? 1.2 : 1;
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
       ctx.stroke();
     }
-    
+
     // Horizontal lines
     for (let y = centerY % gridSpacing; y < height; y += gridSpacing) {
+      const isMajor = Math.abs((y - centerY) % majorStep) < 0.5;
       ctx.beginPath();
+      ctx.strokeStyle = isMajor ? '#c7d3df' : '#e3eaf2';
+      ctx.lineWidth = isMajor ? 1.2 : 1;
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
       ctx.stroke();
     }
-    
+
     // Axes
-    ctx.strokeStyle = '#c0c0c0';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#9fb2c6';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(centerX, 0);
     ctx.lineTo(centerX, height);
     ctx.moveTo(0, centerY);
     ctx.lineTo(width, centerY);
     ctx.stroke();
+
+    ctx.restore();
   }, [width, height, settings.gridVisible]);
 
   const drawFloors = useCallback((ctx: CanvasRenderingContext2D) => {
     floors.forEach(floor => {
       if (floor.points.length < 3) return;
-      
-      ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
-      ctx.strokeStyle = '#888888';
+
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 0.86)');
+      gradient.addColorStop(1, 'rgba(218, 232, 245, 0.58)');
+
+      ctx.save();
+      ctx.fillStyle = gradient;
+      ctx.strokeStyle = '#8fa2b6';
       ctx.lineWidth = 2;
-      
+      ctx.setLineDash([8, 6]);
       ctx.beginPath();
       const firstPoint = gridToScreen(floor.points[0].x, floor.points[0].y);
       ctx.moveTo(firstPoint.x, firstPoint.y);
-      
+
       for (let i = 1; i < floor.points.length; i++) {
         const point = gridToScreen(floor.points[i].x, floor.points[i].y);
         ctx.lineTo(point.x, point.y);
       }
-      
+
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+
+      ctx.setLineDash([]);
+
+      const centroid = floor.points.reduce(
+        (acc, point) => ({
+          x: acc.x + point.x / floor.points.length,
+          y: acc.y + point.y / floor.points.length,
+        }),
+        { x: 0, y: 0 },
+      );
+      const centroidScreen = gridToScreen(centroid.x, centroid.y);
+      drawPillLabel(ctx, `Floor ${floors.indexOf(floor) + 1}`, centroidScreen.x, centroidScreen.y, {
+        background: 'rgba(255, 255, 255, 0.88)',
+        border: '#d4dee8',
+        color: '#475569',
+      });
+
+      ctx.restore();
     });
-  }, [floors, gridToScreen]);
+  }, [floors, gridToScreen, height, width]);
 
   const drawWalls = useCallback((ctx: CanvasRenderingContext2D) => {
     walls.forEach(wall => {
       const start = gridToScreen(wall.start.x, wall.start.y);
       const end = gridToScreen(wall.end.x, wall.end.y);
-      
-      // Wall line
-      ctx.strokeStyle = wall.connected ? '#4CAF50' : '#2196F3';
-      ctx.lineWidth = 4;
+
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const wallWidth = Math.max(8, wall.thickness * GRID_SIZE * 5);
+      const normalX = length === 0 ? 0 : -dy / length;
+      const normalY = length === 0 ? 0 : dx / length;
+      const labelX = (start.x + end.x) / 2 + normalX * 20;
+      const labelY = (start.y + end.y) / 2 + normalY * 20;
+
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.24)';
+      ctx.lineWidth = wallWidth + 10;
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
       ctx.stroke();
-      
-      // Endpoints
-      ctx.fillStyle = wall.connected ? '#4CAF50' : '#2196F3';
+
+      ctx.strokeStyle = '#2f6fb0';
+      ctx.lineWidth = wallWidth + 2;
       ctx.beginPath();
-      ctx.arc(start.x, start.y, 6, 0, 2 * Math.PI);
-      ctx.fill();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#f8fbff';
+      ctx.lineWidth = wallWidth - 1;
       ctx.beginPath();
-      ctx.arc(end.x, end.y, 6, 0, 2 * Math.PI);
-      ctx.fill();
-      
-      // Connection indicators
-      if (wall.connections) {
-        if (wall.connections.start && wall.connections.start.length > 0) {
-          ctx.strokeStyle = '#FF9800';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(start.x, start.y, 10, 0, 2 * Math.PI);
-          ctx.stroke();
-        }
-        if (wall.connections.end && wall.connections.end.length > 0) {
-          ctx.strokeStyle = '#FF9800';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(end.x, end.y, 10, 0, 2 * Math.PI);
-          ctx.stroke();
-        }
-      }
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+
+      drawNode(ctx, start.x, start.y, '#3092ec');
+      drawNode(ctx, end.x, end.y, '#3092ec');
+
+      drawPillLabel(ctx, formatMeasurement(length / GRID_SIZE), labelX, labelY, {
+        background: 'rgba(255, 255, 255, 0.92)',
+        border: '#bfdbfe',
+        color: '#2563eb',
+      });
+
+      ctx.restore();
     });
   }, [walls, gridToScreen]);
 
@@ -220,24 +338,12 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       // Display measurement text
       const midX = (start.x + end.x) / 2;
       const midY = (start.y + end.y) / 2;
-      
-      ctx.fillStyle = '#FFFFFF';
-      ctx.strokeStyle = '#9C27B0';
-      ctx.lineWidth = 1;
-      
       const text = measurement.label || formatMeasurement(distance);
-      ctx.font = '12px Arial';
-      const textMetrics = ctx.measureText(text);
-      const textWidth = textMetrics.width;
-      const textHeight = 16;
-      
-      // Background rectangle
-      ctx.fillRect(midX - textWidth/2 - 4, midY - textHeight/2 - 2, textWidth + 8, textHeight + 4);
-      ctx.strokeRect(midX - textWidth/2 - 4, midY - textHeight/2 - 2, textWidth + 8, textHeight + 4);
-      
-      // Text
-      ctx.fillStyle = '#9C27B0';
-      ctx.fillText(text, midX - textWidth/2, midY + 4);
+      drawPillLabel(ctx, text, midX, midY, {
+        background: 'rgba(255, 255, 255, 0.96)',
+        border: '#d8b4fe',
+        color: '#7c3aed',
+      });
     });
   }, [measurements, gridToScreen]);
 
@@ -249,7 +355,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       ctx.translate(position.x, position.y);
       ctx.rotate((textElement.rotation * Math.PI) / 180);
       
-      ctx.font = `${textElement.fontSize}px Arial`;
+      ctx.font = `${textElement.fontSize}px "Plus Jakarta Sans", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
@@ -291,7 +397,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
   const drawCurrentDrawing = useCallback((ctx: CanvasRenderingContext2D) => {
     if (activeTool === 'floor' && currentPoints.length > 0) {
-      ctx.strokeStyle = '#FF5722';
+      ctx.strokeStyle = '#fb923c';
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
       
@@ -315,10 +421,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       // Show points
       currentPoints.forEach(point => {
         const screenPoint = gridToScreen(point.x, point.y);
-        ctx.fillStyle = '#FF5722';
-        ctx.beginPath();
-        ctx.arc(screenPoint.x, screenPoint.y, 4, 0, 2 * Math.PI);
-        ctx.fill();
+        drawNode(ctx, screenPoint.x, screenPoint.y, '#f97316', '#fff7ed', 4);
       });
     }
     
@@ -326,7 +429,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const start = gridToScreen(currentPoints[0].x, currentPoints[0].y);
       const end = gridToScreen(previewPoint.x, previewPoint.y);
       
-      ctx.strokeStyle = '#FF5722';
+      ctx.strokeStyle = '#fb923c';
       ctx.lineWidth = 3;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
@@ -334,6 +437,22 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       ctx.lineTo(end.x, end.y);
       ctx.stroke();
       ctx.setLineDash([]);
+
+      const previewDistance = Math.sqrt(
+        (previewPoint.x - currentPoints[0].x) ** 2 +
+        (previewPoint.y - currentPoints[0].y) ** 2,
+      );
+      drawPillLabel(
+        ctx,
+        formatMeasurement(previewDistance),
+        (start.x + end.x) / 2,
+        (start.y + end.y) / 2 - 18,
+        {
+          background: 'rgba(255, 247, 237, 0.95)',
+          border: '#fdba74',
+          color: '#c2410c',
+        },
+      );
     }
     
     if (activeTool === 'measure' && currentPoints.length === 1 && previewPoint) {
@@ -357,25 +476,19 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const midX = (start.x + end.x) / 2;
       const midY = (start.y + end.y) / 2;
       
-      ctx.fillStyle = '#9C27B0';
-      ctx.font = '12px Arial';
       const text = formatMeasurement(distance);
-      const textWidth = ctx.measureText(text).width;
-      
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.fillRect(midX - textWidth/2 - 4, midY - 8, textWidth + 8, 16);
-      ctx.fillStyle = '#9C27B0';
-      ctx.fillText(text, midX - textWidth/2, midY + 4);
+      drawPillLabel(ctx, text, midX, midY, {
+        background: 'rgba(255, 255, 255, 0.95)',
+        border: '#d8b4fe',
+        color: '#7c3aed',
+      });
     }
     
     // Show measurement points being drawn
     if (activeTool === 'measure' && currentPoints.length > 0) {
       currentPoints.forEach(point => {
         const screenPoint = gridToScreen(point.x, point.y);
-        ctx.fillStyle = '#9C27B0';
-        ctx.beginPath();
-        ctx.arc(screenPoint.x, screenPoint.y, 4, 0, 2 * Math.PI);
-        ctx.fill();
+        drawNode(ctx, screenPoint.x, screenPoint.y, '#9333ea', '#f5f3ff', 4);
       });
     }
   }, [activeTool, currentPoints, previewPoint, gridToScreen, settings.units]);
@@ -388,9 +501,14 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Clear canvas
     ctx.clearRect(0, 0, width, height);
-    
+
+    const background = ctx.createLinearGradient(0, 0, width, height);
+    background.addColorStop(0, '#fcfdff');
+    background.addColorStop(1, '#f1f6fb');
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+
     // Draw layers
     drawGrid(ctx);
     drawFloors(ctx);
@@ -580,7 +698,11 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       ref={canvasRef}
       width={width}
       height={height}
-      style={{ border: '1px solid #ccc', cursor: activeTool ? 'crosshair' : 'default' }}
+      style={{
+        width: '100%',
+        height: '100%',
+        cursor: activeTool === 'select' ? 'default' : 'crosshair',
+      }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

@@ -1,21 +1,31 @@
-import type React from "react"
-import type { Metadata } from "next"
-import "./globals.css"
+import type { Metadata } from 'next';
+import { IBM_Plex_Mono, Plus_Jakarta_Sans } from 'next/font/google';
+import './globals.css';
+
+const sans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-sans',
+});
+
+const mono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-mono',
+});
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
-  generator: "v0.dev",
-}
+  title: 'Graph Paper 3D',
+  description: 'Draft floor plans in 2D and preview them in 3D.',
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={`${sans.variable} ${mono.variable}`}>{children}</body>
     </html>
-  )
+  );
 }
