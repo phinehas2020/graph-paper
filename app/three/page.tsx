@@ -4,10 +4,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   DraftingCompass,
+  EyeOff,
   Layers3,
   MoveDiagonal2,
+  PanelLeftOpen,
   Sparkles,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Canvas2D } from '@/src/components/Canvas2D';
 import { ToolPanel } from '@/src/components/ToolPanel';
 import { Viewer } from '@/src/three/Viewer';
@@ -32,6 +35,7 @@ const TOOL_LABELS: Record<Exclude<Tool, null>, string> = {
 export default function ThreePage() {
   const isMobile = useIsMobile();
   const [activeTool, setActiveTool] = useState<Tool>('select');
+  const [showGuide, setShowGuide] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
@@ -59,6 +63,22 @@ export default function ThreePage() {
 
     return () => resizeObserver.disconnect();
   }, []);
+
+  useEffect(() => {
+    const hidden = window.localStorage.getItem('graph-paper-guide-hidden');
+    if (hidden === 'true') {
+      setShowGuide(false);
+    }
+  }, []);
+
+  const toggleGuide = () => {
+    const nextValue = !showGuide;
+    setShowGuide(nextValue);
+    window.localStorage.setItem(
+      'graph-paper-guide-hidden',
+      nextValue ? 'false' : 'true',
+    );
+  };
 
   const stats = useMemo(
     () => [
@@ -97,6 +117,25 @@ export default function ThreePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full border-slate-200 bg-white/90 px-4"
+                onClick={toggleGuide}
+              >
+                {showGuide ? (
+                  <>
+                    <EyeOff className="h-4 w-4" />
+                    Hide Guide
+                  </>
+                ) : (
+                  <>
+                    <PanelLeftOpen className="h-4 w-4" />
+                    Show Guide
+                  </>
+                )}
+              </Button>
+
               {stats.map((stat) => (
                 <div
                   key={stat.label}
@@ -126,6 +165,7 @@ export default function ThreePage() {
                     <ToolPanel
                       activeTool={activeTool}
                       onToolChange={setActiveTool}
+                      compact={!showGuide}
                     />
                   </aside>
                 )}
@@ -134,33 +174,43 @@ export default function ThreePage() {
                   ref={containerRef}
                   className="relative flex-1 overflow-hidden rounded-[24px] border border-white/80 bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
                 >
-                  <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-3 p-4 md:p-5">
-                    <div className="panel-surface max-w-sm px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <DraftingCompass className="h-4 w-4 text-sky-600" />
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                          Draft Board
+                  {showGuide ? (
+                    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-3 p-4 md:p-5">
+                      <div className="panel-surface max-w-sm px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <DraftingCompass className="h-4 w-4 text-sky-600" />
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                            Draft Board
+                          </p>
+                        </div>
+                        <p className="mt-2 text-sm font-semibold text-slate-900">
+                          {activeTool ? TOOL_LABELS[activeTool] : 'No tool selected'}
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                          Use half-grid snapping for clean wall joins and
+                          dimension labels that feel architectural instead of
+                          sketchy.
                         </p>
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-900">
-                        {activeTool ? TOOL_LABELS[activeTool] : 'No tool selected'}
-                      </p>
-                      <p className="mt-1 text-sm leading-6 text-slate-500">
-                        Use half-grid snapping for clean wall joins and
-                        dimension labels that feel architectural instead of
-                        sketchy.
-                      </p>
-                    </div>
 
-                    <div className="panel-surface hidden items-center gap-3 px-4 py-3 md:flex">
-                      <span className="blueprint-chip border-slate-200 bg-slate-50/80 text-slate-500">
-                        Snap 0.5&apos;
-                      </span>
-                      <span className="blueprint-chip">
-                        {settings.gridVisible ? 'Grid Visible' : 'Grid Hidden'}
-                      </span>
+                      <div className="panel-surface hidden items-center gap-3 px-4 py-3 md:flex">
+                        <span className="blueprint-chip border-slate-200 bg-slate-50/80 text-slate-500">
+                          Snap 0.5&apos;
+                        </span>
+                        <span className="blueprint-chip">
+                          {settings.gridVisible ? 'Grid Visible' : 'Grid Hidden'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="pointer-events-none absolute left-4 top-4 z-10 md:left-5 md:top-5">
+                      <div className="panel-surface px-4 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                          {activeTool ? TOOL_LABELS[activeTool] : 'Drafting'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <Canvas2D
                     width={dimensions.width}
@@ -169,16 +219,18 @@ export default function ThreePage() {
                   />
 
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-end justify-between gap-3 p-4 md:p-5">
-                    <div className="panel-surface px-4 py-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                        Drawing Rhythm
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        Floors become slabs. Wall chains become vertical
-                        massing. Labels and dimensions stay anchored to the
-                        same plan.
-                      </p>
-                    </div>
+                    {showGuide && (
+                      <div className="panel-surface px-4 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                          Drawing Rhythm
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                          Floors become slabs. Wall chains become vertical
+                          massing. Labels and dimensions stay anchored to the
+                          same plan.
+                        </p>
+                      </div>
+                    )}
 
                     {isMobile && (
                       <div className="panel-surface flex gap-2 overflow-x-auto px-3 py-3">
@@ -186,6 +238,7 @@ export default function ThreePage() {
                           activeTool={activeTool}
                           onToolChange={setActiveTool}
                           className="w-auto min-w-[240px]"
+                          compact={!showGuide}
                         />
                       </div>
                     )}
@@ -201,29 +254,39 @@ export default function ThreePage() {
 
             <ResizablePanel defaultSize={42} minSize={24}>
               <section className="relative h-full overflow-hidden bg-[radial-gradient(circle_at_top,#ffffff_0%,#eef4f9_42%,#e6eef6_100%)]">
-                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4 md:p-5">
-                  <div className="panel-surface px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Layers3 className="h-4 w-4 text-sky-600" />
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                        Spatial Preview
+                {showGuide ? (
+                  <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4 md:p-5">
+                    <div className="panel-surface px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Layers3 className="h-4 w-4 text-sky-600" />
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                          Spatial Preview
+                        </p>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        The preview is centered automatically so you can judge
+                        volume, corner accuracy, and overall composition faster.
                       </p>
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      The preview is centered automatically so you can judge
-                      volume, corner accuracy, and overall composition faster.
-                    </p>
-                  </div>
 
-                  <div className="panel-surface hidden px-4 py-3 md:block">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                      Orbit Controls
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Drag to orbit, right drag to pan, scroll to zoom.
-                    </p>
+                    <div className="panel-surface hidden px-4 py-3 md:block">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                        Orbit Controls
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        Drag to orbit, right drag to pan, scroll to zoom.
+                      </p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="pointer-events-none absolute left-4 top-4 z-10 md:left-5 md:top-5">
+                    <div className="panel-surface px-4 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                        3D Preview
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <Viewer />
 
@@ -237,7 +300,9 @@ export default function ThreePage() {
                         Camera
                       </p>
                       <p className="mt-1 text-sm text-slate-600">
-                        Smart fit keeps the model framed as it grows.
+                        {showGuide
+                          ? 'Smart fit keeps the model framed as it grows.'
+                          : 'Drag to orbit, scroll to zoom.'}
                       </p>
                     </div>
                   </div>
