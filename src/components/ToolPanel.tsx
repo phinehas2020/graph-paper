@@ -3,75 +3,33 @@ import { AppWindow, DoorOpen, MousePointer2, Square, Minus, Ruler, Type, Sparkle
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import useStore from '@/src/model/useStore';
+import {
+  PLANNER_TOOLS,
+  PlannerTool,
+  PlannerToolId,
+} from '@/src/planner/tooling/tools';
 
 interface ToolPanelProps {
-  activeTool: 'floor' | 'wall' | 'door' | 'window' | 'select' | 'measure' | 'text' | null;
-  onToolChange: (
-    tool: 'floor' | 'wall' | 'door' | 'window' | 'select' | 'measure' | 'text' | null,
-  ) => void;
+  activeTool: PlannerTool;
+  onToolChange: (tool: PlannerTool) => void;
   className?: string;
   compact?: boolean;
 }
 
-const tools = [
-  {
-    id: 'select' as const,
-    name: 'Select',
-    icon: MousePointer2,
-    description: 'Adjust vertices and inspect edges',
-    shortcut: 'S',
-    accent: 'from-sky-500/20 to-cyan-400/10 text-sky-700',
-  },
-  {
-    id: 'floor' as const,
-    name: 'Floor Plate',
-    icon: Square,
-    description: 'Lay down filled floor polygons',
-    shortcut: 'F',
-    accent: 'from-amber-400/20 to-orange-300/10 text-amber-700',
-  },
-  {
-    id: 'wall' as const,
-    name: 'Wall Run',
-    icon: Minus,
-    description: 'Chain structural wall segments',
-    shortcut: 'W',
-    accent: 'from-slate-600/15 to-slate-300/5 text-slate-700',
-  },
-  {
-    id: 'door' as const,
-    name: 'Door',
-    icon: DoorOpen,
-    description: 'Place hinged openings on wall runs',
-    shortcut: 'D',
-    accent: 'from-rose-500/20 to-orange-300/10 text-rose-700',
-  },
-  {
-    id: 'window' as const,
-    name: 'Window',
-    icon: AppWindow,
-    description: 'Cut glazed openings into wall runs',
-    shortcut: 'O',
-    accent: 'from-cyan-500/20 to-sky-300/10 text-cyan-700',
-  },
-  {
-    id: 'measure' as const,
-    name: 'Measure',
-    icon: Ruler,
-    description: 'Check spans and room dimensions',
-    shortcut: 'M',
-    accent: 'from-violet-500/20 to-fuchsia-400/10 text-violet-700',
-  },
-  {
-    id: 'text' as const,
-    name: 'Label',
-    icon: Type,
-    description: 'Name rooms and mark notes',
-    shortcut: 'T',
-    accent: 'from-emerald-500/20 to-teal-400/10 text-emerald-700',
-  },
-];
+const TOOL_ICONS: Record<PlannerToolId, React.ComponentType<{ className?: string }>> = {
+  select: MousePointer2,
+  floor: Square,
+  wall: Minus,
+  door: DoorOpen,
+  window: AppWindow,
+  measure: Ruler,
+  text: Type,
+};
+
+const tools = PLANNER_TOOLS.map((tool) => ({
+  ...tool,
+  icon: TOOL_ICONS[tool.id],
+}));
 
 export const ToolPanel: React.FC<ToolPanelProps> = ({
   activeTool,
@@ -79,70 +37,12 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
   className,
   compact = false,
 }) => {
-  const { settings, clearTemporaryMeasurements } = useStore();
-
-  const handleKeyDown = React.useCallback(
-    (event: KeyboardEvent) => {
-      if (settings.isTextEditing) {
-        return;
-      }
-
-      switch (event.key.toLowerCase()) {
-        case 's':
-          onToolChange('select');
-          break;
-        case 'f':
-          onToolChange('floor');
-          break;
-        case 'w':
-          onToolChange('wall');
-          break;
-        case 'd':
-          onToolChange('door');
-          break;
-        case 'o':
-          onToolChange('window');
-          break;
-        case 'm':
-          onToolChange('measure');
-          break;
-        case 't':
-          onToolChange('text');
-          break;
-        case 'escape':
-          onToolChange(null);
-          break;
-        default:
-          break;
-      }
-    },
-    [onToolChange, settings.isTextEditing],
-  );
-
   const handleToolChange = React.useCallback(
-    (tool: typeof activeTool) => {
-      if (
-        activeTool === 'measure' &&
-        tool !== 'measure' &&
-        settings.measurementMode === 'temporary'
-      ) {
-        clearTemporaryMeasurements();
-      }
-
+    (tool: PlannerTool) => {
       onToolChange(tool);
     },
-    [
-      activeTool,
-      clearTemporaryMeasurements,
-      onToolChange,
-      settings.measurementMode,
-    ],
+    [onToolChange],
   );
-
-  React.useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
 
   return (
     <Card
@@ -254,3 +154,5 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     </Card>
   );
 };
+
+export default ToolPanel;

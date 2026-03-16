@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Floor, Wall, WallOpening } from '@/src/model/types';
+import { Floor, PlannerSelection, Wall, WallOpening } from '@/src/model/types';
 
 const WALL_JOIN_EPSILON = 0.001;
 
@@ -130,13 +130,17 @@ function createFrameMaterial(color: number) {
   });
 }
 
-function createDoorObject(opening: PreparedWallOpening, wallThickness: number) {
+function createDoorObject(
+  opening: PreparedWallOpening,
+  wallThickness: number,
+  selected = false,
+) {
   const group = new THREE.Group();
   const frameThickness = Math.min(0.12, Math.max(0.06, opening.width * 0.07));
   const frameDepth = Math.max(0.08, wallThickness * 0.75);
   const leafDepth = Math.max(0.04, wallThickness * 0.2);
-  const frameMaterial = createFrameMaterial(0xf3efe8);
-  const leafMaterial = createFrameMaterial(0xe0c9ad);
+  const frameMaterial = createFrameMaterial(selected ? 0xf8d17a : 0xf3efe8);
+  const leafMaterial = createFrameMaterial(selected ? 0xf4b942 : 0xe0c9ad);
 
   const leftFrame = new THREE.Mesh(
     new THREE.BoxGeometry(frameThickness, opening.height, frameDepth),
@@ -182,7 +186,7 @@ function createDoorObject(opening: PreparedWallOpening, wallThickness: number) {
   const handle = new THREE.Mesh(
     new THREE.BoxGeometry(0.05, 0.12, 0.02),
     new THREE.MeshStandardMaterial({
-      color: 0x6b7280,
+      color: selected ? 0x92400e : 0x6b7280,
       roughness: 0.4,
       metalness: 0.8,
     }),
@@ -198,14 +202,18 @@ function createDoorObject(opening: PreparedWallOpening, wallThickness: number) {
   return group;
 }
 
-function createWindowObject(opening: PreparedWallOpening, wallThickness: number) {
+function createWindowObject(
+  opening: PreparedWallOpening,
+  wallThickness: number,
+  selected = false,
+) {
   const group = new THREE.Group();
   const frameThickness = Math.min(0.1, Math.max(0.05, opening.width * 0.06));
   const frameDepth = Math.max(0.08, wallThickness * 0.72);
   const glassDepth = Math.max(0.02, wallThickness * 0.14);
-  const frameMaterial = createFrameMaterial(0xe6edf5);
+  const frameMaterial = createFrameMaterial(selected ? 0xf8d17a : 0xe6edf5);
   const glassMaterial = new THREE.MeshPhysicalMaterial({
-    color: 0xd7efff,
+    color: selected ? 0xfef3c7 : 0xd7efff,
     roughness: 0.08,
     metalness: 0,
     transmission: 0.72,
@@ -289,7 +297,11 @@ function createWindowObject(opening: PreparedWallOpening, wallThickness: number)
 /**
  * Create a Three.js object representing a wall with optional doors/windows.
  */
-export function wallToMesh(wall: Wall, walls: Wall[]): THREE.Group {
+export function wallToMesh(
+  wall: Wall,
+  walls: Wall[],
+  selectedElement: PlannerSelection | null = null,
+): THREE.Group {
   const dx = wall.end.x - wall.start.x;
   const dy = wall.end.y - wall.start.y;
   const baseLength = Math.sqrt(dx * dx + dy * dy);
@@ -300,11 +312,20 @@ export function wallToMesh(wall: Wall, walls: Wall[]): THREE.Group {
   const totalLength = baseLength + startExtension + endExtension;
   const openings = getPreparedWallOpenings(wall, baseLength, totalLength, startExtension);
   const geometry = createWallGeometry(wall, totalLength, openings);
+  const isSelectedWall =
+    selectedElement?.type === 'wall'
+      ? selectedElement.wallId === wall.id
+      : selectedElement?.type === 'opening' && selectedElement.wallId === wall.id;
+  const selectedOpeningId =
+    selectedElement?.type === 'opening' && selectedElement.wallId === wall.id
+      ? selectedElement.openingId
+      : null;
 
   const material = new THREE.MeshStandardMaterial({
     color: new THREE.Color(wall.color ?? 0xf5f3ef),
     roughness: 0.88,
     metalness: 0.02,
+    emissive: isSelectedWall ? new THREE.Color(0xf59e0b).multiplyScalar(0.18) : new THREE.Color(0x000000),
   });
 
   const wallMesh = new THREE.Mesh(geometry, material);
@@ -313,7 +334,7 @@ export function wallToMesh(wall: Wall, walls: Wall[]): THREE.Group {
 
   const edges = new THREE.LineSegments(
     new THREE.EdgesGeometry(geometry),
-    new THREE.LineBasicMaterial({ color: 0xa1adb8 }),
+    new THREE.LineBasicMaterial({ color: isSelectedWall ? 0xf59e0b : 0xa1adb8 }),
   );
   wallMesh.add(edges);
 
@@ -327,8 +348,16 @@ export function wallToMesh(wall: Wall, walls: Wall[]): THREE.Group {
   openings.forEach((opening) => {
     const openingObject =
       opening.opening.type === 'door'
-        ? createDoorObject(opening, wall.thickness)
-        : createWindowObject(opening, wall.thickness);
+        ? createDoorObject(
+            opening,
+            wall.thickness,
+            selectedOpeningId === opening.opening.id,
+          )
+        : createWindowObject(
+            opening,
+            wall.thickness,
+            selectedOpeningId === opening.opening.id,
+          );
 
     group.add(openingObject);
   });
