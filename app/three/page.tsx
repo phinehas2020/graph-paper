@@ -75,10 +75,10 @@ export default function ThreePage() {
   }, [selectedElement, selectedWall]);
   const inspectorPositionClass = useMemo(() => {
     if (isMobile) {
-      return 'inset-x-4 bottom-4';
+      return 'inset-x-4 top-24 bottom-4';
     }
 
-    return showGuide ? 'right-5 top-32 w-[320px]' : 'right-5 top-5 w-[320px]';
+    return showGuide ? 'right-5 top-32 bottom-5 w-[320px]' : 'right-5 top-5 bottom-5 w-[320px]';
   }, [isMobile, showGuide]);
 
   useEffect(() => {
