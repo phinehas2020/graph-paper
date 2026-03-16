@@ -1,14 +1,14 @@
 import React from 'react';
-import { MousePointer2, Square, Minus, Ruler, Type, Sparkles } from 'lucide-react';
+import { AppWindow, DoorOpen, MousePointer2, Square, Minus, Ruler, Type, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import useStore from '@/src/model/useStore';
 
 interface ToolPanelProps {
-  activeTool: 'floor' | 'wall' | 'select' | 'measure' | 'text' | null;
+  activeTool: 'floor' | 'wall' | 'door' | 'window' | 'select' | 'measure' | 'text' | null;
   onToolChange: (
-    tool: 'floor' | 'wall' | 'select' | 'measure' | 'text' | null,
+    tool: 'floor' | 'wall' | 'door' | 'window' | 'select' | 'measure' | 'text' | null,
   ) => void;
   className?: string;
   compact?: boolean;
@@ -38,6 +38,22 @@ const tools = [
     description: 'Chain structural wall segments',
     shortcut: 'W',
     accent: 'from-slate-600/15 to-slate-300/5 text-slate-700',
+  },
+  {
+    id: 'door' as const,
+    name: 'Door',
+    icon: DoorOpen,
+    description: 'Place hinged openings on wall runs',
+    shortcut: 'D',
+    accent: 'from-rose-500/20 to-orange-300/10 text-rose-700',
+  },
+  {
+    id: 'window' as const,
+    name: 'Window',
+    icon: AppWindow,
+    description: 'Cut glazed openings into wall runs',
+    shortcut: 'O',
+    accent: 'from-cyan-500/20 to-sky-300/10 text-cyan-700',
   },
   {
     id: 'measure' as const,
@@ -80,6 +96,12 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
           break;
         case 'w':
           onToolChange('wall');
+          break;
+        case 'd':
+          onToolChange('door');
+          break;
+        case 'o':
+          onToolChange('window');
           break;
         case 'm':
           onToolChange('measure');

@@ -22,12 +22,14 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable';
 
-type Tool = 'floor' | 'wall' | 'select' | 'measure' | 'text' | null;
+type Tool = 'floor' | 'wall' | 'door' | 'window' | 'select' | 'measure' | 'text' | null;
 
 const TOOL_LABELS: Record<Exclude<Tool, null>, string> = {
   select: 'Select',
   floor: 'Floor Plate',
   wall: 'Wall Run',
+  door: 'Door',
+  window: 'Window',
   measure: 'Measure',
   text: 'Label',
 };
@@ -41,6 +43,10 @@ export default function ThreePage() {
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
   const { walls, floors, settings } = useStore();
+  const openingCount = useMemo(
+    () => walls.reduce((total, wall) => total + (wall.openings?.length ?? 0), 0),
+    [walls],
+  );
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -105,8 +111,12 @@ export default function ThreePage() {
         label: 'Grid',
         value: settings.gridVisible ? 'On' : 'Off',
       },
+      {
+        label: 'Openings',
+        value: openingCount.toString().padStart(2, '0'),
+      },
     ],
-    [floors.length, settings.gridVisible, walls.length],
+    [floors.length, openingCount, settings.gridVisible, walls.length],
   );
 
   return (

@@ -62,12 +62,23 @@ export interface Arrow {
 }
 
 // Traditional CAD-style Types for Canvas2D
+export interface WallOpening {
+  id: string;
+  type: 'window' | 'door';
+  offset: number; // 0-1 parametric position along the wall centerline
+  width: number;
+  height: number;
+  bottom: number;
+  hingeSide?: 'start' | 'end';
+}
+
 export interface Wall {
   id: string;
   start: Point;
   end: Point;
   height: number;
   thickness: number;
+  openings: WallOpening[];
   connected?: boolean;
   connections?: {
     start?: string[];

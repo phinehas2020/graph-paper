@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import { Model, Point, Measurement, TextElement, Wall, Floor, FlatPiece, FlatOpening, Connection, ElectricalOutlet, ElectricalSwitch, ElectricalWire, ElectricalCircuit, ElectricalPanel, WireRun, ElectricalProject, PlumbingFixture, PlumbingPipe, BuildingCodeViolation } from './types';
+import { Model, Measurement, TextElement, Wall, Floor, FlatPiece, FlatOpening, Connection, ElectricalOutlet, ElectricalSwitch, ElectricalWire, ElectricalCircuit, ElectricalPanel, WireRun, ElectricalProject, PlumbingFixture, PlumbingPipe, BuildingCodeViolation, WallOpening } from './types';
 
 // Helper for ID generation
 const generateId = () => Date.now().toString() + Math.random().toString(36).substring(2, 9);
@@ -59,6 +59,9 @@ interface StoreActions {
   addWall: (wallData: Omit<Wall, 'id'>) => string;
   updateWall: (id: string, updates: Partial<Omit<Wall, 'id'>>) => void;
   deleteWall: (id: string) => void;
+  addWallOpening: (wallId: string, openingData: Omit<WallOpening, 'id'>) => string;
+  updateWallOpening: (wallId: string, openingId: string, updates: Partial<Omit<WallOpening, 'id'>>) => void;
+  deleteWallOpening: (wallId: string, openingId: string) => void;
   addFloor: (floorData: Omit<Floor, 'id'>) => string;
   updateFloor: (id: string, updates: Partial<Omit<Floor, 'id'>>) => void;
   deleteFloor: (id: string) => void;
@@ -121,6 +124,7 @@ interface StoreSelectors {
   selectWalls: () => Wall[];
   selectFloors: () => Floor[];
   selectWallById: (id: string) => Wall | undefined;
+  selectWallOpenings: (wallId: string) => WallOpening[];
   selectFloorById: (id: string) => Floor | undefined;
   // Flat Layout Selectors
   selectFlatPieces: () => FlatPiece[];
@@ -202,7 +206,11 @@ const useStore = create<StoreState>()(
     addWall: (wallData) => {
       const id = generateId();
       set(produce((draft: Model) => {
-        draft.walls.push({ ...wallData, id });
+        draft.walls.push({
+          ...wallData,
+          id,
+          openings: wallData.openings ?? [],
+        });
       }));
       return id;
     },
@@ -214,6 +222,32 @@ const useStore = create<StoreState>()(
     })),
     deleteWall: (id) => set(produce((draft: Model) => {
       draft.walls = draft.walls.filter(w => w.id !== id);
+    })),
+    addWallOpening: (wallId, openingData) => {
+      const id = generateId();
+      set(produce((draft: Model) => {
+        const wall = draft.walls.find(w => w.id === wallId);
+        if (wall) {
+          if (!wall.openings) {
+            wall.openings = [];
+          }
+          wall.openings.push({ ...openingData, id });
+        }
+      }));
+      return id;
+    },
+    updateWallOpening: (wallId, openingId, updates) => set(produce((draft: Model) => {
+      const wall = draft.walls.find(w => w.id === wallId);
+      const opening = wall?.openings?.find(o => o.id === openingId);
+      if (opening) {
+        Object.assign(opening, updates);
+      }
+    })),
+    deleteWallOpening: (wallId, openingId) => set(produce((draft: Model) => {
+      const wall = draft.walls.find(w => w.id === wallId);
+      if (wall?.openings) {
+        wall.openings = wall.openings.filter(o => o.id !== openingId);
+      }
     })),
     addFloor: (floorData) => {
       const id = generateId();
@@ -505,6 +539,7 @@ const useStore = create<StoreState>()(
     selectWalls: () => get().walls,
     selectFloors: () => get().floors,
     selectWallById: (id) => get().walls.find(w => w.id === id),
+    selectWallOpenings: (wallId) => get().walls.find(w => w.id === wallId)?.openings ?? [],
     selectFloorById: (id) => get().floors.find(f => f.id === id),
     selectFlatPieces: () => get().flatPieces,
     selectConnections: () => get().connections,

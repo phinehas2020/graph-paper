@@ -1,20 +1,20 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import useStore from '@/src/model/useStore';
 import { formatMeasurement } from '@/src/tools/MeasurementUtils';
-import { Point, Wall, Floor, Measurement, TextElement } from '@/src/model/types';
+import { Point, Wall, WallOpening } from '@/src/model/types';
 
 interface Canvas2DProps {
   width: number;
   height: number;
-  activeTool: 'floor' | 'wall' | 'select' | 'measure' | 'text' | null;
+  activeTool: 'floor' | 'wall' | 'door' | 'window' | 'select' | 'measure' | 'text' | null;
   snapToFloorEdges?: boolean;
   onToolAction?: (action: string, data: any) => void;
 }
 
 const GRID_SIZE = 20; // pixels per grid unit
-const SNAP_THRESHOLD = 10; // pixels
 const CONNECTION_THRESHOLD = 0.5; // grid units
 const FLOOR_EDGE_SNAP_THRESHOLD = 0.75; // grid units
+const OPENING_PLACEMENT_THRESHOLD = 0.8; // grid units
 
 function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
@@ -127,6 +127,53 @@ function projectPointToSegment(point: Point, start: Point, end: Point): Point {
   };
 }
 
+interface WallPlacement {
+  wall: Wall;
+  point: Point;
+  distance: number;
+  t: number;
+  length: number;
+  direction: Point;
+  normal: Point;
+}
+
+function getWallLength(wall: Wall): number {
+  return distanceBetweenPoints(wall.start, wall.end);
+}
+
+function getWallOpeningCenter(wall: Wall, opening: WallOpening): Point {
+  return {
+    x: wall.start.x + (wall.end.x - wall.start.x) * opening.offset,
+    y: wall.start.y + (wall.end.y - wall.start.y) * opening.offset,
+  };
+}
+
+function getWallOpeningEndpoints(wall: Wall, opening: WallOpening): { start: Point; end: Point } {
+  const wallLength = getWallLength(wall);
+  if (wallLength === 0) {
+    const center = getWallOpeningCenter(wall, opening);
+    return { start: center, end: center };
+  }
+
+  const direction = {
+    x: (wall.end.x - wall.start.x) / wallLength,
+    y: (wall.end.y - wall.start.y) / wallLength,
+  };
+  const center = getWallOpeningCenter(wall, opening);
+  const halfWidth = opening.width / 2;
+
+  return {
+    start: {
+      x: center.x - direction.x * halfWidth,
+      y: center.y - direction.y * halfWidth,
+    },
+    end: {
+      x: center.x + direction.x * halfWidth,
+      y: center.y + direction.y * halfWidth,
+    },
+  };
+}
+
 export const Canvas2D: React.FC<Canvas2DProps> = ({ 
   width, 
   height, 
@@ -150,13 +197,11 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     settings,
     addFloor, 
     addWall, 
-    updateWall,
+    addWallOpening,
     addMeasurement,
     addTextElement,
     updateTextElement,
     updateSettings,
-    clearTemporaryMeasurements,
-    connectWalls,
     autoConnectNearbyWalls 
   } = useStore();
 
@@ -246,6 +291,177 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     return resolvedPoint;
   }, [findClosestFloorEdgePoint, findNearbyEndpoint, snapToFloorEdges]);
 
+  const findClosestWallPlacement = useCallback((point: Point): WallPlacement | null => {
+    let closestPlacement: WallPlacement | null = null;
+
+    walls.forEach((wall) => {
+      const length = getWallLength(wall);
+      if (length === 0) {
+        return;
+      }
+
+      const dx = wall.end.x - wall.start.x;
+      const dy = wall.end.y - wall.start.y;
+      const projectedPoint = projectPointToSegment(point, wall.start, wall.end);
+      const distance = distanceBetweenPoints(point, projectedPoint);
+
+      if (distance > OPENING_PLACEMENT_THRESHOLD) {
+        return;
+      }
+
+      const projectedDistance = distanceBetweenPoints(wall.start, projectedPoint);
+      const t = projectedDistance / length;
+      const direction = { x: dx / length, y: dy / length };
+      const normal = { x: -direction.y, y: direction.x };
+
+      if (!closestPlacement || distance < closestPlacement.distance) {
+        closestPlacement = {
+          wall,
+          point: projectedPoint,
+          distance,
+          t,
+          length,
+          direction,
+          normal,
+        };
+      }
+    });
+
+    return closestPlacement;
+  }, [walls]);
+
+  const createOpeningPayload = useCallback((
+    type: 'door' | 'window',
+    placement: WallPlacement,
+  ): Omit<WallOpening, 'id'> | null => {
+    const defaults =
+      type === 'door'
+        ? { width: 3, height: 2.35, bottom: 0, hingeSide: 'start' as const }
+        : { width: 4, height: 1.4, bottom: 1.05, hingeSide: 'start' as const };
+
+    const maxWidth = Math.max(1.5, placement.length - 0.6);
+    if (maxWidth <= 1.25) {
+      return null;
+    }
+
+    const openingWidth = Math.min(defaults.width, maxWidth);
+    const halfRatio = openingWidth / (2 * placement.length);
+    const offset = Math.max(halfRatio, Math.min(1 - halfRatio, placement.t));
+    const availableHeight = Math.max(0.9, placement.wall.height - defaults.bottom - 0.2);
+    const openingHeight = Math.min(defaults.height, availableHeight);
+
+    if (openingHeight <= 0.75) {
+      return null;
+    }
+
+    const overlapsExistingOpening = (placement.wall.openings ?? []).some((existingOpening) => {
+      const centerDistance = Math.abs(existingOpening.offset - offset) * placement.length;
+      const requiredClearance = (existingOpening.width + openingWidth) / 2 + 0.25;
+      return centerDistance < requiredClearance;
+    });
+
+    if (overlapsExistingOpening) {
+      return null;
+    }
+
+    return {
+      type,
+      offset,
+      width: openingWidth,
+      height: openingHeight,
+      bottom: defaults.bottom,
+      hingeSide: defaults.hingeSide,
+    };
+  }, []);
+
+  const drawOpeningSymbol = useCallback((
+    ctx: CanvasRenderingContext2D,
+    wall: Wall,
+    opening: WallOpening,
+    options?: { preview?: boolean },
+  ) => {
+    const preview = options?.preview ?? false;
+    const openingEndpoints = getWallOpeningEndpoints(wall, opening);
+    const start = gridToScreen(openingEndpoints.start.x, openingEndpoints.start.y);
+    const end = gridToScreen(openingEndpoints.end.x, openingEndpoints.end.y);
+    const centerPoint = getWallOpeningCenter(wall, opening);
+    const center = gridToScreen(centerPoint.x, centerPoint.y);
+    const screenDx = end.x - start.x;
+    const screenDy = end.y - start.y;
+    const screenLength = Math.sqrt(screenDx * screenDx + screenDy * screenDy);
+    const wallWidth = Math.max(8, wall.thickness * GRID_SIZE * 5);
+
+    if (screenLength === 0) {
+      return;
+    }
+
+    const doorStroke = preview ? 'rgba(249, 115, 22, 0.95)' : '#1d4ed8';
+    const windowStroke = preview ? 'rgba(34, 197, 94, 0.95)' : '#0ea5e9';
+    const unitX = screenDx / screenLength;
+    const unitY = screenDy / screenLength;
+    const normalX = -unitY;
+    const normalY = unitX;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.strokeStyle = preview ? 'rgba(255, 247, 237, 0.98)' : 'rgba(255, 255, 255, 0.98)';
+    ctx.lineWidth = wallWidth + (preview ? 8 : 6);
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.stroke();
+
+    if (opening.type === 'door') {
+      const hingeAtEnd = opening.hingeSide === 'end';
+      const hinge = hingeAtEnd ? end : start;
+      const farPoint = hingeAtEnd ? start : end;
+      const closedAngle = Math.atan2(farPoint.y - hinge.y, farPoint.x - hinge.x);
+      const openAngle = closedAngle + Math.PI / 3;
+      const arcRadius = screenLength;
+
+      ctx.strokeStyle = doorStroke;
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      ctx.moveTo(start.x - normalX * (wallWidth * 0.42), start.y - normalY * (wallWidth * 0.42));
+      ctx.lineTo(start.x + normalX * (wallWidth * 0.42), start.y + normalY * (wallWidth * 0.42));
+      ctx.moveTo(end.x - normalX * (wallWidth * 0.42), end.y - normalY * (wallWidth * 0.42));
+      ctx.lineTo(end.x + normalX * (wallWidth * 0.42), end.y + normalY * (wallWidth * 0.42));
+      ctx.stroke();
+
+      const leafEnd = {
+        x: hinge.x + Math.cos(openAngle) * arcRadius,
+        y: hinge.y + Math.sin(openAngle) * arcRadius,
+      };
+
+      ctx.beginPath();
+      ctx.moveTo(hinge.x, hinge.y);
+      ctx.lineTo(leafEnd.x, leafEnd.y);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(hinge.x, hinge.y, arcRadius, closedAngle, openAngle);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = windowStroke;
+      ctx.lineWidth = Math.max(3, wallWidth * 0.45);
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(center.x - normalX * (wallWidth * 0.75), center.y - normalY * (wallWidth * 0.75));
+      ctx.lineTo(center.x + normalX * (wallWidth * 0.75), center.y + normalY * (wallWidth * 0.75));
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }, [gridToScreen]);
+
   // Drawing functions
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D) => {
     if (!settings.gridVisible) return;
@@ -309,8 +525,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const firstPoint = gridToScreen(floor.points[0].x, floor.points[0].y);
       ctx.moveTo(firstPoint.x, firstPoint.y);
 
-      for (let i = 1; i < floor.points.length; i++) {
-        const point = gridToScreen(floor.points[i].x, floor.points[i].y);
+      for (let index = 1; index < floor.points.length; index += 1) {
+        const point = gridToScreen(floor.points[index].x, floor.points[index].y);
         ctx.lineTo(point.x, point.y);
       }
 
@@ -380,6 +596,10 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       drawNode(ctx, start.x, start.y, '#3092ec');
       drawNode(ctx, end.x, end.y, '#3092ec');
 
+      (wall.openings ?? []).forEach((opening) => {
+        drawOpeningSymbol(ctx, wall, opening);
+      });
+
       drawPillLabel(ctx, formatMeasurement(length / GRID_SIZE), labelX, labelY, {
         background: 'rgba(255, 255, 255, 0.92)',
         border: '#bfdbfe',
@@ -388,7 +608,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
       ctx.restore();
     });
-  }, [walls, gridToScreen]);
+  }, [walls, drawOpeningSymbol, gridToScreen]);
 
   const drawMeasurements = useCallback((ctx: CanvasRenderingContext2D) => {
     measurements.forEach(measurement => {
@@ -490,8 +710,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const firstPoint = gridToScreen(currentPoints[0].x, currentPoints[0].y);
       ctx.moveTo(firstPoint.x, firstPoint.y);
       
-      for (let i = 1; i < currentPoints.length; i++) {
-        const point = gridToScreen(currentPoints[i].x, currentPoints[i].y);
+      for (let index = 1; index < currentPoints.length; index += 1) {
+        const point = gridToScreen(currentPoints[index].x, currentPoints[index].y);
         ctx.lineTo(point.x, point.y);
       }
       
@@ -583,6 +803,29 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         },
       );
     }
+
+    if ((activeTool === 'door' || activeTool === 'window') && previewPoint) {
+      const placement = findClosestWallPlacement(previewPoint);
+      if (placement) {
+        const opening = createOpeningPayload(activeTool, placement);
+        if (opening) {
+          drawOpeningSymbol(ctx, placement.wall, { ...opening, id: 'preview' }, { preview: true });
+
+          const labelPoint = gridToScreen(placement.point.x, placement.point.y);
+          drawPillLabel(
+            ctx,
+            `${activeTool === 'door' ? 'Door' : 'Window'} ${formatMeasurement(opening.width)}`,
+            labelPoint.x + placement.normal.x * 36,
+            labelPoint.y + placement.normal.y * 36,
+            {
+              background: 'rgba(255, 255, 255, 0.96)',
+              border: activeTool === 'door' ? '#fdba74' : '#67e8f9',
+              color: activeTool === 'door' ? '#c2410c' : '#0f766e',
+            },
+          );
+        }
+      }
+    }
     
     if (activeTool === 'measure' && currentPoints.length === 1 && previewPoint) {
       const start = gridToScreen(currentPoints[0].x, currentPoints[0].y);
@@ -620,7 +863,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         drawNode(ctx, screenPoint.x, screenPoint.y, '#9333ea', '#f5f3ff', 4);
       });
     }
-  }, [activeTool, currentPoints, previewPoint, gridToScreen, settings.units]);
+  }, [activeTool, createOpeningPayload, currentPoints, drawOpeningSymbol, findClosestWallPlacement, gridToScreen, previewPoint, settings.units]);
 
   // Main render function
   const render = useCallback(() => {
@@ -689,7 +932,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
           start: currentPoints[0],
           end: wallPoint,
           height: 3,
-          thickness: 0.15
+          thickness: 0.15,
+          openings: [],
         });
         
         // Auto-connect to nearby walls
@@ -698,6 +942,21 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         // Start new wall from current point
         setCurrentPoints([wallPoint]);
         onToolAction?.('wall-completed', { wallId, start: currentPoints[0], end: wallPoint });
+      }
+    }
+
+    if (activeTool === 'door' || activeTool === 'window') {
+      const placement = findClosestWallPlacement(rawPoint);
+      if (placement) {
+        const opening = createOpeningPayload(activeTool, placement);
+        if (opening) {
+          const openingId = addWallOpening(placement.wall.id, opening);
+          onToolAction?.('opening-added', {
+            openingId,
+            wallId: placement.wall.id,
+            type: activeTool,
+          });
+        }
       }
     }
     
@@ -743,13 +1002,13 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         setDraggedWall({ wallId: nearby.wallId, endpoint: nearby.endpoint });
       }
     }
-  }, [activeTool, isDrawing, currentPoints, screenToGrid, resolveWallPoint, addFloor, addWall, addMeasurement, addTextElement, updateSettings, autoConnectNearbyWalls, findNearbyEndpoint, settings.units, settings.measurementMode, onToolAction]);
+  }, [activeTool, addFloor, addMeasurement, addTextElement, addWall, addWallOpening, autoConnectNearbyWalls, createOpeningPayload, currentPoints, findClosestWallPlacement, findNearbyEndpoint, isDrawing, onToolAction, resolveWallPoint, screenToGrid, settings.measurementMode, settings.units, updateSettings]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rawPoint = screenToGrid(e.clientX, e.clientY);
     const point = activeTool === 'wall' ? resolveWallPoint(rawPoint) : rawPoint;
     
-    if (isDrawing) {
+    if (isDrawing || activeTool === 'door' || activeTool === 'window') {
       setPreviewPoint(point);
     }
   }, [activeTool, isDrawing, resolveWallPoint, screenToGrid]);
