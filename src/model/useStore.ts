@@ -143,6 +143,7 @@ interface StoreActions {
   // Level CRUD Actions
   addLevel: (level: Omit<Level, 'id'>) => string;
   updateLevel: (id: string, changes: Partial<Level>) => void;
+  replaceLevels: (levels: Level[]) => void;
   deleteLevel: (id: string) => void;
   // Traditional CAD Actions for Canvas2D
   addWall: (wallData: Omit<Wall, 'id'>) => string;
@@ -349,6 +350,10 @@ const useStore = create<StoreState>()(
         pushPlannerHistorySnapshot(draft);
         Object.assign(level, changes);
       }
+    })),
+    replaceLevels: (levels) => set(produce((draft: StoreState) => {
+      pushPlannerHistorySnapshot(draft);
+      draft.levels = levels.map((level) => ({ ...level }));
     })),
     deleteLevel: (id) => set(produce((draft: StoreState) => {
       pushPlannerHistorySnapshot(draft);

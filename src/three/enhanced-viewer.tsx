@@ -109,6 +109,7 @@ function SceneGeometry({
 }) {
   const wallNodes = usePlannerSceneStore((s) => s.wallNodes);
   const floorNodes = usePlannerSceneStore((s) => s.floorNodes);
+  const levels = usePlannerSceneStore((s) => s.levels);
   const selectedElement = usePlannerViewerStore((s) => s.selectedElement);
 
   const walls = useMemo(() => wallNodes.map((n) => n.entity), [wallNodes]);
@@ -146,6 +147,11 @@ function SceneGeometry({
     [levelDisplayMode, currentLevelIndex],
   );
 
+  const getLevelBaseElevation = useCallback(
+    (levelIndex: number) => levels[levelIndex]?.elevation ?? 0,
+    [levels],
+  );
+
   return (
     <Bounds fit clip observe margin={1.25}>
       <group>
@@ -153,7 +159,10 @@ function SceneGeometry({
           const levelIndex = Math.min(floorNodes[index].entity.level ?? 0, levelCount - 1);
           if (!isLevelVisible(levelIndex)) return null;
           return (
-            <group key={`floor-${floorNodes[index].id}`} position-y={getYOffset(levelIndex)}>
+            <group
+              key={`floor-${floorNodes[index].id}`}
+              position-y={getLevelBaseElevation(levelIndex) + getYOffset(levelIndex)}
+            >
               <primitive object={mesh} />
             </group>
           );
@@ -162,7 +171,10 @@ function SceneGeometry({
           const levelIndex = Math.min(wallNodes[index].entity.level ?? 0, levelCount - 1);
           if (!isLevelVisible(levelIndex)) return null;
           return (
-            <group key={`wall-${wallNodes[index].id}`} position-y={getYOffset(levelIndex)}>
+            <group
+              key={`wall-${wallNodes[index].id}`}
+              position-y={getLevelBaseElevation(levelIndex) + getYOffset(levelIndex)}
+            >
               <primitive object={mesh} />
             </group>
           );

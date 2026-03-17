@@ -23,6 +23,9 @@ export interface BuildingDefaults {
   floorThickness: number;
   floorElevation: number;
 
+  // Levels
+  levelHeight: number;
+
   // Ceiling
   ceilingHeight: number;
   ceilingThickness: number;
@@ -52,6 +55,8 @@ const DEFAULT_VALUES: BuildingDefaults = {
 
   floorThickness: 0.2,
   floorElevation: 0,
+
+  levelHeight: 10,
 
   ceilingHeight: 3,
   ceilingThickness: 0.1,

@@ -46,7 +46,9 @@ import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
 import usePlannerViewerStore, {
   PlannerViewportMode,
 } from '@/src/planner/stores/usePlannerViewerStore';
+import useDefaultsStore from '@/src/planner/stores/useDefaultsStore';
 import useEnhancedEditorStore from '@/src/planner/stores/useEnhancedEditorStore';
+import { getSuggestedLevelElevation } from '@/src/planner/level-utils';
 import PlannerToolManager from '@/src/planner/tooling/PlannerToolManager';
 import { PLANNER_TOOLS, type PlannerToolId } from '@/src/planner/tooling/tools';
 import { PHASES, MODES, type EditorPhase, type EditorMode } from '@/src/model/phases';
@@ -221,7 +223,11 @@ export function PlannerWorkspace() {
   const setViewportMode = usePlannerViewerStore((s) => s.setViewportMode);
   const selectedElement = usePlannerViewerStore((s) => s.selectedElement);
   const levels = usePlannerSceneStore((s) => (s as any).levels ?? []);
+  const walls = usePlannerSceneStore((s) => s.walls);
+  const floors = usePlannerSceneStore((s) => s.floors);
+  const ceilings = usePlannerSceneStore((s) => s.ceilings);
   const addLevel = usePlannerSceneStore((s) => (s as any).addLevel);
+  const levelHeightDefault = useDefaultsStore((s) => s.levelHeight);
 
   /* Enhanced store */
   const phase = useEnhancedEditorStore((s) => s.phase);
@@ -475,13 +481,17 @@ export function PlannerWorkspace() {
             title="Add Level"
             onClick={() => {
               const newIndex = navigatorLevels.length;
-              const prevLevel = levels[levels.length - 1];
-              const elevation = prevLevel ? prevLevel.elevation + prevLevel.height : 0;
+              const elevation = getSuggestedLevelElevation(newIndex, {
+                levels,
+                walls,
+                floors,
+                ceilings,
+              });
               try {
                 addLevel?.({
                   name: `Level ${newIndex + 1}`,
                   elevation,
-                  height: 10,
+                  height: levelHeightDefault,
                   index: newIndex,
                 });
                 setCurrentLevelIndex(newIndex);

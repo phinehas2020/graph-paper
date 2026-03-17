@@ -30,6 +30,7 @@ type PlannerSceneActionKeys =
   | 'clearTemporaryMeasurements'
   | 'addLevel'
   | 'updateLevel'
+  | 'replaceLevels'
   | 'deleteLevel'
   | 'addWall'
   | 'updateWall'
@@ -164,6 +165,7 @@ function buildPlannerSceneSnapshot(
 const plannerSceneActions: PlannerSceneActions = {
   addLevel: (...args) => useStore.getState().addLevel(...args),
   updateLevel: (...args) => useStore.getState().updateLevel(...args),
+  replaceLevels: (...args) => useStore.getState().replaceLevels(...args),
   deleteLevel: (...args) => useStore.getState().deleteLevel(...args),
   addMeasurement: (...args) => useStore.getState().addMeasurement(...args),
   updateMeasurement: (...args) => useStore.getState().updateMeasurement(...args),
