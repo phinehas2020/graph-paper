@@ -1,432 +1,510 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Box,
+  Armchair,
+  AppWindow,
+  BoxSelect,
   Columns2,
+  DoorOpen,
   DraftingCompass,
-  EyeOff,
+  LayoutGrid,
   Layers3,
-  MoveDiagonal2,
-  PanelLeftOpen,
-  Sparkles,
+  Minus,
+  MousePointer2,
+  Pencil,
+  Ruler,
+  Settings,
+  Square,
+  Trash2,
+  TreePine,
+  Triangle,
+  Type,
+  Wrench,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/components/ui/resizable';
-import { useIsMobile } from '@/hooks/use-is-mobile';
 import { cn } from '@/lib/utils';
 import { Canvas2D } from '@/src/components/Canvas2D';
 import PlannerSelectionInspector from '@/src/components/planner/PlannerSelectionInspector';
+import { ViewControls } from '@/src/components/view-controls';
+import { LevelNavigator, type Level } from '@/src/components/level-navigator';
+import {
+  ActionMenu,
+  ActionMenuSection,
+  ActionMenuButton,
+  ActionMenuDivider,
+} from '@/src/components/ui/action-menu';
+import { IconRail, IconRailButton } from '@/src/components/ui/icon-rail';
+import { FloatingPanel } from '@/src/components/ui/floating-panel';
+import { SceneTree } from '@/src/components/ui/scene-tree';
 import { ToolPanel } from '@/src/components/ToolPanel';
 import usePlannerEditorStore from '@/src/planner/stores/usePlannerEditorStore';
 import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
 import usePlannerViewerStore, {
   PlannerViewportMode,
 } from '@/src/planner/stores/usePlannerViewerStore';
+import useEnhancedEditorStore from '@/src/planner/stores/useEnhancedEditorStore';
 import PlannerToolManager from '@/src/planner/tooling/PlannerToolManager';
-import { PLANNER_TOOL_LABELS } from '@/src/planner/tooling/tools';
+import { PLANNER_TOOLS, type PlannerToolId } from '@/src/planner/tooling/tools';
+import { PHASES, MODES, type EditorPhase, type EditorMode } from '@/src/model/phases';
 import { Viewer } from '@/src/three/Viewer';
 
-function DraftBoardPanel({
-  containerRef,
-  dimensions,
-  isMobile,
+/* ------------------------------------------------------------------ */
+/*  Tool icon lookup                                                    */
+/* ------------------------------------------------------------------ */
+
+const TOOL_ICON_MAP: Record<PlannerToolId, React.ComponentType<{ className?: string }>> = {
+  select: MousePointer2,
+  floor: Square,
+  wall: Minus,
+  door: DoorOpen,
+  window: AppWindow,
+  ceiling: LayoutGrid,
+  roof: Triangle,
+  zone: BoxSelect,
+  item: Armchair,
+  measure: Ruler,
+  text: Type,
+};
+
+/* ------------------------------------------------------------------ */
+/*  Mode icon lookup                                                    */
+/* ------------------------------------------------------------------ */
+
+const MODE_ICON_MAP: Record<EditorMode, React.ComponentType<{ className?: string }>> = {
+  select: MousePointer2,
+  edit: Pencil,
+  build: Wrench,
+  delete: Trash2,
+};
+
+/* ------------------------------------------------------------------ */
+/*  Viewport mode <-> layout mapping                                    */
+/* ------------------------------------------------------------------ */
+
+function viewportLayoutToMode(layout: '2d' | 'split' | '3d'): PlannerViewportMode {
+  switch (layout) {
+    case '2d':
+      return 'draft';
+    case '3d':
+      return 'preview';
+    default:
+      return 'split';
+  }
+}
+
+function viewportModeToLayout(mode: PlannerViewportMode): '2d' | 'split' | '3d' {
+  switch (mode) {
+    case 'draft':
+      return '2d';
+    case 'preview':
+      return '3d';
+    default:
+      return 'split';
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Left side-panel content                                             */
+/* ------------------------------------------------------------------ */
+
+function LeftPanelContent({
+  tab,
 }: {
-  containerRef: React.RefObject<HTMLDivElement | null>;
-  dimensions: { width: number; height: number };
-  isMobile: boolean;
+  tab: 'tree' | 'tools' | 'settings';
 }) {
-  const activeTool = usePlannerEditorStore((state) => state.activeTool);
-  const selectTool = usePlannerEditorStore((state) => state.selectTool);
-  const snapToFloorEdges = usePlannerEditorStore(
-    (state) => state.snapToFloorEdges,
-  );
-  const showGuide = usePlannerViewerStore((state) => state.showGuide);
-  const gridVisible = usePlannerSceneStore((state) => state.settings.gridVisible);
+  const activeTool = usePlannerEditorStore((s) => s.activeTool);
+  const selectTool = usePlannerEditorStore((s) => s.selectTool);
+  const nodes = usePlannerSceneStore((s) => s.nodes);
+  const rootNodeIds = usePlannerSceneStore((s) => s.rootNodeIds);
+  const selectedElement = usePlannerViewerStore((s) => s.selectedElement);
 
-  const inspectorPositionClass = useMemo(() => {
-    if (isMobile) {
-      return 'inset-x-4 top-24 bottom-4';
-    }
-
-    return showGuide
-      ? 'right-5 top-32 bottom-5 w-[320px]'
-      : 'right-5 top-5 bottom-5 w-[320px]';
-  }, [isMobile, showGuide]);
-
-  const compactToolRailWidthClass = showGuide ? 'w-56 min-w-56 max-w-56' : 'w-[112px] min-w-[112px] max-w-[112px]';
-
-  return (
-    <section
-      className={cn(
-        'canvas-fade flex h-full overflow-hidden p-3',
-        showGuide ? 'gap-3 md:gap-4 md:p-4' : 'gap-2 md:gap-2.5 md:p-3',
-      )}
-    >
-      {!isMobile && (
-        <aside
-          className={cn(
-            'hidden min-h-0 shrink-0 md:flex md:max-h-full',
-            compactToolRailWidthClass,
-          )}
-        >
-          <ToolPanel
-            activeTool={activeTool}
-            onToolChange={selectTool}
-            compact={!showGuide}
-          />
-        </aside>
-      )}
-
-      <div
-        ref={containerRef}
-        className="relative flex-1 overflow-hidden rounded-[24px] border border-white/80 bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
-      >
-        {showGuide ? (
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-3 p-4 md:p-5">
-            <div className="panel-surface max-w-sm px-4 py-3">
-              <div className="flex items-center gap-2">
-                <DraftingCompass className="h-4 w-4 text-sky-600" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  Draft Board
-                </p>
-              </div>
-              <p className="mt-2 text-sm font-semibold text-slate-900">
-                {activeTool ? PLANNER_TOOL_LABELS[activeTool] : 'No tool selected'}
-              </p>
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                Use half-grid snapping for clean wall joins and dimension labels
-                that feel architectural instead of sketchy.
-              </p>
-            </div>
-
-            <div className="panel-surface hidden items-center gap-3 px-4 py-3 md:flex">
-              <span className="blueprint-chip border-slate-200 bg-slate-50/80 text-slate-500">
-                Snap 0.5&apos;
-              </span>
-              <span className="blueprint-chip">
-                Edge Snap {snapToFloorEdges ? 'On' : 'Off'}
-              </span>
-              <span className="blueprint-chip">
-                {gridVisible ? 'Grid Visible' : 'Grid Hidden'}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="pointer-events-none absolute left-4 top-4 z-10 md:left-5 md:top-5">
-            <div className="panel-surface px-4 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                {activeTool ? PLANNER_TOOL_LABELS[activeTool] : 'Drafting'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        <Canvas2D width={dimensions.width} height={dimensions.height} />
-
-        <PlannerSelectionInspector
-          className={`absolute z-20 ${inspectorPositionClass}`}
+  if (tab === 'tree') {
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            Scene Tree
+          </p>
+        </div>
+        <SceneTree
+          nodes={nodes}
+          rootNodeIds={rootNodeIds}
+          selectedId={selectedElement?.wallId ?? null}
         />
+      </div>
+    );
+  }
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-end justify-between gap-3 p-4 md:p-5">
-          {showGuide && (
-            <div className="panel-surface px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                Drawing Rhythm
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Floors become slabs. Wall chains become vertical massing. Labels
-                and dimensions stay anchored to the same plan.
-              </p>
-            </div>
-          )}
+  if (tab === 'tools') {
+    return (
+      <div className="h-full overflow-y-auto p-2">
+        <DarkToolList activeTool={activeTool} onToolChange={selectTool} />
+      </div>
+    );
+  }
 
-          {isMobile && (
-            <div
+  /* settings tab */
+  return (
+    <div className="p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+        Settings
+      </p>
+      <p className="mt-3 text-xs leading-5 text-slate-400">
+        Project settings and preferences will appear here.
+      </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Dark-themed tool list for left panel                                */
+/* ------------------------------------------------------------------ */
+
+function DarkToolList({
+  activeTool,
+  onToolChange,
+}: {
+  activeTool: PlannerToolId | null;
+  onToolChange: (tool: PlannerToolId) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="px-2 py-1.5">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+          Tools
+        </p>
+      </div>
+      {PLANNER_TOOLS.map((tool) => {
+        const Icon = TOOL_ICON_MAP[tool.id];
+        const isActive = activeTool === tool.id;
+        return (
+          <button
+            key={tool.id}
+            type="button"
+            onClick={() => onToolChange(tool.id)}
+            className={cn(
+              'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all',
+              isActive
+                ? 'bg-blue-500/20 text-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]'
+                : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200',
+            )}
+          >
+            <span
               className={cn(
-                'pointer-events-auto max-h-[65dvh] min-h-0 overflow-y-auto',
-                compactToolRailWidthClass,
+                'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                isActive ? 'bg-blue-500/20' : 'bg-slate-800/60',
               )}
             >
-              <ToolPanel
-                activeTool={activeTool}
-                onToolChange={selectTool}
-                className="max-h-[65dvh]"
-                compact={!showGuide}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    </section>
+              <Icon className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-semibold">{tool.name}</span>
+              <span className="block text-[10px] text-slate-500">
+                {tool.shortcut}
+              </span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
-function PreviewPanel() {
-  const showGuide = usePlannerViewerStore((state) => state.showGuide);
-
-  return (
-    <section className="relative h-full overflow-hidden bg-[radial-gradient(circle_at_top,#ffffff_0%,#eef4f9_42%,#e6eef6_100%)]">
-      {showGuide ? (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4 md:p-5">
-          <div className="panel-surface px-4 py-3">
-            <div className="flex items-center gap-2">
-              <Layers3 className="h-4 w-4 text-sky-600" />
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                Spatial Preview
-              </p>
-            </div>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              The preview is centered automatically so you can judge volume,
-              corner accuracy, and overall composition faster.
-            </p>
-          </div>
-
-          <div className="panel-surface hidden px-4 py-3 md:block">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              Orbit Controls
-            </p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Drag to orbit, right drag to pan, scroll to zoom.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="pointer-events-none absolute left-4 top-4 z-10 md:left-5 md:top-5">
-          <div className="panel-surface px-4 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-              3D Preview
-            </p>
-          </div>
-        </div>
-      )}
-
-      <Viewer />
-
-      <div className="pointer-events-none absolute bottom-4 right-4 z-10">
-        <div className="panel-surface flex items-center gap-3 px-4 py-3">
-          <span className="rounded-full bg-slate-100 p-2 text-slate-500">
-            <MoveDiagonal2 className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              Camera
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
-              {showGuide
-                ? 'Smart fit keeps the model framed as it grows.'
-                : 'Drag to orbit, scroll to zoom.'}
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-const VIEWPORT_OPTIONS: Array<{
-  mode: PlannerViewportMode;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}> = [
-  { mode: 'draft', label: '2D', icon: DraftingCompass },
-  { mode: 'split', label: 'Split', icon: Columns2 },
-  { mode: 'preview', label: '3D', icon: Layers3 },
-];
+/* ------------------------------------------------------------------ */
+/*  Main workspace component                                            */
+/* ------------------------------------------------------------------ */
 
 export function PlannerWorkspace() {
-  const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-  const snapToFloorEdges = usePlannerEditorStore(
-    (state) => state.snapToFloorEdges,
-  );
-  const toggleFloorEdgeSnap = usePlannerEditorStore(
-    (state) => state.toggleFloorEdgeSnap,
-  );
-  const showGuide = usePlannerViewerStore((state) => state.showGuide);
-  const toggleGuide = usePlannerViewerStore((state) => state.toggleGuide);
-  const viewportMode = usePlannerViewerStore((state) => state.viewportMode);
-  const setViewportMode = usePlannerViewerStore(
-    (state) => state.setViewportMode,
-  );
-  const wallNodes = usePlannerSceneStore((state) => state.wallNodes);
-  const floorNodes = usePlannerSceneStore((state) => state.floorNodes);
-  const openingNodes = usePlannerSceneStore((state) => state.openingNodes);
-  const rootNodeIds = usePlannerSceneStore((state) => state.rootNodeIds);
 
+  /* Existing stores */
+  const activeTool = usePlannerEditorStore((s) => s.activeTool);
+  const selectTool = usePlannerEditorStore((s) => s.selectTool);
+  const viewportMode = usePlannerViewerStore((s) => s.viewportMode);
+  const setViewportMode = usePlannerViewerStore((s) => s.setViewportMode);
+  const selectedElement = usePlannerViewerStore((s) => s.selectedElement);
+  const gridVisible = usePlannerSceneStore((s) => s.settings.gridVisible);
+
+  /* Enhanced store */
+  const phase = useEnhancedEditorStore((s) => s.phase);
+  const setPhase = useEnhancedEditorStore((s) => s.setPhase);
+  const mode = useEnhancedEditorStore((s) => s.mode);
+  const setMode = useEnhancedEditorStore((s) => s.setMode);
+  const viewportLayout = useEnhancedEditorStore((s) => s.viewportLayout);
+  const setViewportLayout = useEnhancedEditorStore((s) => s.setViewportLayout);
+  const viewPrefs = useEnhancedEditorStore((s) => s.viewPrefs);
+  const updateViewPrefs = useEnhancedEditorStore((s) => s.updateViewPrefs);
+  const currentLevelIndex = useEnhancedEditorStore((s) => s.currentLevelIndex);
+  const setCurrentLevelIndex = useEnhancedEditorStore((s) => s.setCurrentLevelIndex);
+  const leftPanelTab = useEnhancedEditorStore((s) => s.leftPanelTab);
+  const setLeftPanelTab = useEnhancedEditorStore((s) => s.setLeftPanelTab);
+
+  /* Property panel visibility — show when something is selected */
+  const [propertyPanelOpen, setPropertyPanelOpen] = useState(false);
+  useEffect(() => {
+    setPropertyPanelOpen(selectedElement != null);
+  }, [selectedElement]);
+
+  /* Sync viewport layout <-> legacy viewport mode */
+  useEffect(() => {
+    setViewportMode(viewportLayoutToMode(viewportLayout));
+  }, [viewportLayout, setViewportMode]);
+
+  /* Canvas resize observer */
   useEffect(() => {
     const updateDimensions = () => {
-      if (!containerRef.current) {
-        return;
-      }
-
+      if (!containerRef.current) return;
       setDimensions({
         width: containerRef.current.clientWidth,
         height: containerRef.current.clientHeight,
       });
     };
-
     updateDimensions();
-
-    const resizeObserver = new ResizeObserver(updateDimensions);
-
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
+    const observer = new ResizeObserver(updateDimensions);
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
   }, [viewportMode]);
 
-  const stats = useMemo(
-    () => [
-      { label: 'Roots', value: rootNodeIds.length.toString().padStart(2, '0') },
-      { label: 'Walls', value: wallNodes.length.toString().padStart(2, '0') },
-      { label: 'Floors', value: floorNodes.length.toString().padStart(2, '0') },
-      {
-        label: 'Openings',
-        value: openingNodes.length.toString().padStart(2, '0'),
-      },
-    ],
-    [floorNodes.length, openingNodes.length, rootNodeIds.length, wallNodes.length],
+  /* Phase-scoped tools */
+  const currentPhase = useMemo(
+    () => PHASES.find((p: { id: string }) => p.id === phase) ?? PHASES[1],
+    [phase],
   );
+  const phaseTools = useMemo(
+    () =>
+      PLANNER_TOOLS.filter((t) => currentPhase.tools.includes(t.id)),
+    [currentPhase],
+  );
+
+  /* Levels (single level for now) */
+  const levels: Level[] = useMemo(
+    () => [{ id: 'ground', name: 'Ground Floor', elevation: 0 }],
+    [],
+  );
+
+  /* Handlers */
+  const handleViewportLayoutChange = useCallback(
+    (layout: '2d' | 'split' | '3d') => {
+      setViewportLayout(layout);
+    },
+    [setViewportLayout],
+  );
+
+  const handleToggleLeftPanel = useCallback(
+    (tab: 'tree' | 'tools' | 'settings') => {
+      setLeftPanelTab(leftPanelTab === tab ? null : tab);
+    },
+    [leftPanelTab, setLeftPanelTab],
+  );
+
+  /* ---------------------------------------------------------------- */
+  /*  Canvas panels                                                     */
+  /* ---------------------------------------------------------------- */
 
   const draftPanel = (
-    <DraftBoardPanel
-      containerRef={containerRef}
-      dimensions={dimensions}
-      isMobile={isMobile}
-    />
+    <div ref={containerRef} className="relative h-full w-full bg-slate-900">
+      <Canvas2D width={dimensions.width} height={dimensions.height} />
+    </div>
   );
 
-  const previewPanel = <PreviewPanel />;
+  const previewPanel = (
+    <div className="relative h-full w-full bg-slate-900">
+      <Viewer />
+    </div>
+  );
+
+  /* ---------------------------------------------------------------- */
+  /*  Render                                                            */
+  /* ---------------------------------------------------------------- */
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden px-3 py-3 text-slate-900 md:px-4 md:py-4">
+    <div className="relative flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-200">
+      {/* Invisible tool manager — handles keyboard shortcuts */}
       <PlannerToolManager />
 
-      <div className="panel-surface panel-glow flex h-full flex-col overflow-hidden border-white/80">
-        <header className="border-b border-slate-200/80 bg-white/70 px-4 py-4 backdrop-blur-xl md:px-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-4">
-              <span className="rounded-2xl border border-sky-100 bg-sky-50 p-3 text-sky-600 shadow-sm">
-                <Box className="h-6 w-6" />
-              </span>
-              <div>
-                <div className="blueprint-chip">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Spatial Draft Studio
-                </div>
-                <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 md:text-[2rem]">
-                  Graph Paper 3D
-                </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 md:text-[15px]">
-                  Draw the plan in 2D, inspect proportions instantly in 3D, and
-                  keep both views reading from the same geometry.
-                </p>
-              </div>
-            </div>
+      {/* ── Icon Rail (left edge, 48px) ────────────────────────────── */}
+      <IconRail className="z-30 shrink-0">
+        <IconRailButton
+          icon={<TreePine size={18} />}
+          label="Scene Tree"
+          active={leftPanelTab === 'tree'}
+          onClick={() => handleToggleLeftPanel('tree')}
+        />
+        <IconRailButton
+          icon={<Wrench size={18} />}
+          label="Tools"
+          active={leftPanelTab === 'tools'}
+          onClick={() => handleToggleLeftPanel('tools')}
+        />
+        <IconRailButton
+          icon={<Settings size={18} />}
+          label="Settings"
+          active={leftPanelTab === 'settings'}
+          onClick={() => handleToggleLeftPanel('settings')}
+        />
+      </IconRail>
 
-            <div className="flex flex-wrap items-center gap-2 md:gap-3">
-              <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 p-1 shadow-sm">
-                {VIEWPORT_OPTIONS.map((option) => {
-                  const Icon = option.icon;
-                  const isActive = viewportMode === option.mode;
+      {/* ── Collapsible left panel ─────────────────────────────────── */}
+      {leftPanelTab && (
+        <aside
+          className="z-20 flex w-[260px] shrink-0 flex-col border-r border-slate-800/60 bg-slate-950/95 backdrop-blur-xl transition-all"
+        >
+          <LeftPanelContent tab={leftPanelTab} />
+        </aside>
+      )}
 
-                  return (
-                    <Button
-                      key={option.mode}
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        'rounded-full px-3',
-                        isActive && 'bg-slate-900 text-white hover:bg-slate-900',
-                      )}
-                      onClick={() => setViewportMode(option.mode)}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {option.label}
-                    </Button>
-                  );
-                })}
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-full border-slate-200 bg-white/90 px-4"
-                onClick={toggleFloorEdgeSnap}
-              >
-                Edge Snap {snapToFloorEdges ? 'On' : 'Off'}
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-full border-slate-200 bg-white/90 px-4"
-                onClick={toggleGuide}
-              >
-                {showGuide ? (
-                  <>
-                    <EyeOff className="h-4 w-4" />
-                    Hide Guide
-                  </>
-                ) : (
-                  <>
-                    <PanelLeftOpen className="h-4 w-4" />
-                    Show Guide
-                  </>
-                )}
-              </Button>
-
-              {stats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2 shadow-sm"
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                    {stat.label}
-                  </p>
-                  <p className="mt-1 text-base font-semibold text-slate-900">
-                    {stat.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-hidden p-2 md:p-3">
+      {/* ── Main canvas area ───────────────────────────────────────── */}
+      <main className="relative flex-1 overflow-hidden">
+        {/* Canvas fill */}
+        <div className="absolute inset-0">
           {viewportMode === 'split' ? (
             <ResizablePanelGroup
               direction="horizontal"
-              className="h-full overflow-hidden rounded-[26px] border border-slate-200/80 bg-white/65"
+              className="h-full w-full"
             >
-              <ResizablePanel defaultSize={58} minSize={28}>
+              <ResizablePanel defaultSize={55} minSize={25}>
                 {draftPanel}
               </ResizablePanel>
-
               <ResizableHandle
                 withHandle
-                className="bg-transparent before:absolute before:inset-y-0 before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-slate-200/80"
+                className="bg-slate-800/60"
               />
-
-              <ResizablePanel defaultSize={42} minSize={24}>
+              <ResizablePanel defaultSize={45} minSize={25}>
                 {previewPanel}
               </ResizablePanel>
             </ResizablePanelGroup>
+          ) : viewportMode === 'draft' ? (
+            draftPanel
           ) : (
-            <div className="h-full overflow-hidden rounded-[26px] border border-slate-200/80 bg-white/65">
-              {viewportMode === 'draft' ? draftPanel : previewPanel}
-            </div>
+            previewPanel
           )}
         </div>
-      </div>
+
+        {/* ── View Controls overlay (top-right) ────────────────────── */}
+        <ViewControls
+          cameraMode={viewPrefs.cameraMode}
+          levelDisplayMode={viewPrefs.levelDisplayMode}
+          wallViewMode={viewPrefs.wallViewMode}
+          gridVisible={viewPrefs.gridVisible}
+          guidesVisible={viewPrefs.guidesVisible}
+          measurementsVisible={viewPrefs.measurementsVisible}
+          onCameraModeChange={(m) => updateViewPrefs({ cameraMode: m })}
+          onLevelDisplayModeChange={(m) => updateViewPrefs({ levelDisplayMode: m })}
+          onWallViewModeChange={(m) => updateViewPrefs({ wallViewMode: m })}
+          onGridVisibleChange={(v) => updateViewPrefs({ gridVisible: v })}
+          onGuidesVisibleChange={(v) => updateViewPrefs({ guidesVisible: v })}
+          onMeasurementsVisibleChange={(v) => updateViewPrefs({ measurementsVisible: v })}
+          onZoomToFit={() => {}}
+          onResetCamera={() => {}}
+        />
+
+        {/* ── Level Navigator (bottom-left) ────────────────────────── */}
+        <LevelNavigator
+          levels={levels}
+          currentLevelIndex={currentLevelIndex}
+          onLevelChange={setCurrentLevelIndex}
+        />
+
+        {/* ── Property Panel (floating, right side) ────────────────── */}
+        {propertyPanelOpen && selectedElement && (
+          <div className="absolute right-3 top-14 z-40">
+            <FloatingPanel
+              title="Properties"
+              open={propertyPanelOpen}
+              onClose={() => setPropertyPanelOpen(false)}
+              width={320}
+            >
+              <PlannerSelectionInspector />
+            </FloatingPanel>
+          </div>
+        )}
+
+        {/* ── Floating Action Menu (bottom center) ─────────────────── */}
+        <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center">
+          <ActionMenu>
+            {/* Section: Phase */}
+            <ActionMenuSection label="Phase">
+              {PHASES.map((p: { id: EditorPhase; label: string; shortcut: string }) => (
+                <ActionMenuButton
+                  key={p.id}
+                  label={p.label}
+                  shortcut={p.shortcut}
+                  active={phase === p.id}
+                  onClick={() => setPhase(p.id)}
+                />
+              ))}
+            </ActionMenuSection>
+
+            <ActionMenuDivider />
+
+            {/* Section: Mode */}
+            <ActionMenuSection label="Mode">
+              {MODES.map((m: { id: EditorMode; label: string; shortcut: string }) => {
+                const MIcon = MODE_ICON_MAP[m.id];
+                return (
+                  <ActionMenuButton
+                    key={m.id}
+                    icon={<MIcon className="h-3.5 w-3.5" />}
+                    label={m.label}
+                    shortcut={m.shortcut}
+                    active={mode === m.id}
+                    onClick={() => setMode(m.id)}
+                  />
+                );
+              })}
+            </ActionMenuSection>
+
+            <ActionMenuDivider />
+
+            {/* Section: Tools (phase-dependent) */}
+            <ActionMenuSection label="Tools">
+              {phaseTools.map((t) => {
+                const TIcon = TOOL_ICON_MAP[t.id];
+                return (
+                  <ActionMenuButton
+                    key={t.id}
+                    icon={<TIcon className="h-3.5 w-3.5" />}
+                    label={t.name}
+                    shortcut={t.shortcut}
+                    active={activeTool === t.id}
+                    onClick={() => selectTool(t.id)}
+                  />
+                );
+              })}
+            </ActionMenuSection>
+
+            <ActionMenuDivider />
+
+            {/* Section: View */}
+            <ActionMenuSection label="View">
+              <ActionMenuButton
+                icon={<DraftingCompass className="h-3.5 w-3.5" />}
+                label="2D"
+                active={viewportLayout === '2d'}
+                onClick={() => handleViewportLayoutChange('2d')}
+              />
+              <ActionMenuButton
+                icon={<Columns2 className="h-3.5 w-3.5" />}
+                label="Split"
+                active={viewportLayout === 'split'}
+                onClick={() => handleViewportLayoutChange('split')}
+              />
+              <ActionMenuButton
+                icon={<Layers3 className="h-3.5 w-3.5" />}
+                label="3D"
+                active={viewportLayout === '3d'}
+                onClick={() => handleViewportLayoutChange('3d')}
+              />
+            </ActionMenuSection>
+          </ActionMenu>
+        </div>
+      </main>
     </div>
   );
 }

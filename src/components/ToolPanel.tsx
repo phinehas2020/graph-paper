@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppWindow, DoorOpen, MousePointer2, Square, Minus, Ruler, Type, Sparkles } from 'lucide-react';
+import { AppWindow, Armchair, BoxSelect, DoorOpen, LayoutGrid, MousePointer2, Square, Minus, Ruler, Triangle, Type, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -28,8 +28,12 @@ const TOOL_ICONS: Record<PlannerToolId, React.ComponentType<{ className?: string
   wall: Minus,
   door: DoorOpen,
   window: AppWindow,
+  ceiling: LayoutGrid,
+  roof: Triangle,
+  zone: BoxSelect,
   measure: Ruler,
   text: Type,
+  item: Armchair,
 };
 
 const tools = PLANNER_TOOLS.map((tool) => ({
