@@ -31,7 +31,6 @@ import { cn } from '@/lib/utils';
 import { Canvas2D } from '@/src/components/Canvas2D';
 import PlannerSelectionInspector from '@/src/components/planner/PlannerSelectionInspector';
 import { ViewControls } from '@/src/components/view-controls';
-import { LevelNavigator, type Level } from '@/src/components/level-navigator';
 import {
   ActionMenu,
   ActionMenuSection,
@@ -282,12 +281,6 @@ export function PlannerWorkspace() {
     [currentPhase],
   );
 
-  /* Levels (single level for now) */
-  const levels: Level[] = useMemo(
-    () => [{ id: 'ground', name: 'Ground Floor', elevation: 0 }],
-    [],
-  );
-
   /* Handlers */
   const handleViewportLayoutChange = useCallback(
     (layout: '2d' | 'split' | '3d') => {
@@ -342,6 +335,32 @@ export function PlannerWorkspace() {
           active={leftPanelTab === 'tools'}
           onClick={() => handleToggleLeftPanel('tools')}
         />
+
+        {/* Spacer pushes settings to bottom */}
+        <div className="flex-1" />
+
+        {/* Phase indicator */}
+        <div className="flex flex-col items-center gap-0.5 pb-1">
+          {PHASES.map((p: { id: EditorPhase; label: string; shortcut: string }) => (
+            <button
+              key={p.id}
+              type="button"
+              title={`${p.label} (${p.shortcut})`}
+              onClick={() => setPhase(p.id)}
+              className={cn(
+                'flex h-6 w-10 items-center justify-center rounded-md text-[10px] font-semibold transition-all',
+                phase === p.id
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'text-slate-600 hover:text-slate-400',
+              )}
+            >
+              {p.label.charAt(0)}
+            </button>
+          ))}
+        </div>
+
+        <div className="mx-2 h-px bg-slate-800/60" />
+
         <IconRailButton
           icon={<Settings size={18} />}
           label="Settings"
@@ -386,7 +405,7 @@ export function PlannerWorkspace() {
           )}
         </div>
 
-        {/* ── View Controls overlay (top-right) ────────────────────── */}
+        {/* ── View Controls overlay (top-right) — compact ─────────── */}
         <ViewControls
           cameraMode={viewPrefs.cameraMode}
           levelDisplayMode={viewPrefs.levelDisplayMode}
@@ -404,13 +423,6 @@ export function PlannerWorkspace() {
           onResetCamera={() => {}}
         />
 
-        {/* ── Level Navigator (bottom-left) ────────────────────────── */}
-        <LevelNavigator
-          levels={levels}
-          currentLevelIndex={currentLevelIndex}
-          onLevelChange={setCurrentLevelIndex}
-        />
-
         {/* ── Property Panel (floating, right side) ────────────────── */}
         {propertyPanelOpen && selectedElement && (
           <div className="absolute right-3 top-14 z-40">
@@ -426,31 +438,16 @@ export function PlannerWorkspace() {
         )}
 
         {/* ── Floating Action Menu (bottom center) ─────────────────── */}
-        <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center">
+        <div className="absolute inset-x-0 bottom-4 z-30 flex items-end justify-center gap-2">
+          {/* Mode pills */}
           <ActionMenu>
-            {/* Section: Phase */}
-            <ActionMenuSection label="Phase">
-              {PHASES.map((p: { id: EditorPhase; label: string; shortcut: string }) => (
-                <ActionMenuButton
-                  key={p.id}
-                  label={p.label}
-                  shortcut={p.shortcut}
-                  active={phase === p.id}
-                  onClick={() => setPhase(p.id)}
-                />
-              ))}
-            </ActionMenuSection>
-
-            <ActionMenuDivider />
-
-            {/* Section: Mode */}
-            <ActionMenuSection label="Mode">
+            <ActionMenuSection>
               {MODES.map((m: { id: EditorMode; label: string; shortcut: string }) => {
                 const MIcon = MODE_ICON_MAP[m.id];
                 return (
                   <ActionMenuButton
                     key={m.id}
-                    icon={<MIcon className="h-3.5 w-3.5" />}
+                    icon={<MIcon className="h-4 w-4" />}
                     label={m.label}
                     shortcut={m.shortcut}
                     active={mode === m.id}
@@ -459,17 +456,17 @@ export function PlannerWorkspace() {
                 );
               })}
             </ActionMenuSection>
+          </ActionMenu>
 
-            <ActionMenuDivider />
-
-            {/* Section: Tools (phase-dependent) */}
-            <ActionMenuSection label="Tools">
-              {phaseTools.map((t) => {
+          {/* Tool bar — icon-only, phase-scoped */}
+          <ActionMenu>
+            <ActionMenuSection>
+              {phaseTools.filter((t) => t.id !== 'select').map((t) => {
                 const TIcon = TOOL_ICON_MAP[t.id];
                 return (
                   <ActionMenuButton
                     key={t.id}
-                    icon={<TIcon className="h-3.5 w-3.5" />}
+                    icon={<TIcon className="h-4 w-4" />}
                     label={t.name}
                     shortcut={t.shortcut}
                     active={activeTool === t.id}
@@ -481,23 +478,26 @@ export function PlannerWorkspace() {
 
             <ActionMenuDivider />
 
-            {/* Section: View */}
-            <ActionMenuSection label="View">
+            {/* Viewport toggle */}
+            <ActionMenuSection>
               <ActionMenuButton
-                icon={<DraftingCompass className="h-3.5 w-3.5" />}
+                icon={<DraftingCompass className="h-4 w-4" />}
                 label="2D"
+                shortcut=""
                 active={viewportLayout === '2d'}
                 onClick={() => handleViewportLayoutChange('2d')}
               />
               <ActionMenuButton
-                icon={<Columns2 className="h-3.5 w-3.5" />}
+                icon={<Columns2 className="h-4 w-4" />}
                 label="Split"
+                shortcut=""
                 active={viewportLayout === 'split'}
                 onClick={() => handleViewportLayoutChange('split')}
               />
               <ActionMenuButton
-                icon={<Layers3 className="h-3.5 w-3.5" />}
+                icon={<Layers3 className="h-4 w-4" />}
                 label="3D"
+                shortcut=""
                 active={viewportLayout === '3d'}
                 onClick={() => handleViewportLayoutChange('3d')}
               />
