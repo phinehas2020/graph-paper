@@ -40,7 +40,6 @@ import {
 import { IconRail, IconRailButton } from '@/src/components/ui/icon-rail';
 import { FloatingPanel } from '@/src/components/ui/floating-panel';
 import { SceneTree } from '@/src/components/ui/scene-tree';
-import { ToolPanel } from '@/src/components/ToolPanel';
 import { SettingsPanel } from '@/src/components/settings-panel';
 import usePlannerEditorStore from '@/src/planner/stores/usePlannerEditorStore';
 import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
@@ -221,7 +220,6 @@ export function PlannerWorkspace() {
   const viewportMode = usePlannerViewerStore((s) => s.viewportMode);
   const setViewportMode = usePlannerViewerStore((s) => s.setViewportMode);
   const selectedElement = usePlannerViewerStore((s) => s.selectedElement);
-  const gridVisible = usePlannerSceneStore((s) => s.settings.gridVisible);
   const levels = usePlannerSceneStore((s) => (s as any).levels ?? []);
   const addLevel = usePlannerSceneStore((s) => (s as any).addLevel);
 
@@ -241,6 +239,7 @@ export function PlannerWorkspace() {
 
   /* Property panel visibility — show when something is selected */
   const [propertyPanelOpen, setPropertyPanelOpen] = useState(false);
+  const [viewerRevision, setViewerRevision] = useState(0);
   useEffect(() => {
     setPropertyPanelOpen(selectedElement != null);
   }, [selectedElement]);
@@ -284,6 +283,16 @@ export function PlannerWorkspace() {
     return levels.map((l: any) => ({ id: l.id, name: l.name, elevation: l.elevation }));
   }, [levels]);
 
+  useEffect(() => {
+    if (navigatorLevels.length === 0) {
+      return;
+    }
+
+    if (currentLevelIndex > navigatorLevels.length - 1) {
+      setCurrentLevelIndex(navigatorLevels.length - 1);
+    }
+  }, [currentLevelIndex, navigatorLevels, setCurrentLevelIndex]);
+
   /* Handlers */
   const handleViewportLayoutChange = useCallback(
     (layout: '2d' | 'split' | '3d') => {
@@ -305,13 +314,27 @@ export function PlannerWorkspace() {
 
   const draftPanel = (
     <div ref={containerRef} className="relative h-full w-full bg-slate-900">
-      <Canvas2D width={dimensions.width} height={dimensions.height} />
+      <Canvas2D
+        width={dimensions.width}
+        height={dimensions.height}
+        gridVisible={viewPrefs.gridVisible}
+        guidesVisible={viewPrefs.guidesVisible}
+        measurementsVisible={viewPrefs.measurementsVisible}
+      />
     </div>
   );
 
   const previewPanel = (
     <div className="relative h-full w-full bg-slate-900">
-      <Viewer />
+      <Viewer
+        key={viewerRevision}
+        cameraMode={viewPrefs.cameraMode}
+        levelDisplayMode={viewPrefs.levelDisplayMode}
+        wallViewMode={viewPrefs.wallViewMode}
+        gridVisible={viewPrefs.gridVisible}
+        currentLevelIndex={currentLevelIndex}
+        levelCount={navigatorLevels.length}
+      />
     </div>
   );
 
@@ -422,8 +445,8 @@ export function PlannerWorkspace() {
           onGridVisibleChange={(v) => updateViewPrefs({ gridVisible: v })}
           onGuidesVisibleChange={(v) => updateViewPrefs({ guidesVisible: v })}
           onMeasurementsVisibleChange={(v) => updateViewPrefs({ measurementsVisible: v })}
-          onZoomToFit={() => {}}
-          onResetCamera={() => {}}
+          onZoomToFit={() => setViewerRevision((value) => value + 1)}
+          onResetCamera={() => setViewerRevision((value) => value + 1)}
         />
 
         {/* ── Property Panel (floating, right side) ────────────────── */}
@@ -441,7 +464,7 @@ export function PlannerWorkspace() {
         )}
 
         {/* ── Level Navigator + Add Level (bottom-left) ──────────── */}
-        <div className="absolute bottom-3 left-3 z-30 flex items-center gap-2">
+        <div className="absolute bottom-3 left-3 z-40 flex items-center gap-2">
           <LevelNavigator
             levels={navigatorLevels}
             currentLevelIndex={currentLevelIndex}
@@ -473,7 +496,7 @@ export function PlannerWorkspace() {
         </div>
 
         {/* ── Floating Action Menu (bottom center) ─────────────────── */}
-        <div className="absolute inset-x-0 bottom-4 z-30 flex items-end justify-center gap-2">
+        <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-end gap-2">
           {/* Mode pills */}
           <ActionMenu>
             <ActionMenuSection>

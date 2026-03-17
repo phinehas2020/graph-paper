@@ -10,6 +10,9 @@ import useEnhancedEditorStore from '@/src/planner/stores/useEnhancedEditorStore'
 interface Canvas2DProps {
   width: number;
   height: number;
+  gridVisible?: boolean;
+  guidesVisible?: boolean;
+  measurementsVisible?: boolean;
   onToolAction?: (action: string, data: any) => void;
 }
 
@@ -205,6 +208,9 @@ function getWallOpeningEndpoints(wall: Wall, opening: WallOpening): { start: Poi
 export const Canvas2D: React.FC<Canvas2DProps> = ({
   width,
   height,
+  gridVisible,
+  guidesVisible = true,
+  measurementsVisible = true,
   onToolAction,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -267,6 +273,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     () => floorNodes.map((node) => node.entity),
     [floorNodes],
   );
+  const resolvedGridVisible = gridVisible ?? settings.gridVisible;
 
   // Filter elements by current level
   const levelWalls = useMemo(
@@ -621,7 +628,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
   // Drawing functions
   const drawGrid = useCallback((ctx: CanvasRenderingContext2D) => {
-    if (!settings.gridVisible) return;
+    if (!resolvedGridVisible) return;
 
     const gridSpacing = GRID_SIZE;
     const centerX = width / 2 - panOffset.x;
@@ -665,7 +672,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     ctx.stroke();
 
     ctx.restore();
-  }, [width, height, settings.gridVisible, panOffset]);
+  }, [width, height, resolvedGridVisible, panOffset]);
 
   const drawFloors = useCallback((ctx: CanvasRenderingContext2D) => {
     levelFloors.forEach(floor => {
@@ -783,6 +790,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   }, [levelWalls, drawOpeningSymbol, gridToScreen, selectedElement]);
 
   const drawMeasurements = useCallback((ctx: CanvasRenderingContext2D) => {
+    if (!measurementsVisible) return;
+
     measurements.forEach(measurement => {
       const start = gridToScreen(measurement.start.x, measurement.start.y);
       const end = gridToScreen(measurement.end.x, measurement.end.y);
@@ -822,7 +831,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         color: '#7c3aed',
       });
     });
-  }, [measurements, gridToScreen]);
+  }, [measurements, measurementsVisible, gridToScreen]);
 
   const drawTextElements = useCallback((ctx: CanvasRenderingContext2D) => {
     textElements.forEach(textElement => {
@@ -1088,6 +1097,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   }, [levelRoofs, gridToScreen]);
 
   const drawGhostElements = useCallback((ctx: CanvasRenderingContext2D) => {
+    if (!guidesVisible) return;
+
     const otherWalls = walls.filter((w) => (w.level ?? 0) !== currentLevelIndex);
     const otherFloors = floors.filter((f) => (f.level ?? 0) !== currentLevelIndex);
 
@@ -1126,7 +1137,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
     ctx.setLineDash([]);
     ctx.restore();
-  }, [walls, floors, currentLevelIndex, gridToScreen]);
+  }, [currentLevelIndex, floors, gridToScreen, guidesVisible, walls]);
 
   const drawCurrentDrawing = useCallback((ctx: CanvasRenderingContext2D) => {
     if (activeTool === 'floor' && currentPoints.length > 0) {

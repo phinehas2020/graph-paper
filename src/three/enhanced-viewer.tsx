@@ -10,7 +10,6 @@ import {
   Grid,
   OrbitControls,
   OrthographicCamera,
-  PerspectiveCamera,
 } from '@react-three/drei';
 import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
 import usePlannerViewerStore from '@/src/planner/stores/usePlannerViewerStore';
@@ -21,7 +20,7 @@ import type { CameraMode, LevelDisplayMode, WallViewMode } from '@/src/component
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-interface EnhancedViewerProps {
+export interface EnhancedViewerProps {
   cameraMode?: CameraMode;
   levelDisplayMode?: LevelDisplayMode;
   wallViewMode?: WallViewMode;
@@ -151,7 +150,7 @@ function SceneGeometry({
     <Bounds fit clip observe margin={1.25}>
       <group>
         {floorMeshes.map((mesh, index) => {
-          const levelIndex = Math.min(index, levelCount - 1);
+          const levelIndex = Math.min(floorNodes[index].entity.level ?? 0, levelCount - 1);
           if (!isLevelVisible(levelIndex)) return null;
           return (
             <group key={`floor-${floorNodes[index].id}`} position-y={getYOffset(levelIndex)}>
@@ -160,7 +159,7 @@ function SceneGeometry({
           );
         })}
         {wallMeshes.map((mesh, index) => {
-          const levelIndex = Math.min(index, levelCount - 1);
+          const levelIndex = Math.min(wallNodes[index].entity.level ?? 0, levelCount - 1);
           if (!isLevelVisible(levelIndex)) return null;
           return (
             <group key={`wall-${wallNodes[index].id}`} position-y={getYOffset(levelIndex)}>
@@ -185,7 +184,6 @@ function SceneGeometry({
 /* ------------------------------------------------------------------ */
 
 function EnhancedScene({
-  cameraMode,
   levelDisplayMode,
   wallViewMode,
   gridVisible,
@@ -315,7 +313,6 @@ export function EnhancedViewer({
         />
       )}
       <EnhancedScene
-        cameraMode={cameraMode}
         levelDisplayMode={levelDisplayMode}
         wallViewMode={wallViewMode}
         gridVisible={gridVisible}
