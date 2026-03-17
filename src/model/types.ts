@@ -94,6 +94,29 @@ export interface Floor {
   thickness: number;
 }
 
+export interface Zone {
+  id: string;
+  name: string;
+  points: Point[];
+  color: string;
+  level: number;
+}
+
+export interface Ceiling {
+  id: string;
+  points: Point[];
+  height: number;
+  thickness: number;
+}
+
+export interface Roof {
+  id: string;
+  ridgeStart: Point;
+  ridgeEnd: Point;
+  pitch: number;
+  overhang: number;
+}
+
 // Flat Layout Types
 export interface FlatPiece {
   id: string;
@@ -335,6 +358,9 @@ export interface Model {
   // Traditional CAD Data for Canvas2D
   walls: Wall[];
   floors: Floor[];
+  zones: Zone[];
+  ceilings: Ceiling[];
+  roofs: Roof[];
   // Flat Layout Data
   flatPieces: FlatPiece[];
   connections: Connection[];

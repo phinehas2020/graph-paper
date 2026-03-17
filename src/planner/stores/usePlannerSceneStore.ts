@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import useStore from '@/src/model/useStore';
 import {
+  Ceiling,
   Floor,
   Measurement,
   Model,
@@ -8,9 +9,11 @@ import {
   PlannerOpeningNode,
   PlannerSceneNode,
   PlannerWallNode,
+  Roof,
   TextElement,
   Wall,
   WallOpening,
+  Zone,
 } from '@/src/model/types';
 
 type LegacyPlannerStoreState = ReturnType<typeof useStore.getState>;
@@ -33,6 +36,15 @@ type PlannerSceneActionKeys =
   | 'addFloor'
   | 'updateFloor'
   | 'deleteFloor'
+  | 'addZone'
+  | 'updateZone'
+  | 'deleteZone'
+  | 'addCeiling'
+  | 'updateCeiling'
+  | 'deleteCeiling'
+  | 'addRoof'
+  | 'updateRoof'
+  | 'deleteRoof'
   | 'connectWalls'
   | 'autoConnectNearbyWalls'
   | 'undoPlanner'
@@ -49,6 +61,9 @@ interface PlannerSceneSnapshot {
   settings: Model['settings'];
   walls: Wall[];
   floors: Floor[];
+  zones: Zone[];
+  ceilings: Ceiling[];
+  roofs: Roof[];
   wallNodes: PlannerWallNode[];
   floorNodes: PlannerFloorNode[];
   openingNodes: PlannerOpeningNode[];
@@ -117,6 +132,9 @@ function buildPlannerSceneSnapshot(
     settings: state.settings,
     walls: state.walls,
     floors: state.floors,
+    zones: state.zones,
+    ceilings: state.ceilings,
+    roofs: state.roofs,
     wallNodes,
     floorNodes,
     openingNodes,
@@ -144,6 +162,15 @@ const plannerSceneActions: PlannerSceneActions = {
   addFloor: (...args) => useStore.getState().addFloor(...args),
   updateFloor: (...args) => useStore.getState().updateFloor(...args),
   deleteFloor: (...args) => useStore.getState().deleteFloor(...args),
+  addZone: (...args) => useStore.getState().addZone(...args),
+  updateZone: (...args) => useStore.getState().updateZone(...args),
+  deleteZone: (...args) => useStore.getState().deleteZone(...args),
+  addCeiling: (...args) => useStore.getState().addCeiling(...args),
+  updateCeiling: (...args) => useStore.getState().updateCeiling(...args),
+  deleteCeiling: (...args) => useStore.getState().deleteCeiling(...args),
+  addRoof: (...args) => useStore.getState().addRoof(...args),
+  updateRoof: (...args) => useStore.getState().updateRoof(...args),
+  deleteRoof: (...args) => useStore.getState().deleteRoof(...args),
   connectWalls: (...args) => useStore.getState().connectWalls(...args),
   autoConnectNearbyWalls: (...args) =>
     useStore.getState().autoConnectNearbyWalls(...args),

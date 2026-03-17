@@ -41,6 +41,7 @@ import { IconRail, IconRailButton } from '@/src/components/ui/icon-rail';
 import { FloatingPanel } from '@/src/components/ui/floating-panel';
 import { SceneTree } from '@/src/components/ui/scene-tree';
 import { ToolPanel } from '@/src/components/ToolPanel';
+import { SettingsPanel } from '@/src/components/settings-panel';
 import usePlannerEditorStore from '@/src/planner/stores/usePlannerEditorStore';
 import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
 import usePlannerViewerStore, {
@@ -148,16 +149,7 @@ function LeftPanelContent({
   }
 
   /* settings tab */
-  return (
-    <div className="p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-        Settings
-      </p>
-      <p className="mt-3 text-xs leading-5 text-slate-400">
-        Project settings and preferences will appear here.
-      </p>
-    </div>
-  );
+  return <SettingsPanel />;
 }
 
 /* ------------------------------------------------------------------ */

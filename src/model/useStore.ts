@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 import { current, isDraft, produce } from 'immer';
-import { Model, Measurement, TextElement, Wall, Floor, FlatPiece, FlatOpening, Connection, ElectricalOutlet, ElectricalSwitch, ElectricalWire, ElectricalCircuit, ElectricalPanel, WireRun, ElectricalProject, PlumbingFixture, PlumbingPipe, BuildingCodeViolation, WallOpening } from './types';
+import { Model, Measurement, TextElement, Wall, Floor, Zone, Ceiling, Roof, FlatPiece, FlatOpening, Connection, ElectricalOutlet, ElectricalSwitch, ElectricalWire, ElectricalCircuit, ElectricalPanel, WireRun, ElectricalProject, PlumbingFixture, PlumbingPipe, BuildingCodeViolation, WallOpening } from './types';
 
 // Helper for ID generation
 const generateId = () => Date.now().toString() + Math.random().toString(36).substring(2, 9);
 const DEFAULT_WALL_COLOR = '#f5f3ef';
 const PLANNER_HISTORY_LIMIT = 80;
 
-type PlannerSnapshot = Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors'>;
+type PlannerSnapshot = Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors' | 'zones' | 'ceilings' | 'roofs'>;
 
 function clonePlannerSlice<T>(value: T): T {
   const plainValue = isDraft(value) ? current(value as never) : value;
@@ -19,12 +19,15 @@ function clonePlannerSlice<T>(value: T): T {
 }
 
 const clonePlannerSnapshot = (
-  source: Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors'>,
+  source: Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors' | 'zones' | 'ceilings' | 'roofs'>,
 ): PlannerSnapshot => ({
   measurements: clonePlannerSlice(source.measurements),
   textElements: clonePlannerSlice(source.textElements),
   walls: clonePlannerSlice(source.walls),
   floors: clonePlannerSlice(source.floors),
+  zones: clonePlannerSlice(source.zones),
+  ceilings: clonePlannerSlice(source.ceilings),
+  roofs: clonePlannerSlice(source.roofs),
 });
 
 function getWallLength(wall: Wall) {
@@ -87,6 +90,9 @@ const initialState: Model = {
   textElements: [],
   walls: [],
   floors: [],
+  zones: [],
+  ceilings: [],
+  roofs: [],
   flatPieces: [],
   connections: [],
   electricalOutlets: [],
@@ -142,6 +148,15 @@ interface StoreActions {
   addFloor: (floorData: Omit<Floor, 'id'>) => string;
   updateFloor: (id: string, updates: Partial<Omit<Floor, 'id'>>) => void;
   deleteFloor: (id: string) => void;
+  addZone: (zoneData: Omit<Zone, 'id'>) => string;
+  updateZone: (id: string, updates: Partial<Omit<Zone, 'id'>>) => void;
+  deleteZone: (id: string) => void;
+  addCeiling: (ceilingData: Omit<Ceiling, 'id'>) => string;
+  updateCeiling: (id: string, updates: Partial<Omit<Ceiling, 'id'>>) => void;
+  deleteCeiling: (id: string) => void;
+  addRoof: (roofData: Omit<Roof, 'id'>) => string;
+  updateRoof: (id: string, updates: Partial<Omit<Roof, 'id'>>) => void;
+  deleteRoof: (id: string) => void;
   connectWalls: (wallId1: string, wallId2: string) => void;
   autoConnectNearbyWalls: (threshold: number) => void;
   // Flat Layout Actions
@@ -255,6 +270,9 @@ function restorePlannerSnapshot(draft: StoreState, snapshot: PlannerSnapshot) {
   draft.textElements = snapshot.textElements;
   draft.walls = snapshot.walls;
   draft.floors = snapshot.floors;
+  draft.zones = snapshot.zones;
+  draft.ceilings = snapshot.ceilings;
+  draft.roofs = snapshot.roofs;
 }
 
 const useStore = create<StoreState>()(
@@ -381,6 +399,63 @@ const useStore = create<StoreState>()(
     deleteFloor: (id) => set(produce((draft: StoreState) => {
       pushPlannerHistorySnapshot(draft);
       draft.floors = draft.floors.filter(f => f.id !== id);
+    })),
+    addZone: (zoneData) => {
+      const id = generateId();
+      set(produce((draft: StoreState) => {
+        pushPlannerHistorySnapshot(draft);
+        draft.zones.push({ ...zoneData, id });
+      }));
+      return id;
+    },
+    updateZone: (id, updates) => set(produce((draft: StoreState) => {
+      const zone = draft.zones.find(z => z.id === id);
+      if (zone) {
+        pushPlannerHistorySnapshot(draft);
+        Object.assign(zone, updates);
+      }
+    })),
+    deleteZone: (id) => set(produce((draft: StoreState) => {
+      pushPlannerHistorySnapshot(draft);
+      draft.zones = draft.zones.filter(z => z.id !== id);
+    })),
+    addCeiling: (ceilingData) => {
+      const id = generateId();
+      set(produce((draft: StoreState) => {
+        pushPlannerHistorySnapshot(draft);
+        draft.ceilings.push({ ...ceilingData, id });
+      }));
+      return id;
+    },
+    updateCeiling: (id, updates) => set(produce((draft: StoreState) => {
+      const ceiling = draft.ceilings.find(c => c.id === id);
+      if (ceiling) {
+        pushPlannerHistorySnapshot(draft);
+        Object.assign(ceiling, updates);
+      }
+    })),
+    deleteCeiling: (id) => set(produce((draft: StoreState) => {
+      pushPlannerHistorySnapshot(draft);
+      draft.ceilings = draft.ceilings.filter(c => c.id !== id);
+    })),
+    addRoof: (roofData) => {
+      const id = generateId();
+      set(produce((draft: StoreState) => {
+        pushPlannerHistorySnapshot(draft);
+        draft.roofs.push({ ...roofData, id });
+      }));
+      return id;
+    },
+    updateRoof: (id, updates) => set(produce((draft: StoreState) => {
+      const roof = draft.roofs.find(r => r.id === id);
+      if (roof) {
+        pushPlannerHistorySnapshot(draft);
+        Object.assign(roof, updates);
+      }
+    })),
+    deleteRoof: (id) => set(produce((draft: StoreState) => {
+      pushPlannerHistorySnapshot(draft);
+      draft.roofs = draft.roofs.filter(r => r.id !== id);
     })),
     connectWalls: (wallId1, wallId2) => {
       // Connect walls logic
