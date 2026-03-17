@@ -34,7 +34,7 @@ function DraftScene() {
 
   return (
     <>
-      <color attach="background" args={['#edf4fa']} />
+      <color attach="background" args={['#a0adb8']} />
 
       <ambientLight intensity={0.65} />
       <hemisphereLight
@@ -63,14 +63,14 @@ function DraftScene() {
         rotation={[-Math.PI / 2, 0, 0]}
       >
         <planeGeometry args={[120, 120]} />
-        <meshStandardMaterial color="#eef4f8" roughness={1} metalness={0} />
+        <meshStandardMaterial color="#8a959e" roughness={1} metalness={0} />
       </mesh>
 
       <Grid
         position={[0, -0.02, 0]}
         args={[80, 80]}
-        cellColor="#d3ddea"
-        sectionColor="#b9c7d8"
+        cellColor="#7a8a96"
+        sectionColor="#5d6f7e"
         cellSize={1}
         sectionSize={5}
         infiniteGrid

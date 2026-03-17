@@ -195,7 +195,7 @@ function EnhancedScene({
 }: Required<Omit<EnhancedViewerProps, 'className' | 'style'>>) {
   return (
     <>
-      <color attach="background" args={['#edf4fa']} />
+      <color attach="background" args={['#a0adb8']} />
 
       {/* Lighting */}
       <ambientLight intensity={0.6} />
