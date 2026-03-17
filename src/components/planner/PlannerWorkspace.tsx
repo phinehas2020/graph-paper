@@ -52,6 +52,7 @@ import PlannerToolManager from '@/src/planner/tooling/PlannerToolManager';
 import { PLANNER_TOOLS, type PlannerToolId } from '@/src/planner/tooling/tools';
 import { PHASES, MODES, type EditorPhase, type EditorMode } from '@/src/model/phases';
 import { Viewer } from '@/src/three/Viewer';
+import { LevelNavigator, type Level } from '@/src/components/level-navigator';
 
 /* ------------------------------------------------------------------ */
 /*  Tool icon lookup                                                    */
@@ -221,6 +222,8 @@ export function PlannerWorkspace() {
   const setViewportMode = usePlannerViewerStore((s) => s.setViewportMode);
   const selectedElement = usePlannerViewerStore((s) => s.selectedElement);
   const gridVisible = usePlannerSceneStore((s) => s.settings.gridVisible);
+  const levels = usePlannerSceneStore((s) => (s as any).levels ?? []);
+  const addLevel = usePlannerSceneStore((s) => (s as any).addLevel);
 
   /* Enhanced store */
   const phase = useEnhancedEditorStore((s) => s.phase);
@@ -272,6 +275,14 @@ export function PlannerWorkspace() {
       PLANNER_TOOLS.filter((t) => currentPhase.tools.includes(t.id)),
     [currentPhase],
   );
+
+  /* Level data for navigator */
+  const navigatorLevels: Level[] = useMemo(() => {
+    if (!levels || levels.length === 0) {
+      return [{ id: 'default', name: 'Ground Floor', elevation: 0 }];
+    }
+    return levels.map((l: any) => ({ id: l.id, name: l.name, elevation: l.elevation }));
+  }, [levels]);
 
   /* Handlers */
   const handleViewportLayoutChange = useCallback(
@@ -428,6 +439,38 @@ export function PlannerWorkspace() {
             </FloatingPanel>
           </div>
         )}
+
+        {/* ── Level Navigator + Add Level (bottom-left) ──────────── */}
+        <div className="absolute bottom-3 left-3 z-30 flex items-center gap-2">
+          <LevelNavigator
+            levels={navigatorLevels}
+            currentLevelIndex={currentLevelIndex}
+            onLevelChange={setCurrentLevelIndex}
+          />
+          <button
+            type="button"
+            title="Add Level"
+            onClick={() => {
+              const newIndex = navigatorLevels.length;
+              const prevLevel = levels[levels.length - 1];
+              const elevation = prevLevel ? prevLevel.elevation + prevLevel.height : 0;
+              try {
+                addLevel?.({
+                  name: `Level ${newIndex + 1}`,
+                  elevation,
+                  height: 10,
+                  index: newIndex,
+                });
+                setCurrentLevelIndex(newIndex);
+              } catch (e) {
+                // Store may not have addLevel yet
+              }
+            }}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-900/90 text-slate-400 shadow-xl backdrop-blur-xl transition-colors hover:bg-slate-800 hover:text-slate-200"
+          >
+            <span className="text-lg leading-none">+</span>
+          </button>
+        </div>
 
         {/* ── Floating Action Menu (bottom center) ─────────────────── */}
         <div className="absolute inset-x-0 bottom-4 z-30 flex items-end justify-center gap-2">

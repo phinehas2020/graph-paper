@@ -3,6 +3,7 @@ import useStore from '@/src/model/useStore';
 import {
   Ceiling,
   Floor,
+  Level,
   Measurement,
   Model,
   PlannerFloorNode,
@@ -27,6 +28,9 @@ type PlannerSceneActionKeys =
   | 'deleteTextElement'
   | 'updateSettings'
   | 'clearTemporaryMeasurements'
+  | 'addLevel'
+  | 'updateLevel'
+  | 'deleteLevel'
   | 'addWall'
   | 'updateWall'
   | 'deleteWall'
@@ -59,6 +63,7 @@ interface PlannerSceneSnapshot {
   measurements: Measurement[];
   textElements: TextElement[];
   settings: Model['settings'];
+  levels: Level[];
   walls: Wall[];
   floors: Floor[];
   zones: Zone[];
@@ -71,8 +76,20 @@ interface PlannerSceneSnapshot {
   rootNodeIds: string[];
 }
 
+interface PlannerSceneLocalState {
+  activeLevel: number;
+}
+
+interface PlannerSceneLocalActions {
+  setActiveLevel: (index: number) => void;
+  getWallsForLevel: (level: number) => Wall[];
+  getFloorsForLevel: (level: number) => Floor[];
+}
+
 export interface PlannerSceneStoreState
   extends PlannerSceneSnapshot,
+    PlannerSceneLocalState,
+    PlannerSceneLocalActions,
     PlannerSceneActions {}
 
 function buildPlannerSceneSnapshot(
@@ -130,6 +147,7 @@ function buildPlannerSceneSnapshot(
     measurements: state.measurements,
     textElements: state.textElements,
     settings: state.settings,
+    levels: state.levels,
     walls: state.walls,
     floors: state.floors,
     zones: state.zones,
@@ -144,6 +162,9 @@ function buildPlannerSceneSnapshot(
 }
 
 const plannerSceneActions: PlannerSceneActions = {
+  addLevel: (...args) => useStore.getState().addLevel(...args),
+  updateLevel: (...args) => useStore.getState().updateLevel(...args),
+  deleteLevel: (...args) => useStore.getState().deleteLevel(...args),
   addMeasurement: (...args) => useStore.getState().addMeasurement(...args),
   updateMeasurement: (...args) => useStore.getState().updateMeasurement(...args),
   deleteMeasurement: (...args) => useStore.getState().deleteMeasurement(...args),
@@ -178,9 +199,13 @@ const plannerSceneActions: PlannerSceneActions = {
   redoPlanner: (...args) => useStore.getState().redoPlanner(...args),
 };
 
-const usePlannerSceneStore = create<PlannerSceneStoreState>()(() => ({
+const usePlannerSceneStore = create<PlannerSceneStoreState>()((set, get) => ({
   ...buildPlannerSceneSnapshot(useStore.getState()),
   ...plannerSceneActions,
+  activeLevel: 0,
+  setActiveLevel: (index: number) => set({ activeLevel: index }),
+  getWallsForLevel: (level: number) => get().walls.filter((w) => (w.level ?? 0) === level),
+  getFloorsForLevel: (level: number) => get().floors.filter((f) => (f.level ?? 0) === level),
 }));
 
 useStore.subscribe((state) => {

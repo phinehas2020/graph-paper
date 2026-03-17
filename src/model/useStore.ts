@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 import { current, isDraft, produce } from 'immer';
-import { Model, Measurement, TextElement, Wall, Floor, Zone, Ceiling, Roof, FlatPiece, FlatOpening, Connection, ElectricalOutlet, ElectricalSwitch, ElectricalWire, ElectricalCircuit, ElectricalPanel, WireRun, ElectricalProject, PlumbingFixture, PlumbingPipe, BuildingCodeViolation, WallOpening } from './types';
+import { Model, Measurement, TextElement, Wall, Floor, Zone, Ceiling, Roof, Level, FlatPiece, FlatOpening, Connection, ElectricalOutlet, ElectricalSwitch, ElectricalWire, ElectricalCircuit, ElectricalPanel, WireRun, ElectricalProject, PlumbingFixture, PlumbingPipe, BuildingCodeViolation, WallOpening } from './types';
 
 // Helper for ID generation
 const generateId = () => Date.now().toString() + Math.random().toString(36).substring(2, 9);
 const DEFAULT_WALL_COLOR = '#f5f3ef';
 const PLANNER_HISTORY_LIMIT = 80;
 
-type PlannerSnapshot = Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors' | 'zones' | 'ceilings' | 'roofs'>;
+type PlannerSnapshot = Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors' | 'zones' | 'ceilings' | 'roofs' | 'levels'>;
 
 function clonePlannerSlice<T>(value: T): T {
   const plainValue = isDraft(value) ? current(value as never) : value;
@@ -19,7 +19,7 @@ function clonePlannerSlice<T>(value: T): T {
 }
 
 const clonePlannerSnapshot = (
-  source: Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors' | 'zones' | 'ceilings' | 'roofs'>,
+  source: Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors' | 'zones' | 'ceilings' | 'roofs' | 'levels'>,
 ): PlannerSnapshot => ({
   measurements: clonePlannerSlice(source.measurements),
   textElements: clonePlannerSlice(source.textElements),
@@ -28,6 +28,7 @@ const clonePlannerSnapshot = (
   zones: clonePlannerSlice(source.zones),
   ceilings: clonePlannerSlice(source.ceilings),
   roofs: clonePlannerSlice(source.roofs),
+  levels: clonePlannerSlice(source.levels),
 });
 
 function getWallLength(wall: Wall) {
@@ -88,6 +89,7 @@ function clampWallOpening(
 const initialState: Model = {
   measurements: [],
   textElements: [],
+  levels: [{ id: 'level-0', name: 'Ground Floor', elevation: 0, height: 10, index: 0 }],
   walls: [],
   floors: [],
   zones: [],
@@ -138,6 +140,10 @@ interface StoreActions {
   deleteTextElement: (id: string) => void;
   updateSettings: (settings: Partial<Model['settings']>) => void;
   clearTemporaryMeasurements: () => void;
+  // Level CRUD Actions
+  addLevel: (level: Omit<Level, 'id'>) => string;
+  updateLevel: (id: string, changes: Partial<Level>) => void;
+  deleteLevel: (id: string) => void;
   // Traditional CAD Actions for Canvas2D
   addWall: (wallData: Omit<Wall, 'id'>) => string;
   updateWall: (id: string, updates: Partial<Omit<Wall, 'id'>>) => void;
@@ -273,6 +279,7 @@ function restorePlannerSnapshot(draft: StoreState, snapshot: PlannerSnapshot) {
   draft.zones = snapshot.zones;
   draft.ceilings = snapshot.ceilings;
   draft.roofs = snapshot.roofs;
+  draft.levels = snapshot.levels;
 }
 
 const useStore = create<StoreState>()(
@@ -325,6 +332,27 @@ const useStore = create<StoreState>()(
     })),
     clearTemporaryMeasurements: () => set(produce((draft: Model) => {
       draft.measurements = draft.measurements.filter(m => !m.temporary);
+    })),
+
+    // Level CRUD Actions
+    addLevel: (levelData) => {
+      const id = crypto.randomUUID();
+      set(produce((draft: StoreState) => {
+        pushPlannerHistorySnapshot(draft);
+        draft.levels.push({ ...levelData, id });
+      }));
+      return id;
+    },
+    updateLevel: (id, changes) => set(produce((draft: StoreState) => {
+      const level = draft.levels.find(l => l.id === id);
+      if (level) {
+        pushPlannerHistorySnapshot(draft);
+        Object.assign(level, changes);
+      }
+    })),
+    deleteLevel: (id) => set(produce((draft: StoreState) => {
+      pushPlannerHistorySnapshot(draft);
+      draft.levels = draft.levels.filter(l => l.id !== id);
     })),
 
     // Traditional CAD Actions for Canvas2D

@@ -61,6 +61,14 @@ export interface Arrow {
   thickness?: number;
 }
 
+export interface Level {
+  id: string;
+  name: string;
+  elevation: number;  // vertical offset in units (e.g., 0 for ground, 10 for second floor)
+  height: number;     // floor-to-floor height (e.g., 10)
+  index: number;      // sort order
+}
+
 // Traditional CAD-style Types for Canvas2D
 export interface WallOpening {
   id: string;
@@ -85,6 +93,7 @@ export interface Wall {
     start?: string[];
     end?: string[];
   };
+  level?: number; // defaults to 0 (ground floor)
 }
 
 export interface Floor {
@@ -92,6 +101,7 @@ export interface Floor {
   points: Point[];
   elevation: number;
   thickness: number;
+  level?: number; // defaults to 0 (ground floor)
 }
 
 export interface Zone {
@@ -107,6 +117,7 @@ export interface Ceiling {
   points: Point[];
   height: number;
   thickness: number;
+  level?: number; // defaults to 0 (ground floor)
 }
 
 export interface Roof {
@@ -115,6 +126,7 @@ export interface Roof {
   ridgeEnd: Point;
   pitch: number;
   overhang: number;
+  level?: number; // defaults to 0 (ground floor)
 }
 
 // Flat Layout Types
@@ -355,6 +367,8 @@ export type PlannerSceneNode =
 export interface Model {
   measurements: Measurement[];
   textElements: TextElement[];
+  // Multi-story levels
+  levels: Level[];
   // Traditional CAD Data for Canvas2D
   walls: Wall[];
   floors: Floor[];

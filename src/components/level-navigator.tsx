@@ -56,7 +56,7 @@ export function LevelNavigator({
   if (levels.length === 0) return null;
 
   return (
-    <div className="absolute bottom-3 left-3 z-30 flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/90 px-2 py-1.5 shadow-xl backdrop-blur-xl">
+    <div className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/90 px-2 py-1.5 shadow-xl backdrop-blur-xl">
       {/* Level icon */}
       <Layers size={14} className="text-slate-400" />
 

@@ -5,6 +5,7 @@ import usePlannerEditorStore from '@/src/planner/stores/usePlannerEditorStore';
 import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
 import usePlannerViewerStore from '@/src/planner/stores/usePlannerViewerStore';
 import useDefaultsStore from '@/src/planner/stores/useDefaultsStore';
+import useEnhancedEditorStore from '@/src/planner/stores/useEnhancedEditorStore';
 
 interface Canvas2DProps {
   width: number;
@@ -226,6 +227,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   });
 
   const defaults = useDefaultsStore();
+  const currentLevelIndex = useEnhancedEditorStore((s) => s.currentLevelIndex);
 
   const activeTool = usePlannerEditorStore((state) => state.activeTool);
   const snapToFloorEdges = usePlannerEditorStore(
@@ -266,6 +268,28 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     [floorNodes],
   );
 
+  // Filter elements by current level
+  const levelWalls = useMemo(
+    () => walls.filter((w) => (w.level ?? 0) === currentLevelIndex),
+    [walls, currentLevelIndex],
+  );
+  const levelFloors = useMemo(
+    () => floors.filter((f) => (f.level ?? 0) === currentLevelIndex),
+    [floors, currentLevelIndex],
+  );
+  const levelZones = useMemo(
+    () => zones.filter((z) => (z.level ?? 0) === currentLevelIndex),
+    [zones, currentLevelIndex],
+  );
+  const levelCeilings = useMemo(
+    () => ceilings.filter((c) => (c.level ?? 0) === currentLevelIndex),
+    [ceilings, currentLevelIndex],
+  );
+  const levelRoofs = useMemo(
+    () => roofs.filter((r) => (r.level ?? 0) === currentLevelIndex),
+    [roofs, currentLevelIndex],
+  );
+
   // Convert screen coordinates to grid coordinates
   const screenToGrid = useCallback((screenX: number, screenY: number): Point => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -290,10 +314,10 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
   // Find nearby wall endpoints for snapping
   const findNearbyEndpoint = useCallback((point: Point): {wallId: string, endpoint: 'start' | 'end', point: Point, distance: number} | null => {
-    for (const wall of walls) {
+    for (const wall of levelWalls) {
       const startDist = distanceBetweenPoints(wall.start, point);
       const endDist = distanceBetweenPoints(wall.end, point);
-      
+
       if (startDist <= CONNECTION_THRESHOLD) {
         return { wallId: wall.id, endpoint: 'start', point: wall.start, distance: startDist };
       }
@@ -302,7 +326,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       }
     }
     return null;
-  }, [walls]);
+  }, [levelWalls]);
 
   const findClosestFloorEdgePoint = useCallback((point: Point): { point: Point; distance: number } | null => {
     let closest: { point: Point; distance: number } | null = null;
@@ -375,7 +399,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   const findClosestWallPlacement = useCallback((point: Point): WallPlacement | null => {
     let closestPlacement: WallPlacement | null = null;
 
-    walls.forEach((wall) => {
+    levelWalls.forEach((wall) => {
       const length = getWallLength(wall);
       if (length === 0) {
         return;
@@ -409,7 +433,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     });
 
     return closestPlacement;
-  }, [walls]);
+  }, [levelWalls]);
 
   const createOpeningPayload = useCallback((
     type: 'door' | 'window',
@@ -459,7 +483,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     let closestWall: Wall | null = null;
     let smallestDistance = Number.POSITIVE_INFINITY;
 
-    walls.forEach((wall) => {
+    levelWalls.forEach((wall) => {
       const threshold = Math.max(WALL_SELECTION_THRESHOLD, wall.thickness * 2.8);
       const { distance } = getPointToSegmentDistance(point, wall.start, wall.end);
 
@@ -470,13 +494,13 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     });
 
     return closestWall;
-  }, [walls]);
+  }, [levelWalls]);
 
   const findClosestOpeningHit = useCallback((point: Point): { wallId: string; openingId: string } | null => {
     let closestOpening: { wallId: string; openingId: string } | null = null;
     let smallestDistance = Number.POSITIVE_INFINITY;
 
-    walls.forEach((wall) => {
+    levelWalls.forEach((wall) => {
       (wall.openings ?? []).forEach((opening) => {
         const endpoints = getWallOpeningEndpoints(wall, opening);
         const { distance } = getPointToSegmentDistance(point, endpoints.start, endpoints.end);
@@ -492,7 +516,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     });
 
     return closestOpening;
-  }, [walls]);
+  }, [levelWalls]);
 
   const drawOpeningSymbol = useCallback((
     ctx: CanvasRenderingContext2D,
@@ -644,7 +668,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   }, [width, height, settings.gridVisible, panOffset]);
 
   const drawFloors = useCallback((ctx: CanvasRenderingContext2D) => {
-    floors.forEach(floor => {
+    levelFloors.forEach(floor => {
       if (floor.points.length < 3) return;
 
       const gradient = ctx.createLinearGradient(0, 0, width, height);
@@ -679,7 +703,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         { x: 0, y: 0 },
       );
       const centroidScreen = gridToScreen(centroid.x, centroid.y);
-      drawPillLabel(ctx, `Floor ${floors.indexOf(floor) + 1}`, centroidScreen.x, centroidScreen.y, {
+      drawPillLabel(ctx, `Floor ${levelFloors.indexOf(floor) + 1}`, centroidScreen.x, centroidScreen.y, {
         background: 'rgba(255, 255, 255, 0.88)',
         border: '#d4dee8',
         color: '#475569',
@@ -687,10 +711,10 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
       ctx.restore();
     });
-  }, [floors, gridToScreen, height, width]);
+  }, [levelFloors, gridToScreen, height, width]);
 
   const drawWalls = useCallback((ctx: CanvasRenderingContext2D) => {
-    walls.forEach(wall => {
+    levelWalls.forEach(wall => {
       const start = gridToScreen(wall.start.x, wall.start.y);
       const end = gridToScreen(wall.end.x, wall.end.y);
       const isSelectedWall =
@@ -756,7 +780,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
       ctx.restore();
     });
-  }, [walls, drawOpeningSymbol, gridToScreen, selectedElement]);
+  }, [levelWalls, drawOpeningSymbol, gridToScreen, selectedElement]);
 
   const drawMeasurements = useCallback((ctx: CanvasRenderingContext2D) => {
     measurements.forEach(measurement => {
@@ -849,7 +873,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   }, [textElements, gridToScreen, editingText, textInput]);
 
   const drawZones = useCallback((ctx: CanvasRenderingContext2D) => {
-    zones.forEach((zone, index) => {
+    levelZones.forEach((zone, index) => {
       if (zone.points.length < 3) return;
 
       ctx.save();
@@ -893,10 +917,10 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
       ctx.restore();
     });
-  }, [zones, gridToScreen]);
+  }, [levelZones, gridToScreen]);
 
   const drawCeilings = useCallback((ctx: CanvasRenderingContext2D) => {
-    ceilings.forEach((ceiling, index) => {
+    levelCeilings.forEach((ceiling, index) => {
       if (ceiling.points.length < 3) return;
 
       ctx.save();
@@ -972,10 +996,10 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
       ctx.restore();
     });
-  }, [ceilings, gridToScreen]);
+  }, [levelCeilings, gridToScreen]);
 
   const drawRoofs = useCallback((ctx: CanvasRenderingContext2D) => {
-    roofs.forEach((roof, index) => {
+    levelRoofs.forEach((roof, index) => {
       const start = gridToScreen(roof.ridgeStart.x, roof.ridgeStart.y);
       const end = gridToScreen(roof.ridgeEnd.x, roof.ridgeEnd.y);
 
@@ -1061,7 +1085,48 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
       ctx.restore();
     });
-  }, [roofs, gridToScreen]);
+  }, [levelRoofs, gridToScreen]);
+
+  const drawGhostElements = useCallback((ctx: CanvasRenderingContext2D) => {
+    const otherWalls = walls.filter((w) => (w.level ?? 0) !== currentLevelIndex);
+    const otherFloors = floors.filter((f) => (f.level ?? 0) !== currentLevelIndex);
+
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+
+    // Draw ghost walls as simple thin lines
+    otherWalls.forEach(wall => {
+      const start = gridToScreen(wall.start.x, wall.start.y);
+      const end = gridToScreen(wall.end.x, wall.end.y);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+    });
+
+    // Draw ghost floors as faint outlines
+    otherFloors.forEach(floor => {
+      if (floor.points.length < 3) return;
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      const first = gridToScreen(floor.points[0].x, floor.points[0].y);
+      ctx.moveTo(first.x, first.y);
+      for (let i = 1; i < floor.points.length; i++) {
+        const pt = gridToScreen(floor.points[i].x, floor.points[i].y);
+        ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    });
+
+    ctx.setLineDash([]);
+    ctx.restore();
+  }, [walls, floors, currentLevelIndex, gridToScreen]);
 
   const drawCurrentDrawing = useCallback((ctx: CanvasRenderingContext2D) => {
     if (activeTool === 'floor' && currentPoints.length > 0) {
@@ -1352,6 +1417,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
     // Draw layers
     drawGrid(ctx);
+    drawGhostElements(ctx);
     drawFloors(ctx);
     drawZones(ctx);
     drawCeilings(ctx);
@@ -1360,7 +1426,16 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     drawMeasurements(ctx);
     drawTextElements(ctx);
     drawCurrentDrawing(ctx);
-  }, [width, height, drawGrid, drawFloors, drawZones, drawCeilings, drawWalls, drawRoofs, drawMeasurements, drawTextElements, drawCurrentDrawing]);
+
+    // Level indicator
+    ctx.save();
+    ctx.font = '11px "Plus Jakarta Sans", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(100, 116, 139, 0.8)';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`Level ${currentLevelIndex + 1}`, 12, 12);
+    ctx.restore();
+  }, [width, height, drawGrid, drawGhostElements, drawFloors, drawZones, drawCeilings, drawWalls, drawRoofs, drawMeasurements, drawTextElements, drawCurrentDrawing, currentLevelIndex]);
 
   // Event handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1389,7 +1464,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
             addFloor({
               points: currentPoints,
               elevation: defaults.floorElevation,
-              thickness: defaults.floorThickness
+              thickness: defaults.floorThickness,
+              level: currentLevelIndex,
             });
             setSelectedElement(null);
             setCurrentPoints([]);
@@ -1416,6 +1492,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
           thickness: defaults.wallThickness,
           color: defaults.wallColor,
           openings: [],
+          level: currentLevelIndex,
         });
         
         // Auto-connect to nearby walls
@@ -1504,7 +1581,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
               name: `Zone ${zoneCount + 1}`,
               points: currentPoints,
               color: '#818cf880',
-              level: 0,
+              level: currentLevelIndex,
             });
             setSelectedElement(null);
             setCurrentPoints([]);
@@ -1538,6 +1615,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
               points: currentPoints,
               height: 3,
               thickness: 0.1,
+              level: currentLevelIndex,
             });
             setSelectedElement(null);
             setCurrentPoints([]);
@@ -1562,6 +1640,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
           ridgeEnd: rawPoint,
           pitch: 30,
           overhang: 0.5,
+          level: currentLevelIndex,
         });
         setSelectedElement(null);
         setCurrentPoints([]);
