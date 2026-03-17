@@ -1098,46 +1098,106 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
   const drawGhostElements = useCallback((ctx: CanvasRenderingContext2D) => {
     if (!guidesVisible) return;
+    if (currentLevelIndex <= 0) return;
 
-    const otherWalls = walls.filter((w) => (w.level ?? 0) !== currentLevelIndex);
-    const otherFloors = floors.filter((f) => (f.level ?? 0) !== currentLevelIndex);
+    const lowerLevelIndex = currentLevelIndex - 1;
+    const lowerLevelWalls = walls.filter((wall) => (wall.level ?? 0) === lowerLevelIndex);
+    const lowerLevelFloors = floors.filter((floor) => (floor.level ?? 0) === lowerLevelIndex);
+    const lowerLevelZones = zones.filter((zone) => (zone.level ?? 0) === lowerLevelIndex);
+    const lowerLevelCeilings = ceilings.filter((ceiling) => (ceiling.level ?? 0) === lowerLevelIndex);
+    const lowerLevelRoofs = roofs.filter((roof) => (roof.level ?? 0) === lowerLevelIndex);
 
     ctx.save();
-    ctx.globalAlpha = 0.12;
+    ctx.globalAlpha = 0.24;
 
-    // Draw ghost walls as simple thin lines
-    otherWalls.forEach(wall => {
+    lowerLevelFloors.forEach((floor) => {
+      if (floor.points.length < 3) return;
+
+      ctx.strokeStyle = '#7c8ea3';
+      ctx.lineWidth = 1.25;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+
+      const first = gridToScreen(floor.points[0].x, floor.points[0].y);
+      ctx.moveTo(first.x, first.y);
+
+      for (let index = 1; index < floor.points.length; index += 1) {
+        const point = gridToScreen(floor.points[index].x, floor.points[index].y);
+        ctx.lineTo(point.x, point.y);
+      }
+
+      ctx.closePath();
+      ctx.stroke();
+    });
+
+    lowerLevelZones.forEach((zone) => {
+      if (zone.points.length < 3) return;
+
+      ctx.strokeStyle = '#8b5cf6';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 5]);
+      ctx.beginPath();
+
+      const first = gridToScreen(zone.points[0].x, zone.points[0].y);
+      ctx.moveTo(first.x, first.y);
+
+      for (let index = 1; index < zone.points.length; index += 1) {
+        const point = gridToScreen(zone.points[index].x, zone.points[index].y);
+        ctx.lineTo(point.x, point.y);
+      }
+
+      ctx.closePath();
+      ctx.stroke();
+    });
+
+    lowerLevelCeilings.forEach((ceiling) => {
+      if (ceiling.points.length < 3) return;
+
+      ctx.strokeStyle = '#6366f1';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 6]);
+      ctx.beginPath();
+
+      const first = gridToScreen(ceiling.points[0].x, ceiling.points[0].y);
+      ctx.moveTo(first.x, first.y);
+
+      for (let index = 1; index < ceiling.points.length; index += 1) {
+        const point = gridToScreen(ceiling.points[index].x, ceiling.points[index].y);
+        ctx.lineTo(point.x, point.y);
+      }
+
+      ctx.closePath();
+      ctx.stroke();
+    });
+
+    // Draw lower-level walls as the strongest registration guide.
+    lowerLevelWalls.forEach((wall) => {
       const start = gridToScreen(wall.start.x, wall.start.y);
       const end = gridToScreen(wall.end.x, wall.end.y);
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([10, 8]);
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
       ctx.stroke();
     });
 
-    // Draw ghost floors as faint outlines
-    otherFloors.forEach(floor => {
-      if (floor.points.length < 3) return;
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([6, 4]);
+    lowerLevelRoofs.forEach((roof) => {
+      const start = gridToScreen(roof.ridgeStart.x, roof.ridgeStart.y);
+      const end = gridToScreen(roof.ridgeEnd.x, roof.ridgeEnd.y);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([10, 8]);
       ctx.beginPath();
-      const first = gridToScreen(floor.points[0].x, floor.points[0].y);
-      ctx.moveTo(first.x, first.y);
-      for (let i = 1; i < floor.points.length; i++) {
-        const pt = gridToScreen(floor.points[i].x, floor.points[i].y);
-        ctx.lineTo(pt.x, pt.y);
-      }
-      ctx.closePath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
       ctx.stroke();
     });
 
     ctx.setLineDash([]);
     ctx.restore();
-  }, [currentLevelIndex, floors, gridToScreen, guidesVisible, walls]);
+  }, [ceilings, currentLevelIndex, floors, gridToScreen, guidesVisible, roofs, walls, zones]);
 
   const drawCurrentDrawing = useCallback((ctx: CanvasRenderingContext2D) => {
     if (activeTool === 'floor' && currentPoints.length > 0) {
