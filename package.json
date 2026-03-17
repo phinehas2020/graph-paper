@@ -44,7 +44,7 @@
     "@radix-ui/react-tooltip": "latest",
     "@react-three/drei": "latest",
     "@react-three/fiber": "latest",
-    "@supabase/auth-helpers-nextjs": "latest",
+    "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "latest",
     "autoprefixer": "^10.4.20",
     "babel-jest": "^30.0.5",

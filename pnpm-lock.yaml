@@ -104,9 +104,9 @@ dependencies:
   '@react-three/fiber':
     specifier: latest
     version: 9.5.0(@types/react@19.2.14)(expo-asset@55.0.8)(expo-file-system@55.0.10)(expo-gl@55.0.9)(expo@55.0.6)(immer@11.1.4)(react-dom@19.2.4)(react-native@0.84.1)(react@19.2.4)(three@0.183.2)
-  '@supabase/auth-helpers-nextjs':
-    specifier: latest
-    version: 0.15.0(@supabase/supabase-js@2.99.2)
+  '@supabase/ssr':
+    specifier: ^0.9.0
+    version: 0.9.0(@supabase/supabase-js@2.99.2)
   '@supabase/supabase-js':
     specifier: latest
     version: 2.99.2
@@ -4678,16 +4678,6 @@ packages:
     resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
     dev: false
 
-  /@supabase/auth-helpers-nextjs@0.15.0(@supabase/supabase-js@2.99.2):
-    resolution: {integrity: sha512-VtXz3GGnxluoxks1g3SaCoYr2OZ7PgRukDl+pLWrDfD2dPDaG8hmkp5iBZsU+lmsDYALGNO2dgbymgpAfD8eCQ==}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
-    peerDependencies:
-      '@supabase/supabase-js': ^2.76.1
-    dependencies:
-      '@supabase/supabase-js': 2.99.2
-      cookie: 1.1.1
-    dev: false
-
   /@supabase/auth-js@2.99.2:
     resolution: {integrity: sha512-uRGNXMKEw4VhwouNW7N0XDAGqJP9redHNDmWi17dTrcO1lvFfyRiXsqqfgnVC8aqtRn8kLkLPEzHjiRWsni+oQ==}
     engines: {node: '>=20.0.0'}
@@ -4720,6 +4710,15 @@ packages:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+    dev: false
+
+  /@supabase/ssr@0.9.0(@supabase/supabase-js@2.99.2):
+    resolution: {integrity: sha512-UFY6otYV3yqCgV+AyHj80vNkTvbf1Gas2LW4dpbQ4ap6p6v3eB2oaDfcI99jsuJzwVBCFU4BJI+oDYyhNk1z0Q==}
+    peerDependencies:
+      '@supabase/supabase-js': ^2.97.0
+    dependencies:
+      '@supabase/supabase-js': 2.99.2
+      cookie: 1.1.1
     dev: false
 
   /@supabase/storage-js@2.99.2:
