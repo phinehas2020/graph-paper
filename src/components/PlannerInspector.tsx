@@ -15,6 +15,7 @@ interface PlannerInspectorProps {
   onWallColorChange: (color: string) => void;
   onOpeningWidthChange: (width: number) => void;
   onOpeningHeightChange: (height: number) => void;
+  onWallHeightChange: (height: number) => void;
   onOpeningBottomChange: (bottom: number) => void;
 }
 
@@ -36,6 +37,7 @@ export function PlannerInspector({
   selectedWall,
   selectedOpening,
   onWallColorChange,
+  onWallHeightChange,
   onOpeningWidthChange,
   onOpeningHeightChange,
   onOpeningBottomChange,
@@ -84,13 +86,22 @@ export function PlannerInspector({
                 {formatMeasurement(wallLength)}
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            <div className="space-y-2">
+              <Label
+                htmlFor="wall-height"
+                className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500"
+              >
                 Height
-              </p>
-              <p className="mt-2 text-sm font-semibold text-slate-900">
-                {formatMeasurement(selectedWall.height)}
-              </p>
+              </Label>
+              <Input
+                id="wall-height"
+                type="number"
+                min="1"
+                step="0.5"
+                value={selectedWall.height}
+                onChange={(event) => parseNumericInput(event.target.value, onWallHeightChange)}
+                className="h-11 rounded-xl border-slate-200 bg-white/90"
+              />
             </div>
           </div>
 

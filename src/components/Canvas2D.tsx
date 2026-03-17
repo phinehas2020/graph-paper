@@ -206,11 +206,23 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   onToolAction,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tabInputRef = useRef<HTMLInputElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
   const [editingText, setEditingText] = useState<{id: string, text: string} | null>(null);
   const [textInput, setTextInput] = useState('');
+
+  // Pan offset — trackpad two-finger scroll moves the canvas
+  const [panOffset, setPanOffset] = useState<Point>({ x: 0, y: 0 });
+
+  // Tab-to-type dimension input
+  const [tabInput, setTabInput] = useState<{ active: boolean; value: string; screenPos: Point }>({
+    active: false,
+    value: '',
+    screenPos: { x: 0, y: 0 },
+  });
 
   const activeTool = usePlannerEditorStore((state) => state.activeTool);
   const snapToFloorEdges = usePlannerEditorStore(
@@ -250,22 +262,22 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return { x: 0, y: 0 };
     
-    const x = (screenX - rect.left - width / 2) / GRID_SIZE;
-    const y = -(screenY - rect.top - height / 2) / GRID_SIZE; // Flip Y axis
-    
+    const x = (screenX - rect.left - width / 2 + panOffset.x) / GRID_SIZE;
+    const y = -(screenY - rect.top - height / 2 + panOffset.y) / GRID_SIZE; // Flip Y axis
+
     return settings.gridVisible ? {
       x: Math.round(x * 2) / 2, // Snap to half-grid
       y: Math.round(y * 2) / 2
     } : { x, y };
-  }, [width, height, settings.gridVisible]);
+  }, [width, height, settings.gridVisible, panOffset]);
 
   // Convert grid coordinates to screen coordinates
   const gridToScreen = useCallback((gridX: number, gridY: number): Point => {
     return {
-      x: gridX * GRID_SIZE + width / 2,
-      y: -gridY * GRID_SIZE + height / 2 // Flip Y axis
+      x: gridX * GRID_SIZE + width / 2 - panOffset.x,
+      y: -gridY * GRID_SIZE + height / 2 - panOffset.y // Flip Y axis
     };
-  }, [width, height]);
+  }, [width, height, panOffset]);
 
   // Find nearby wall endpoints for snapping
   const findNearbyEndpoint = useCallback((point: Point): {wallId: string, endpoint: 'start' | 'end', point: Point, distance: number} | null => {
@@ -579,14 +591,15 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     if (!settings.gridVisible) return;
 
     const gridSpacing = GRID_SIZE;
-    const centerX = width / 2;
-    const centerY = height / 2;
+    const centerX = width / 2 - panOffset.x;
+    const centerY = height / 2 - panOffset.y;
     const majorStep = gridSpacing * 5;
 
     ctx.save();
 
-    // Vertical lines
-    for (let x = centerX % gridSpacing; x < width; x += gridSpacing) {
+    // Vertical lines — extend beyond viewport
+    const startX = centerX % gridSpacing;
+    for (let x = startX; x < width; x += gridSpacing) {
       const isMajor = Math.abs((x - centerX) % majorStep) < 0.5;
       ctx.beginPath();
       ctx.strokeStyle = isMajor ? '#c7d3df' : '#e3eaf2';
@@ -597,7 +610,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     }
 
     // Horizontal lines
-    for (let y = centerY % gridSpacing; y < height; y += gridSpacing) {
+    const startY = centerY % gridSpacing;
+    for (let y = startY; y < height; y += gridSpacing) {
       const isMajor = Math.abs((y - centerY) % majorStep) < 0.5;
       ctx.beginPath();
       ctx.strokeStyle = isMajor ? '#c7d3df' : '#e3eaf2';
@@ -618,7 +632,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     ctx.stroke();
 
     ctx.restore();
-  }, [width, height, settings.gridVisible]);
+  }, [width, height, settings.gridVisible, panOffset]);
 
   const drawFloors = useCallback((ctx: CanvasRenderingContext2D) => {
     floors.forEach(floor => {
@@ -1176,7 +1190,84 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     return undefined;
   }, []);
 
+  const handleWheel = useCallback((e: WheelEvent) => {
+    e.preventDefault();
+    setPanOffset(prev => ({
+      x: prev.x + e.deltaX,
+      y: prev.y + e.deltaY,
+    }));
+  }, []);
+
+  const commitTabInput = useCallback((lengthStr: string) => {
+    const length = parseFloat(lengthStr);
+    if (isNaN(length) || length <= 0 || currentPoints.length === 0 || !previewPoint) {
+      setTabInput({ active: false, value: '', screenPos: { x: 0, y: 0 } });
+      return;
+    }
+
+    const lastPoint = currentPoints[currentPoints.length - 1];
+    const dx = previewPoint.x - lastPoint.x;
+    const dy = previewPoint.y - lastPoint.y;
+    const currentDist = Math.sqrt(dx * dx + dy * dy);
+
+    if (currentDist === 0) {
+      setTabInput({ active: false, value: '', screenPos: { x: 0, y: 0 } });
+      return;
+    }
+
+    // Normalize direction and project to exact length
+    const dirX = dx / currentDist;
+    const dirY = dy / currentDist;
+    const endPoint: Point = {
+      x: lastPoint.x + dirX * length,
+      y: lastPoint.y + dirY * length,
+    };
+
+    if (activeTool === 'wall') {
+      const wallId = addWall({
+        start: lastPoint,
+        end: endPoint,
+        height: 3,
+        thickness: 0.15,
+        color: '#f5f3ef',
+        openings: [],
+      });
+      autoConnectNearbyWalls(CONNECTION_THRESHOLD);
+      setSelectedElement(null);
+      // Continue chain from endpoint
+      setCurrentPoints([endPoint]);
+      onToolAction?.('wall-completed', { wallId, start: lastPoint, end: endPoint });
+    } else if (activeTool === 'floor') {
+      setCurrentPoints(prev => [...prev, endPoint]);
+    } else if (activeTool === 'measure') {
+      const measurementId = addMeasurement({
+        start: lastPoint,
+        end: endPoint,
+        showDimensions: true,
+        units: settings.units,
+        temporary: settings.measurementMode === 'temporary',
+      });
+      setCurrentPoints([endPoint]);
+      onToolAction?.('measurement-completed', { measurementId, start: lastPoint, end: endPoint });
+    }
+
+    setTabInput({ active: false, value: '', screenPos: { x: 0, y: 0 } });
+    setPreviewPoint(endPoint);
+  }, [activeTool, addMeasurement, addWall, autoConnectNearbyWalls, currentPoints, onToolAction, previewPoint, setSelectedElement, settings.measurementMode, settings.units]);
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Tab-to-type: show dimension input while drawing
+    if (e.key === 'Tab' && isDrawing && currentPoints.length > 0 && previewPoint) {
+      e.preventDefault();
+      const lastPt = currentPoints[currentPoints.length - 1];
+      const screenPt = gridToScreen(
+        (lastPt.x + previewPoint.x) / 2,
+        (lastPt.y + previewPoint.y) / 2,
+      );
+      setTabInput({ active: true, value: '', screenPos: screenPt });
+      return;
+    }
+
     if (e.key === 'Escape') {
       if (editingText) {
         // Finish editing text
@@ -1207,7 +1298,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       setTextInput('');
       updateSettings({ isTextEditing: false });
     }
-  }, [activeTool, isDrawing, editingText, textInput, updateTextElement, updateSettings]);
+  }, [activeTool, currentPoints, gridToScreen, isDrawing, previewPoint, editingText, textInput, updateTextElement, updateSettings]);
 
   const handleTextInput = useCallback((e: KeyboardEvent) => {
     if (editingText && settings.isTextEditing) {
@@ -1259,23 +1350,71 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     };
   }, [handleKeyDown, handleTextInput]);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
+
+  useEffect(() => {
+    if (tabInput.active && tabInputRef.current) {
+      tabInputRef.current.focus();
+    }
+  }, [tabInput.active]);
+
   return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      style={{
-        width: '100%',
-        height: '100%',
-        cursor:
-          activeTool === 'select' || activeTool === null
-            ? 'default'
-            : 'crosshair',
-      }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-    />
+    <div ref={containerRef} className="relative h-full w-full">
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        style={{
+          width: '100%',
+          height: '100%',
+          cursor:
+            activeTool === 'select' || activeTool === null
+              ? 'default'
+              : 'crosshair',
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      />
+
+      {/* Tab-to-type dimension input */}
+      {tabInput.active && (
+        <div
+          className="absolute z-50 flex items-center"
+          style={{
+            left: tabInput.screenPos.x - 60,
+            top: tabInput.screenPos.y - 16,
+          }}
+        >
+          <input
+            ref={tabInputRef}
+            type="text"
+            inputMode="decimal"
+            value={tabInput.value}
+            onChange={(e) => setTabInput(prev => ({ ...prev, value: e.target.value }))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commitTabInput(tabInput.value);
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                setTabInput({ active: false, value: '', screenPos: { x: 0, y: 0 } });
+              }
+              e.stopPropagation();
+            }}
+            onBlur={() => setTabInput({ active: false, value: '', screenPos: { x: 0, y: 0 } })}
+            placeholder="Length (ft)"
+            className="w-28 rounded-lg border border-blue-400 bg-white px-3 py-1.5 text-center text-sm font-semibold text-slate-900 shadow-lg outline-none ring-2 ring-blue-200 placeholder:text-slate-400"
+          />
+        </div>
+      )}
+    </div>
   );
 };
 

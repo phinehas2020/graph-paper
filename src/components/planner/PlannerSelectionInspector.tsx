@@ -70,6 +70,7 @@ export function PlannerSelectionInspector({
         selectedWall={selectedWall}
         selectedOpening={selectedOpening}
         onWallColorChange={(color) => updateWall(selectedWall.id, { color })}
+        onWallHeightChange={(height) => updateWall(selectedWall.id, { height })}
         onOpeningWidthChange={(width) => {
           if (selectedElement?.type === 'opening') {
             updateWallOpening(selectedElement.wallId, selectedElement.openingId, {
