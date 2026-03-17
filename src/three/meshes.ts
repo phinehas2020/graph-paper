@@ -1,5 +1,11 @@
 import * as THREE from 'three';
-import { Floor, PlannerSelection, Wall, WallOpening } from '@/src/model/types';
+import {
+  Floor,
+  PlannerSelection,
+  Roof,
+  Wall,
+  WallOpening,
+} from '@/src/model/types';
 
 const WALL_JOIN_EPSILON = 0.001;
 
@@ -404,4 +410,159 @@ export function floorToMesh(floor: Floor): THREE.Mesh {
   mesh.position.y = floor.elevation;
 
   return mesh;
+}
+
+function createRoofPlaneGeometry(
+  length: number,
+  span: number,
+  peakHeight: number,
+  side: 'negative' | 'positive',
+) {
+  const direction = side === 'negative' ? -1 : 1;
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array([
+    0, peakHeight, 0,
+    length, peakHeight, 0,
+    0, 0, direction * span,
+    length, peakHeight, 0,
+    length, 0, direction * span,
+    0, 0, direction * span,
+  ]);
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createRoofGableGeometry(
+  length: number,
+  leftSpan: number,
+  rightSpan: number,
+  peakHeight: number,
+  side: 'start' | 'end',
+) {
+  const x = side === 'start' ? 0 : length;
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array([
+    x, 0, -leftSpan,
+    x, peakHeight, 0,
+    x, 0, rightSpan,
+  ]);
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+export function roofToMesh(
+  roof: Roof,
+  floors: Floor[],
+  selectedElement: PlannerSelection | null = null,
+): THREE.Group {
+  const dx = roof.ridgeEnd.x - roof.ridgeStart.x;
+  const dy = roof.ridgeEnd.y - roof.ridgeStart.y;
+  const ridgeLength = Math.sqrt(dx * dx + dy * dy);
+  const directionX = ridgeLength === 0 ? 1 : dx / ridgeLength;
+  const directionZ = ridgeLength === 0 ? 0 : dy / ridgeLength;
+  const normalX = -directionZ;
+  const normalZ = directionX;
+  const roofFloors = floors.filter((floor) => (floor.level ?? 0) === (roof.level ?? 0));
+  const footprintPoints = roofFloors.flatMap((floor) => floor.points);
+  const pitchRadians = THREE.MathUtils.degToRad(roof.pitch);
+  const projectionsAlong = footprintPoints.map((point) =>
+    (point.x - roof.ridgeStart.x) * directionX +
+    (point.y - roof.ridgeStart.y) * directionZ,
+  );
+  const projectionsAcross = footprintPoints.map((point) =>
+    (point.x - roof.ridgeStart.x) * normalX +
+    (point.y - roof.ridgeStart.y) * normalZ,
+  );
+
+  const alongStart = Math.min(0, ...projectionsAlong) - roof.overhang;
+  const alongEnd = Math.max(ridgeLength, ...projectionsAlong) + roof.overhang;
+  const totalLength = Math.max(1.5, alongEnd - alongStart);
+  const leftSpan = Math.max(
+    1.5,
+    Math.abs(Math.min(0, ...projectionsAcross)) + roof.overhang,
+  );
+  const rightSpan = Math.max(
+    1.5,
+    Math.max(0, ...projectionsAcross) + roof.overhang,
+  );
+  const halfSpan = Math.max(leftSpan, rightSpan);
+  const peakHeight = Math.max(0.6, Math.tan(pitchRadians) * halfSpan);
+  const isSelectedRoof =
+    selectedElement?.type === 'roof' && selectedElement.roofId === roof.id;
+
+  const roofMaterial = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(isSelectedRoof ? 0xf4b740 : 0x9a3412),
+    roughness: 0.82,
+    metalness: 0.05,
+    side: THREE.DoubleSide,
+    emissive: isSelectedRoof
+      ? new THREE.Color(0xf59e0b).multiplyScalar(0.18)
+      : new THREE.Color(0x000000),
+  });
+  const gableMaterial = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(isSelectedRoof ? 0xf7c66d : 0xb45309),
+    roughness: 0.88,
+    metalness: 0.02,
+    side: THREE.DoubleSide,
+  });
+  const ridgeMaterial = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(isSelectedRoof ? 0xffedd5 : 0xead7c3),
+    roughness: 0.5,
+    metalness: 0.18,
+  });
+
+  const leftSlope = new THREE.Mesh(
+    createRoofPlaneGeometry(totalLength, leftSpan, peakHeight, 'negative'),
+    roofMaterial,
+  );
+  const rightSlope = new THREE.Mesh(
+    createRoofPlaneGeometry(totalLength, rightSpan, peakHeight, 'positive'),
+    roofMaterial,
+  );
+  const startGable = new THREE.Mesh(
+    createRoofGableGeometry(totalLength, leftSpan, rightSpan, peakHeight, 'start'),
+    gableMaterial,
+  );
+  const endGable = new THREE.Mesh(
+    createRoofGableGeometry(totalLength, leftSpan, rightSpan, peakHeight, 'end'),
+    gableMaterial,
+  );
+  const ridgeCap = new THREE.Mesh(
+    new THREE.BoxGeometry(totalLength, 0.08, 0.12),
+    ridgeMaterial,
+  );
+
+  [leftSlope, rightSlope, startGable, endGable, ridgeCap].forEach((mesh) => {
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+  });
+
+  ridgeCap.position.set(totalLength / 2, peakHeight + 0.04, 0);
+
+  const edgeLines = [
+    new THREE.LineSegments(
+      new THREE.EdgesGeometry((leftSlope.geometry as THREE.BufferGeometry)),
+      new THREE.LineBasicMaterial({ color: isSelectedRoof ? 0xfcd34d : 0x7c2d12 }),
+    ),
+    new THREE.LineSegments(
+      new THREE.EdgesGeometry((rightSlope.geometry as THREE.BufferGeometry)),
+      new THREE.LineBasicMaterial({ color: isSelectedRoof ? 0xfcd34d : 0x7c2d12 }),
+    ),
+  ];
+
+  leftSlope.add(edgeLines[0]);
+  rightSlope.add(edgeLines[1]);
+
+  const group = new THREE.Group();
+  const originX = roof.ridgeStart.x + directionX * alongStart;
+  const originZ = roof.ridgeStart.y + directionZ * alongStart;
+  group.position.set(originX, 0, originZ);
+  group.rotation.y = ridgeLength === 0 ? 0 : -Math.atan2(dy, dx);
+  group.add(leftSlope, rightSlope, startGable, endGable, ridgeCap);
+
+  return group;
 }

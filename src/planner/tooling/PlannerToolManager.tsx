@@ -6,7 +6,11 @@ import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
 import usePlannerViewerStore from '@/src/planner/stores/usePlannerViewerStore';
 import useEnhancedEditorStore from '@/src/planner/stores/useEnhancedEditorStore';
 import { EditorPhase, EditorMode } from '@/src/model/phases';
-import { PlannerToolId } from './tools';
+import {
+  PlannerToolId,
+  getModeForPlannerTool,
+  getToolForEditorMode,
+} from './tools';
 
 function isEditableTarget(target: EventTarget | null) {
   return (
@@ -138,7 +142,7 @@ export function PlannerToolManager() {
       if (phase) {
         event.preventDefault();
         setPhase(phase); // also resets mode to 'select'
-        selectTool('select');
+        selectTool(getToolForEditorMode('select'));
         return;
       }
 
@@ -147,15 +151,12 @@ export function PlannerToolManager() {
       if (modeTarget) {
         event.preventDefault();
         setMode(modeTarget);
-        if (modeTarget === 'select') {
-          selectTool('select');
-        } else if (modeTarget === 'build') {
-          // Default to wall tool when entering build mode with no tool selected
-          const current = usePlannerEditorStore.getState().activeTool;
-          if (!current || current === 'select') {
-            selectTool('wall');
-          }
-        }
+        selectTool(
+          getToolForEditorMode(
+            modeTarget,
+            usePlannerEditorStore.getState().activeTool,
+          ),
+        );
         return;
       }
 
@@ -173,9 +174,7 @@ export function PlannerToolManager() {
       const generalTool = GENERAL_TOOL_SHORTCUTS[lowerKey];
       if (generalTool) {
         event.preventDefault();
-        if (generalTool === 'select') {
-          setMode('select');
-        }
+        setMode(getModeForPlannerTool(generalTool));
         selectTool(generalTool);
         return;
       }

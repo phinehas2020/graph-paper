@@ -25,6 +25,8 @@ export function IconRailButton({
       type="button"
       onClick={onClick}
       title={label}
+      aria-label={label}
+      aria-pressed={active}
       className={cn(
         'group flex h-10 w-10 items-center justify-center rounded-lg transition-all',
         active

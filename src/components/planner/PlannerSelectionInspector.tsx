@@ -23,15 +23,19 @@ export function PlannerSelectionInspector({
   const updateWallOpening = usePlannerSceneStore(
     (state) => state.updateWallOpening,
   );
+  const selectedWallId =
+    selectedElement?.type === 'wall' || selectedElement?.type === 'opening'
+      ? selectedElement.wallId
+      : null;
 
   const selectedWall = useMemo(() => {
-    if (!selectedElement) {
+    if (!selectedWallId) {
       return null;
     }
 
-    const wallNode = nodes[selectedElement.wallId] as PlannerWallNode | undefined;
+    const wallNode = nodes[selectedWallId] as PlannerWallNode | undefined;
     return wallNode?.type === 'wall' ? wallNode.entity : null;
-  }, [nodes, selectedElement]);
+  }, [nodes, selectedWallId]);
 
   const selectedOpening = useMemo(() => {
     if (selectedElement?.type !== 'opening') {
@@ -50,6 +54,10 @@ export function PlannerSelectionInspector({
       return;
     }
 
+    if (selectedElement.type !== 'wall' && selectedElement.type !== 'opening') {
+      return;
+    }
+
     if (!selectedWall) {
       setSelectedElement(null);
       return;
@@ -60,7 +68,7 @@ export function PlannerSelectionInspector({
     }
   }, [selectedElement, selectedOpening, selectedWall, setSelectedElement]);
 
-  if (!selectedWall) {
+  if (!selectedWall || !selectedWallId) {
     return null;
   }
 

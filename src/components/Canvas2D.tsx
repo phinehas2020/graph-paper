@@ -1,6 +1,17 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { formatMeasurement } from '@/src/tools/MeasurementUtils';
-import { Point, Wall, WallOpening } from '@/src/model/types';
+import {
+  Ceiling,
+  Floor,
+  Measurement,
+  PlannerSelection,
+  Point,
+  Roof,
+  TextElement,
+  Wall,
+  WallOpening,
+  Zone,
+} from '@/src/model/types';
 import usePlannerEditorStore from '@/src/planner/stores/usePlannerEditorStore';
 import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
 import usePlannerViewerStore from '@/src/planner/stores/usePlannerViewerStore';
@@ -23,8 +34,81 @@ const FLOOR_EDGE_SNAP_THRESHOLD = 0.75; // grid units
 const OPENING_PLACEMENT_THRESHOLD = 0.8; // grid units
 const WALL_SELECTION_THRESHOLD = 0.75; // grid units
 const OPENING_SELECTION_THRESHOLD = 0.95; // grid units
+const FEATURE_VERTEX_SELECTION_THRESHOLD = 0.8; // grid units
+const ROOF_SELECTION_THRESHOLD = 0.8; // grid units
+const MEASUREMENT_SELECTION_THRESHOLD = 0.7; // grid units
+const TEXT_SELECTION_PADDING = 10; // screen pixels
 const DEFAULT_WALL_COLOR = '#f5f3ef';
 const SELECTION_COLOR = '#f59e0b';
+
+type PolygonFeature = Floor | Zone | Ceiling;
+type PolygonFeatureType = 'floor' | 'zone' | 'ceiling';
+
+type DragState =
+  | {
+      kind: 'wall-move';
+      wallId: string;
+      startPointer: Point;
+      originalStart: Point;
+      originalEnd: Point;
+    }
+  | {
+      kind: 'wall-endpoint';
+      wallId: string;
+      endpoint: 'start' | 'end';
+      originalWall: Wall;
+    }
+  | {
+      kind: 'opening-move';
+      wallId: string;
+      openingId: string;
+    }
+  | {
+      kind: 'polygon-move';
+      featureType: PolygonFeatureType;
+      featureId: string;
+      startPointer: Point;
+      originalPoints: Point[];
+    }
+  | {
+      kind: 'polygon-vertex';
+      featureType: PolygonFeatureType;
+      featureId: string;
+      vertexIndex: number;
+      originalPoints: Point[];
+    }
+  | {
+      kind: 'roof-move';
+      roofId: string;
+      startPointer: Point;
+      originalStart: Point;
+      originalEnd: Point;
+    }
+  | {
+      kind: 'roof-endpoint';
+      roofId: string;
+      endpoint: 'ridgeStart' | 'ridgeEnd';
+      originalRoof: Roof;
+    }
+  | {
+      kind: 'measurement-move';
+      measurementId: string;
+      startPointer: Point;
+      originalStart: Point;
+      originalEnd: Point;
+    }
+  | {
+      kind: 'measurement-endpoint';
+      measurementId: string;
+      endpoint: 'start' | 'end';
+      originalMeasurement: Measurement;
+    }
+  | {
+      kind: 'text-move';
+      textElementId: string;
+      startPointer: Point;
+      originalPosition: Point;
+    };
 
 function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
@@ -145,6 +229,57 @@ function getPointToSegmentDistance(point: Point, start: Point, end: Point) {
   };
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function pointInPolygon(point: Point, polygon: Point[]): boolean {
+  let inside = false;
+
+  for (
+    let index = 0, previousIndex = polygon.length - 1;
+    index < polygon.length;
+    previousIndex = index, index += 1
+  ) {
+    const currentPoint = polygon[index];
+    const previousPoint = polygon[previousIndex];
+    const intersects =
+      currentPoint.y > point.y !== previousPoint.y > point.y &&
+      point.x <
+        ((previousPoint.x - currentPoint.x) * (point.y - currentPoint.y)) /
+          ((previousPoint.y - currentPoint.y) || Number.EPSILON) +
+          currentPoint.x;
+
+    if (intersects) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
+function translatePoints(points: Point[], delta: Point): Point[] {
+  return points.map((point) => ({
+    x: point.x + delta.x,
+    y: point.y + delta.y,
+  }));
+}
+
+function getPolygonArea(points: Point[]): number {
+  if (points.length < 3) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  let area = 0;
+
+  for (let index = 0; index < points.length; index += 1) {
+    const nextPoint = points[(index + 1) % points.length];
+    area += points[index].x * nextPoint.y - nextPoint.x * points[index].y;
+  }
+
+  return Math.abs(area / 2);
+}
+
 function hexToRgba(color: string, alpha: number) {
   const normalized = color.replace('#', '');
   if (normalized.length !== 6) {
@@ -219,6 +354,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
   const [previewPoint, setPreviewPoint] = useState<Point | null>(null);
+  const [dragState, setDragState] = useState<DragState | null>(null);
   const [editingText, setEditingText] = useState<{id: string, text: string} | null>(null);
   const [textInput, setTextInput] = useState('');
 
@@ -261,6 +397,13 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     addRoof,
     addMeasurement,
     addTextElement,
+    updateWall,
+    updateWallOpening,
+    updateFloor,
+    updateZone,
+    updateCeiling,
+    updateRoof,
+    updateMeasurement,
     updateTextElement,
     updateSettings,
     autoConnectNearbyWalls
@@ -319,9 +462,28 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     };
   }, [width, height, panOffset]);
 
+  const clientToCanvas = useCallback((clientX: number, clientY: number): Point => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) {
+      return { x: 0, y: 0 };
+    }
+
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  }, []);
+
   // Find nearby wall endpoints for snapping
-  const findNearbyEndpoint = useCallback((point: Point): {wallId: string, endpoint: 'start' | 'end', point: Point, distance: number} | null => {
+  const findNearbyEndpoint = useCallback((
+    point: Point,
+    options?: { excludeWallId?: string },
+  ): {wallId: string, endpoint: 'start' | 'end', point: Point, distance: number} | null => {
     for (const wall of levelWalls) {
+      if (options?.excludeWallId && wall.id === options.excludeWallId) {
+        continue;
+      }
+
       const startDist = distanceBetweenPoints(wall.start, point);
       const endDist = distanceBetweenPoints(wall.end, point);
 
@@ -363,11 +525,14 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     return closest;
   }, [floors]);
 
-  const resolveWallPoint = useCallback((point: Point): Point => {
+  const resolveWallPoint = useCallback((
+    point: Point,
+    options?: { excludeWallId?: string },
+  ): Point => {
     let resolvedPoint = point;
     let bestDistance = Number.POSITIVE_INFINITY;
 
-    const nearbyEndpoint = findNearbyEndpoint(point);
+    const nearbyEndpoint = findNearbyEndpoint(point, options);
     if (nearbyEndpoint) {
       resolvedPoint = nearbyEndpoint.point;
       bestDistance = nearbyEndpoint.distance;
@@ -525,6 +690,260 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     return closestOpening;
   }, [levelWalls]);
 
+  const findClosestWallEndpointHit = useCallback((
+    point: Point,
+  ): { wall: Wall; endpoint: 'start' | 'end' } | null => {
+    let closestHit: { wall: Wall; endpoint: 'start' | 'end' } | null = null;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+
+    levelWalls.forEach((wall) => {
+      const startDistance = distanceBetweenPoints(point, wall.start);
+      if (startDistance <= FEATURE_VERTEX_SELECTION_THRESHOLD && startDistance < smallestDistance) {
+        closestHit = { wall, endpoint: 'start' };
+        smallestDistance = startDistance;
+      }
+
+      const endDistance = distanceBetweenPoints(point, wall.end);
+      if (endDistance <= FEATURE_VERTEX_SELECTION_THRESHOLD && endDistance < smallestDistance) {
+        closestHit = { wall, endpoint: 'end' };
+        smallestDistance = endDistance;
+      }
+    });
+
+    return closestHit;
+  }, [levelWalls]);
+
+  const applyPolygonPointsUpdate = useCallback((
+    featureType: PolygonFeatureType,
+    featureId: string,
+    points: Point[],
+  ) => {
+    switch (featureType) {
+      case 'floor':
+        updateFloor(featureId, { points });
+        break;
+      case 'zone':
+        updateZone(featureId, { points });
+        break;
+      case 'ceiling':
+        updateCeiling(featureId, { points });
+        break;
+      default:
+        break;
+    }
+  }, [updateCeiling, updateFloor, updateZone]);
+
+  const findPolygonVertexHit = useCallback((
+    point: Point,
+  ):
+    | {
+        featureType: PolygonFeatureType;
+        featureId: string;
+        vertexIndex: number;
+      }
+    | null => {
+    let closestHit:
+      | {
+          featureType: PolygonFeatureType;
+          featureId: string;
+          vertexIndex: number;
+        }
+      | null = null;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+
+    const featureGroups: Array<{
+      featureType: PolygonFeatureType;
+      features: PolygonFeature[];
+    }> = [
+      { featureType: 'ceiling', features: levelCeilings },
+      { featureType: 'zone', features: levelZones },
+      { featureType: 'floor', features: levelFloors },
+    ];
+
+    featureGroups.forEach(({ featureType, features }) => {
+      features.forEach((feature) => {
+        feature.points.forEach((vertex, vertexIndex) => {
+          const distance = distanceBetweenPoints(point, vertex);
+          if (distance <= FEATURE_VERTEX_SELECTION_THRESHOLD && distance < smallestDistance) {
+            closestHit = {
+              featureType,
+              featureId: feature.id,
+              vertexIndex,
+            };
+            smallestDistance = distance;
+          }
+        });
+      });
+    });
+
+    return closestHit;
+  }, [levelCeilings, levelFloors, levelZones]);
+
+  const findPolygonBodyHit = useCallback((point: Point): PlannerSelection | null => {
+    let closestHit: PlannerSelection | null = null;
+    let smallestArea = Number.POSITIVE_INFINITY;
+
+    const featureGroups: Array<{
+      featureType: PolygonFeatureType;
+      features: PolygonFeature[];
+    }> = [
+      { featureType: 'ceiling', features: levelCeilings },
+      { featureType: 'zone', features: levelZones },
+      { featureType: 'floor', features: levelFloors },
+    ];
+
+    featureGroups.forEach(({ featureType, features }) => {
+      features.forEach((feature) => {
+        if (feature.points.length < 3 || !pointInPolygon(point, feature.points)) {
+          return;
+        }
+
+        const area = getPolygonArea(feature.points);
+        if (area < smallestArea) {
+          smallestArea = area;
+          if (featureType === 'floor') {
+            closestHit = { type: 'floor', floorId: feature.id };
+          } else if (featureType === 'zone') {
+            closestHit = { type: 'zone', zoneId: feature.id };
+          } else {
+            closestHit = { type: 'ceiling', ceilingId: feature.id };
+          }
+        }
+      });
+    });
+
+    return closestHit;
+  }, [levelCeilings, levelFloors, levelZones]);
+
+  const findClosestRoofEndpointHit = useCallback((
+    point: Point,
+  ): { roof: Roof; endpoint: 'ridgeStart' | 'ridgeEnd' } | null => {
+    let closestHit:
+      | { roof: Roof; endpoint: 'ridgeStart' | 'ridgeEnd' }
+      | null = null;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+
+    levelRoofs.forEach((roof) => {
+      const startDistance = distanceBetweenPoints(point, roof.ridgeStart);
+      if (startDistance <= FEATURE_VERTEX_SELECTION_THRESHOLD && startDistance < smallestDistance) {
+        closestHit = { roof, endpoint: 'ridgeStart' };
+        smallestDistance = startDistance;
+      }
+
+      const endDistance = distanceBetweenPoints(point, roof.ridgeEnd);
+      if (endDistance <= FEATURE_VERTEX_SELECTION_THRESHOLD && endDistance < smallestDistance) {
+        closestHit = { roof, endpoint: 'ridgeEnd' };
+        smallestDistance = endDistance;
+      }
+    });
+
+    return closestHit;
+  }, [levelRoofs]);
+
+  const findClosestRoofHit = useCallback((point: Point): Roof | null => {
+    let closestRoof: Roof | null = null;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+
+    levelRoofs.forEach((roof) => {
+      const { distance } = getPointToSegmentDistance(point, roof.ridgeStart, roof.ridgeEnd);
+      if (distance <= ROOF_SELECTION_THRESHOLD && distance < smallestDistance) {
+        closestRoof = roof;
+        smallestDistance = distance;
+      }
+    });
+
+    return closestRoof;
+  }, [levelRoofs]);
+
+  const constrainOpeningOffset = useCallback((
+    wall: Wall,
+    opening: WallOpening,
+    targetOffset: number,
+  ) => {
+    const length = getWallLength(wall);
+    if (length === 0) {
+      return opening.offset;
+    }
+
+    const halfRatio = opening.width / (2 * length);
+    let minOffset = halfRatio;
+    let maxOffset = 1 - halfRatio;
+
+    (wall.openings ?? [])
+      .filter((candidate) => candidate.id !== opening.id)
+      .forEach((candidate) => {
+        const clearance =
+          (candidate.width + opening.width) / (2 * length) + 0.25 / length;
+
+        if (candidate.offset <= targetOffset) {
+          minOffset = Math.max(minOffset, candidate.offset + clearance);
+        } else {
+          maxOffset = Math.min(maxOffset, candidate.offset - clearance);
+        }
+      });
+
+    return clamp(targetOffset, minOffset, maxOffset);
+  }, []);
+
+  const findClosestMeasurementEndpointHit = useCallback((
+    point: Point,
+  ): { measurement: Measurement; endpoint: 'start' | 'end' } | null => {
+    let closestHit:
+      | { measurement: Measurement; endpoint: 'start' | 'end' }
+      | null = null;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+
+    measurements.forEach((measurement) => {
+      const startDistance = distanceBetweenPoints(point, measurement.start);
+      if (startDistance <= FEATURE_VERTEX_SELECTION_THRESHOLD && startDistance < smallestDistance) {
+        closestHit = { measurement, endpoint: 'start' };
+        smallestDistance = startDistance;
+      }
+
+      const endDistance = distanceBetweenPoints(point, measurement.end);
+      if (endDistance <= FEATURE_VERTEX_SELECTION_THRESHOLD && endDistance < smallestDistance) {
+        closestHit = { measurement, endpoint: 'end' };
+        smallestDistance = endDistance;
+      }
+    });
+
+    return closestHit;
+  }, [measurements]);
+
+  const findClosestMeasurementHit = useCallback((point: Point): Measurement | null => {
+    let closestMeasurement: Measurement | null = null;
+    let smallestDistance = Number.POSITIVE_INFINITY;
+
+    measurements.forEach((measurement) => {
+      const { distance } = getPointToSegmentDistance(point, measurement.start, measurement.end);
+      if (distance <= MEASUREMENT_SELECTION_THRESHOLD && distance < smallestDistance) {
+        closestMeasurement = measurement;
+        smallestDistance = distance;
+      }
+    });
+
+    return closestMeasurement;
+  }, [measurements]);
+
+  const findTextHit = useCallback((canvasPoint: Point): TextElement | null => {
+    for (let index = textElements.length - 1; index >= 0; index -= 1) {
+      const textElement = textElements[index];
+      const content = editingText?.id === textElement.id ? textInput : textElement.text;
+      const position = gridToScreen(textElement.position.x, textElement.position.y);
+      const estimatedWidth = content.length * textElement.fontSize * 0.58 + TEXT_SELECTION_PADDING * 2;
+      const estimatedHeight = textElement.fontSize + TEXT_SELECTION_PADDING;
+
+      if (
+        Math.abs(canvasPoint.x - position.x) <= estimatedWidth / 2 &&
+        Math.abs(canvasPoint.y - position.y) <= estimatedHeight / 2
+      ) {
+        return textElement;
+      }
+    }
+
+    return null;
+  }, [editingText?.id, gridToScreen, textElements, textInput]);
+
   const drawOpeningSymbol = useCallback((
     ctx: CanvasRenderingContext2D,
     wall: Wall,
@@ -677,6 +1096,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   const drawFloors = useCallback((ctx: CanvasRenderingContext2D) => {
     levelFloors.forEach(floor => {
       if (floor.points.length < 3) return;
+      const isSelectedFloor =
+        selectedElement?.type === 'floor' && selectedElement.floorId === floor.id;
 
       const gradient = ctx.createLinearGradient(0, 0, width, height);
       gradient.addColorStop(0, 'rgba(255, 255, 255, 0.86)');
@@ -684,8 +1105,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
       ctx.save();
       ctx.fillStyle = gradient;
-      ctx.strokeStyle = '#8fa2b6';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = isSelectedFloor ? SELECTION_COLOR : '#8fa2b6';
+      ctx.lineWidth = isSelectedFloor ? 3 : 2;
       ctx.setLineDash([8, 6]);
       ctx.beginPath();
       const firstPoint = gridToScreen(floor.points[0].x, floor.points[0].y);
@@ -712,13 +1133,20 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const centroidScreen = gridToScreen(centroid.x, centroid.y);
       drawPillLabel(ctx, `Floor ${levelFloors.indexOf(floor) + 1}`, centroidScreen.x, centroidScreen.y, {
         background: 'rgba(255, 255, 255, 0.88)',
-        border: '#d4dee8',
-        color: '#475569',
+        border: isSelectedFloor ? '#fcd34d' : '#d4dee8',
+        color: isSelectedFloor ? '#b45309' : '#475569',
       });
+
+      if (isSelectedFloor) {
+        floor.points.forEach((point) => {
+          const screenPoint = gridToScreen(point.x, point.y);
+          drawNode(ctx, screenPoint.x, screenPoint.y, SELECTION_COLOR, 'rgba(255, 251, 235, 0.98)', 5);
+        });
+      }
 
       ctx.restore();
     });
-  }, [levelFloors, gridToScreen, height, width]);
+  }, [gridToScreen, height, levelFloors, selectedElement, width]);
 
   const drawWalls = useCallback((ctx: CanvasRenderingContext2D) => {
     levelWalls.forEach(wall => {
@@ -793,12 +1221,15 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     if (!measurementsVisible) return;
 
     measurements.forEach(measurement => {
+      const isSelectedMeasurement =
+        selectedElement?.type === 'measurement' &&
+        selectedElement.measurementId === measurement.id;
       const start = gridToScreen(measurement.start.x, measurement.start.y);
       const end = gridToScreen(measurement.end.x, measurement.end.y);
       
       // Measurement line
-      ctx.strokeStyle = '#9C27B0';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = isSelectedMeasurement ? SELECTION_COLOR : '#9C27B0';
+      ctx.lineWidth = isSelectedMeasurement ? 3 : 2;
       ctx.setLineDash([5, 3]);
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
@@ -807,7 +1238,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       ctx.setLineDash([]);
       
       // Measurement endpoints
-      ctx.fillStyle = '#9C27B0';
+      ctx.fillStyle = isSelectedMeasurement ? SELECTION_COLOR : '#9C27B0';
       ctx.beginPath();
       ctx.arc(start.x, start.y, 4, 0, 2 * Math.PI);
       ctx.fill();
@@ -827,14 +1258,17 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const text = measurement.label || formatMeasurement(distance);
       drawPillLabel(ctx, text, midX, midY, {
         background: 'rgba(255, 255, 255, 0.96)',
-        border: '#d8b4fe',
-        color: '#7c3aed',
+        border: isSelectedMeasurement ? '#fcd34d' : '#d8b4fe',
+        color: isSelectedMeasurement ? '#b45309' : '#7c3aed',
       });
     });
-  }, [measurements, measurementsVisible, gridToScreen]);
+  }, [gridToScreen, measurements, measurementsVisible, selectedElement]);
 
   const drawTextElements = useCallback((ctx: CanvasRenderingContext2D) => {
     textElements.forEach(textElement => {
+      const isSelectedText =
+        selectedElement?.type === 'text' &&
+        selectedElement.textElementId === textElement.id;
       const position = gridToScreen(textElement.position.x, textElement.position.y);
       
       ctx.save();
@@ -852,12 +1286,17 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const textHeight = textElement.fontSize;
       
       // Background
-      ctx.fillStyle = editingText?.id === textElement.id ? 'rgba(255, 255, 0, 0.3)' : 'rgba(255, 255, 255, 0.8)';
+      ctx.fillStyle =
+        editingText?.id === textElement.id
+          ? 'rgba(255, 255, 0, 0.3)'
+          : isSelectedText
+            ? 'rgba(255, 247, 237, 0.92)'
+            : 'rgba(255, 255, 255, 0.8)';
       ctx.fillRect(-textWidth/2 - 4, -textHeight/2 - 2, textWidth + 8, textHeight + 4);
       
       // Border for editing
-      if (editingText?.id === textElement.id) {
-        ctx.strokeStyle = '#FFD700';
+      if (editingText?.id === textElement.id || isSelectedText) {
+        ctx.strokeStyle = editingText?.id === textElement.id ? '#FFD700' : SELECTION_COLOR;
         ctx.lineWidth = 2;
         ctx.strokeRect(-textWidth/2 - 4, -textHeight/2 - 2, textWidth + 8, textHeight + 4);
       }
@@ -879,11 +1318,13 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       
       ctx.restore();
     });
-  }, [textElements, gridToScreen, editingText, textInput]);
+  }, [textElements, gridToScreen, editingText, selectedElement, textInput]);
 
   const drawZones = useCallback((ctx: CanvasRenderingContext2D) => {
     levelZones.forEach((zone, index) => {
       if (zone.points.length < 3) return;
+      const isSelectedZone =
+        selectedElement?.type === 'zone' && selectedElement.zoneId === zone.id;
 
       ctx.save();
 
@@ -891,10 +1332,12 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       ctx.fillStyle = zone.color.length === 9
         ? zone.color.slice(0, 7) + '4d'  // Replace alpha with ~30%
         : zone.color + '4d';
-      ctx.strokeStyle = zone.color.length === 9
-        ? zone.color.slice(0, 7)
-        : zone.color;
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = isSelectedZone
+        ? SELECTION_COLOR
+        : zone.color.length === 9
+          ? zone.color.slice(0, 7)
+          : zone.color;
+      ctx.lineWidth = isSelectedZone ? 3 : 2;
 
       ctx.beginPath();
       const firstPoint = gridToScreen(zone.points[0].x, zone.points[0].y);
@@ -920,23 +1363,33 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const centroidScreen = gridToScreen(centroid.x, centroid.y);
       drawPillLabel(ctx, zone.name, centroidScreen.x, centroidScreen.y, {
         background: 'rgba(255, 255, 255, 0.88)',
-        border: '#a78bfa',
-        color: '#6d28d9',
+        border: isSelectedZone ? '#fcd34d' : '#a78bfa',
+        color: isSelectedZone ? '#b45309' : '#6d28d9',
       });
+
+      if (isSelectedZone) {
+        zone.points.forEach((point) => {
+          const screenPoint = gridToScreen(point.x, point.y);
+          drawNode(ctx, screenPoint.x, screenPoint.y, SELECTION_COLOR, 'rgba(255, 251, 235, 0.98)', 5);
+        });
+      }
 
       ctx.restore();
     });
-  }, [levelZones, gridToScreen]);
+  }, [gridToScreen, levelZones, selectedElement]);
 
   const drawCeilings = useCallback((ctx: CanvasRenderingContext2D) => {
     levelCeilings.forEach((ceiling, index) => {
       if (ceiling.points.length < 3) return;
+      const isSelectedCeiling =
+        selectedElement?.type === 'ceiling' &&
+        selectedElement.ceilingId === ceiling.id;
 
       ctx.save();
 
       // Dashed outline in light violet
-      ctx.strokeStyle = '#8b5cf6';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = isSelectedCeiling ? SELECTION_COLOR : '#8b5cf6';
+      ctx.lineWidth = isSelectedCeiling ? 3 : 2;
       ctx.setLineDash([6, 4]);
 
       ctx.beginPath();
@@ -999,24 +1452,33 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const centroidScreen = gridToScreen(centroid.x, centroid.y);
       drawPillLabel(ctx, `Ceiling ${index + 1}`, centroidScreen.x, centroidScreen.y, {
         background: 'rgba(245, 243, 255, 0.92)',
-        border: '#c4b5fd',
-        color: '#7c3aed',
+        border: isSelectedCeiling ? '#fcd34d' : '#c4b5fd',
+        color: isSelectedCeiling ? '#b45309' : '#7c3aed',
       });
+
+      if (isSelectedCeiling) {
+        ceiling.points.forEach((point) => {
+          const screenPoint = gridToScreen(point.x, point.y);
+          drawNode(ctx, screenPoint.x, screenPoint.y, SELECTION_COLOR, 'rgba(255, 251, 235, 0.98)', 5);
+        });
+      }
 
       ctx.restore();
     });
-  }, [levelCeilings, gridToScreen]);
+  }, [gridToScreen, levelCeilings, selectedElement]);
 
   const drawRoofs = useCallback((ctx: CanvasRenderingContext2D) => {
     levelRoofs.forEach((roof, index) => {
+      const isSelectedRoof =
+        selectedElement?.type === 'roof' && selectedElement.roofId === roof.id;
       const start = gridToScreen(roof.ridgeStart.x, roof.ridgeStart.y);
       const end = gridToScreen(roof.ridgeEnd.x, roof.ridgeEnd.y);
 
       ctx.save();
 
       // Thick dashed ridge line in amber
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = isSelectedRoof ? SELECTION_COLOR : '#f59e0b';
+      ctx.lineWidth = isSelectedRoof ? 5 : 4;
       ctx.setLineDash([10, 6]);
       ctx.lineCap = 'round';
       ctx.beginPath();
@@ -1026,8 +1488,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       ctx.setLineDash([]);
 
       // Endpoint nodes
-      drawNode(ctx, start.x, start.y, '#f59e0b', '#fffbeb', 5);
-      drawNode(ctx, end.x, end.y, '#f59e0b', '#fffbeb', 5);
+      drawNode(ctx, start.x, start.y, isSelectedRoof ? SELECTION_COLOR : '#f59e0b', '#fffbeb', 5);
+      drawNode(ctx, end.x, end.y, isSelectedRoof ? SELECTION_COLOR : '#f59e0b', '#fffbeb', 5);
 
       // Triangle pitch indicators along the ridge
       const dx = end.x - start.x;
@@ -1087,14 +1549,14 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         const midY = (start.y + end.y) / 2;
         drawPillLabel(ctx, `Roof ${roof.pitch}°`, midX + normalX * 28, midY + normalY * 28, {
           background: 'rgba(255, 251, 235, 0.92)',
-          border: '#fcd34d',
-          color: '#b45309',
+          border: isSelectedRoof ? '#fcd34d' : '#fcd34d',
+          color: isSelectedRoof ? '#92400e' : '#b45309',
         });
       }
 
       ctx.restore();
     });
-  }, [levelRoofs, gridToScreen]);
+  }, [gridToScreen, levelRoofs, selectedElement]);
 
   const drawGhostElements = useCallback((ctx: CanvasRenderingContext2D) => {
     if (!guidesVisible) return;
@@ -1709,8 +2171,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         addRoof({
           ridgeStart: currentPoints[0],
           ridgeEnd: rawPoint,
-          pitch: 30,
-          overhang: 0.5,
+          pitch: defaults.roofPitch,
+          overhang: defaults.roofOverhang,
           level: currentLevelIndex,
         });
         setSelectedElement(null);
@@ -1722,12 +2184,133 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     }
 
     if (activeTool === 'select' || activeTool === null) {
+      const canvasPoint = clientToCanvas(e.clientX, e.clientY);
       const openingHit = findClosestOpeningHit(rawPoint);
       if (openingHit) {
         setSelectedElement({
           type: 'opening',
           wallId: openingHit.wallId,
           openingId: openingHit.openingId,
+        });
+        setDragState({
+          kind: 'opening-move',
+          wallId: openingHit.wallId,
+          openingId: openingHit.openingId,
+        });
+        return;
+      }
+
+      const wallEndpointHit = findClosestWallEndpointHit(rawPoint);
+      if (wallEndpointHit) {
+        setSelectedElement({
+          type: 'wall',
+          wallId: wallEndpointHit.wall.id,
+        });
+        setDragState({
+          kind: 'wall-endpoint',
+          wallId: wallEndpointHit.wall.id,
+          endpoint: wallEndpointHit.endpoint,
+          originalWall: wallEndpointHit.wall,
+        });
+        return;
+      }
+
+      const roofEndpointHit = findClosestRoofEndpointHit(rawPoint);
+      if (roofEndpointHit) {
+        setSelectedElement({
+          type: 'roof',
+          roofId: roofEndpointHit.roof.id,
+        });
+        setDragState({
+          kind: 'roof-endpoint',
+          roofId: roofEndpointHit.roof.id,
+          endpoint: roofEndpointHit.endpoint,
+          originalRoof: roofEndpointHit.roof,
+        });
+        return;
+      }
+
+      const polygonVertexHit = findPolygonVertexHit(rawPoint);
+      if (polygonVertexHit) {
+        if (polygonVertexHit.featureType === 'floor') {
+          const floor = levelFloors.find((candidate) => candidate.id === polygonVertexHit.featureId);
+          if (floor) {
+            setSelectedElement({
+              type: 'floor',
+              floorId: floor.id,
+            });
+            setDragState({
+              kind: 'polygon-vertex',
+              featureType: 'floor',
+              featureId: floor.id,
+              vertexIndex: polygonVertexHit.vertexIndex,
+              originalPoints: floor.points,
+            });
+            return;
+          }
+        }
+
+        if (polygonVertexHit.featureType === 'zone') {
+          const zone = levelZones.find((candidate) => candidate.id === polygonVertexHit.featureId);
+          if (zone) {
+            setSelectedElement({
+              type: 'zone',
+              zoneId: zone.id,
+            });
+            setDragState({
+              kind: 'polygon-vertex',
+              featureType: 'zone',
+              featureId: zone.id,
+              vertexIndex: polygonVertexHit.vertexIndex,
+              originalPoints: zone.points,
+            });
+            return;
+          }
+        }
+
+        const ceiling = levelCeilings.find((candidate) => candidate.id === polygonVertexHit.featureId);
+        if (ceiling) {
+          setSelectedElement({
+            type: 'ceiling',
+            ceilingId: ceiling.id,
+          });
+          setDragState({
+            kind: 'polygon-vertex',
+            featureType: 'ceiling',
+            featureId: ceiling.id,
+            vertexIndex: polygonVertexHit.vertexIndex,
+            originalPoints: ceiling.points,
+          });
+          return;
+        }
+      }
+
+      const textHit = findTextHit(canvasPoint);
+      if (textHit) {
+        setSelectedElement({
+          type: 'text',
+          textElementId: textHit.id,
+        });
+        setDragState({
+          kind: 'text-move',
+          textElementId: textHit.id,
+          startPointer: rawPoint,
+          originalPosition: textHit.position,
+        });
+        return;
+      }
+
+      const measurementEndpointHit = findClosestMeasurementEndpointHit(rawPoint);
+      if (measurementEndpointHit) {
+        setSelectedElement({
+          type: 'measurement',
+          measurementId: measurementEndpointHit.measurement.id,
+        });
+        setDragState({
+          kind: 'measurement-endpoint',
+          measurementId: measurementEndpointHit.measurement.id,
+          endpoint: measurementEndpointHit.endpoint,
+          originalMeasurement: measurementEndpointHit.measurement,
         });
         return;
       }
@@ -1738,12 +2321,93 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
           type: 'wall',
           wallId: wallHit.id,
         });
+        setDragState({
+          kind: 'wall-move',
+          wallId: wallHit.id,
+          startPointer: rawPoint,
+          originalStart: wallHit.start,
+          originalEnd: wallHit.end,
+        });
+        return;
+      }
+
+      const roofHit = findClosestRoofHit(rawPoint);
+      if (roofHit) {
+        setSelectedElement({
+          type: 'roof',
+          roofId: roofHit.id,
+        });
+        setDragState({
+          kind: 'roof-move',
+          roofId: roofHit.id,
+          startPointer: rawPoint,
+          originalStart: roofHit.ridgeStart,
+          originalEnd: roofHit.ridgeEnd,
+        });
+        return;
+      }
+
+      const measurementHit = findClosestMeasurementHit(rawPoint);
+      if (measurementHit) {
+        setSelectedElement({
+          type: 'measurement',
+          measurementId: measurementHit.id,
+        });
+        setDragState({
+          kind: 'measurement-move',
+          measurementId: measurementHit.id,
+          startPointer: rawPoint,
+          originalStart: measurementHit.start,
+          originalEnd: measurementHit.end,
+        });
+        return;
+      }
+
+      const polygonBodyHit = findPolygonBodyHit(rawPoint);
+      if (polygonBodyHit) {
+        setSelectedElement(polygonBodyHit);
+
+        if (polygonBodyHit.type === 'floor') {
+          const floor = levelFloors.find((candidate) => candidate.id === polygonBodyHit.floorId);
+          if (floor) {
+            setDragState({
+              kind: 'polygon-move',
+              featureType: 'floor',
+              featureId: floor.id,
+              startPointer: rawPoint,
+              originalPoints: floor.points,
+            });
+          }
+        } else if (polygonBodyHit.type === 'zone') {
+          const zone = levelZones.find((candidate) => candidate.id === polygonBodyHit.zoneId);
+          if (zone) {
+            setDragState({
+              kind: 'polygon-move',
+              featureType: 'zone',
+              featureId: zone.id,
+              startPointer: rawPoint,
+              originalPoints: zone.points,
+            });
+          }
+        } else if (polygonBodyHit.type === 'ceiling') {
+          const ceiling = levelCeilings.find((candidate) => candidate.id === polygonBodyHit.ceilingId);
+          if (ceiling) {
+            setDragState({
+              kind: 'polygon-move',
+              featureType: 'ceiling',
+              featureId: ceiling.id,
+              startPointer: rawPoint,
+              originalPoints: ceiling.points,
+            });
+          }
+        }
         return;
       }
 
       setSelectedElement(null);
+      setDragState(null);
     }
-  }, [activeTool, addFloor, addZone, addCeiling, addRoof, addMeasurement, addTextElement, addWall, addWallOpening, autoConnectNearbyWalls, createOpeningPayload, currentPoints, findClosestOpeningHit, findClosestWallHit, findClosestWallPlacement, isDrawing, onToolAction, resolveFloorPoint, resolveWallPoint, screenToGrid, setSelectedElement, settings.measurementMode, settings.units, updateSettings, zones]);
+  }, [activeTool, addCeiling, addFloor, addMeasurement, addRoof, addTextElement, addWall, addWallOpening, addZone, autoConnectNearbyWalls, clientToCanvas, createOpeningPayload, currentPoints, defaults, findClosestMeasurementEndpointHit, findClosestMeasurementHit, findClosestOpeningHit, findClosestRoofEndpointHit, findClosestRoofHit, findClosestWallEndpointHit, findClosestWallHit, findClosestWallPlacement, findPolygonBodyHit, findPolygonVertexHit, findTextHit, isDrawing, levelCeilings, levelFloors, levelZones, onToolAction, resolveFloorPoint, resolveWallPoint, screenToGrid, setSelectedElement, settings.measurementMode, settings.units, updateSettings, zones]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rawPoint = screenToGrid(e.clientX, e.clientY);
@@ -1753,15 +2417,157 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       : isPolygonDraw
         ? resolveFloorPoint(rawPoint)
         : rawPoint;
+
+    if (dragState) {
+      if (dragState.kind === 'wall-move') {
+        const delta = {
+          x: rawPoint.x - dragState.startPointer.x,
+          y: rawPoint.y - dragState.startPointer.y,
+        };
+        updateWall(dragState.wallId, {
+          start: {
+            x: dragState.originalStart.x + delta.x,
+            y: dragState.originalStart.y + delta.y,
+          },
+          end: {
+            x: dragState.originalEnd.x + delta.x,
+            y: dragState.originalEnd.y + delta.y,
+          },
+        });
+        return;
+      }
+
+      if (dragState.kind === 'wall-endpoint') {
+        const resolvedPoint = resolveWallPoint(rawPoint, {
+          excludeWallId: dragState.wallId,
+        });
+        updateWall(dragState.wallId, {
+          [dragState.endpoint]: resolvedPoint,
+        });
+        return;
+      }
+
+      if (dragState.kind === 'opening-move') {
+        const wall =
+          levelWalls.find((candidate) => candidate.id === dragState.wallId) ??
+          walls.find((candidate) => candidate.id === dragState.wallId);
+        const opening = wall?.openings.find((candidate) => candidate.id === dragState.openingId);
+
+        if (wall && opening) {
+          const wallLength = getWallLength(wall);
+          if (wallLength > 0) {
+            const projectedPoint = projectPointToSegment(rawPoint, wall.start, wall.end);
+            const targetOffset =
+              distanceBetweenPoints(wall.start, projectedPoint) / wallLength;
+            const offset = constrainOpeningOffset(wall, opening, targetOffset);
+            updateWallOpening(dragState.wallId, dragState.openingId, { offset });
+          }
+        }
+        return;
+      }
+
+      if (dragState.kind === 'polygon-move') {
+        const delta = {
+          x: rawPoint.x - dragState.startPointer.x,
+          y: rawPoint.y - dragState.startPointer.y,
+        };
+        applyPolygonPointsUpdate(
+          dragState.featureType,
+          dragState.featureId,
+          translatePoints(dragState.originalPoints, delta),
+        );
+        return;
+      }
+
+      if (dragState.kind === 'polygon-vertex') {
+        const nextPoints = dragState.originalPoints.map((existingPoint, index) =>
+          index === dragState.vertexIndex ? rawPoint : existingPoint,
+        );
+        applyPolygonPointsUpdate(
+          dragState.featureType,
+          dragState.featureId,
+          nextPoints,
+        );
+        return;
+      }
+
+      if (dragState.kind === 'roof-move') {
+        const delta = {
+          x: rawPoint.x - dragState.startPointer.x,
+          y: rawPoint.y - dragState.startPointer.y,
+        };
+        updateRoof(dragState.roofId, {
+          ridgeStart: {
+            x: dragState.originalStart.x + delta.x,
+            y: dragState.originalStart.y + delta.y,
+          },
+          ridgeEnd: {
+            x: dragState.originalEnd.x + delta.x,
+            y: dragState.originalEnd.y + delta.y,
+          },
+        });
+        return;
+      }
+
+      if (dragState.kind === 'roof-endpoint') {
+        updateRoof(dragState.roofId, {
+          [dragState.endpoint]: rawPoint,
+        });
+        return;
+      }
+
+      if (dragState.kind === 'measurement-move') {
+        const delta = {
+          x: rawPoint.x - dragState.startPointer.x,
+          y: rawPoint.y - dragState.startPointer.y,
+        };
+        updateMeasurement(dragState.measurementId, {
+          start: {
+            x: dragState.originalStart.x + delta.x,
+            y: dragState.originalStart.y + delta.y,
+          },
+          end: {
+            x: dragState.originalEnd.x + delta.x,
+            y: dragState.originalEnd.y + delta.y,
+          },
+        });
+        return;
+      }
+
+      if (dragState.kind === 'measurement-endpoint') {
+        updateMeasurement(dragState.measurementId, {
+          [dragState.endpoint]: rawPoint,
+        });
+        return;
+      }
+
+      if (dragState.kind === 'text-move') {
+        const delta = {
+          x: rawPoint.x - dragState.startPointer.x,
+          y: rawPoint.y - dragState.startPointer.y,
+        };
+        updateTextElement(dragState.textElementId, {
+          position: {
+            x: dragState.originalPosition.x + delta.x,
+            y: dragState.originalPosition.y + delta.y,
+          },
+        });
+        return;
+      }
+    }
     
     if (isDrawing || activeTool === 'door' || activeTool === 'window') {
       setPreviewPoint(point);
     }
-  }, [activeTool, isDrawing, resolveFloorPoint, resolveWallPoint, screenToGrid]);
+  }, [activeTool, applyPolygonPointsUpdate, constrainOpeningOffset, dragState, isDrawing, levelWalls, resolveFloorPoint, resolveWallPoint, screenToGrid, updateMeasurement, updateRoof, updateTextElement, updateWall, updateWallOpening, walls]);
 
   const handleMouseUp = useCallback(() => {
-    return undefined;
-  }, []);
+    if (dragState?.kind === 'wall-move' || dragState?.kind === 'wall-endpoint') {
+      autoConnectNearbyWalls(CONNECTION_THRESHOLD);
+    }
+
+    setDragState(null);
+  }, [autoConnectNearbyWalls, dragState]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
@@ -1826,7 +2632,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
     setTabInput({ active: false, value: '', screenPos: { x: 0, y: 0 } });
     setPreviewPoint(endPoint);
-  }, [activeTool, addMeasurement, addWall, autoConnectNearbyWalls, currentPoints, onToolAction, previewPoint, setSelectedElement, settings.measurementMode, settings.units]);
+  }, [activeTool, addMeasurement, addWall, autoConnectNearbyWalls, currentPoints, defaults, onToolAction, previewPoint, setSelectedElement, settings.measurementMode, settings.units]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Tab-to-type: show dimension input while drawing
@@ -1849,6 +2655,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         setTextInput('');
         updateSettings({ isTextEditing: false });
       } else {
+        setDragState(null);
         setCurrentPoints([]);
         setIsDrawing(false);
         setPreviewPoint(null);
@@ -1910,6 +2717,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
 
     setCurrentPoints([]);
     setIsDrawing(false);
+    setDragState(null);
     setPreviewPoint(null);
     previousToolRef.current = activeTool;
   }, [activeTool, editingText, textInput, updateSettings, updateTextElement]);
@@ -1946,13 +2754,18 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
           width: '100%',
           height: '100%',
           cursor:
-            activeTool === 'select' || activeTool === null
-              ? 'default'
+            dragState
+              ? 'grabbing'
+              : activeTool === 'select' || activeTool === null
+                ? selectedElement
+                  ? 'grab'
+                  : 'default'
               : 'crosshair',
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       />
 
       {/* Tab-to-type dimension input */}

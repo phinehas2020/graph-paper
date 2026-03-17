@@ -13,7 +13,8 @@ import {
 } from '@react-three/drei';
 import usePlannerSceneStore from '@/src/planner/stores/usePlannerSceneStore';
 import usePlannerViewerStore from '@/src/planner/stores/usePlannerViewerStore';
-import { floorToMesh, wallToMesh } from './meshes';
+import { getRequiredLevelHeight } from '@/src/planner/level-utils';
+import { floorToMesh, roofToMesh, wallToMesh } from './meshes';
 import type { CameraMode, LevelDisplayMode, WallViewMode } from '@/src/components/view-controls';
 
 /* ------------------------------------------------------------------ */
@@ -109,10 +110,13 @@ function SceneGeometry({
 }) {
   const wallNodes = usePlannerSceneStore((s) => s.wallNodes);
   const floorNodes = usePlannerSceneStore((s) => s.floorNodes);
+  const roofs = usePlannerSceneStore((s) => s.roofs);
+  const ceilings = usePlannerSceneStore((s) => s.ceilings);
   const levels = usePlannerSceneStore((s) => s.levels);
   const selectedElement = usePlannerViewerStore((s) => s.selectedElement);
 
   const walls = useMemo(() => wallNodes.map((n) => n.entity), [wallNodes]);
+  const floors = useMemo(() => floorNodes.map((n) => n.entity), [floorNodes]);
 
   const floorMeshes = useMemo(
     () => floorNodes.map((n) => floorToMesh(n.entity)),
@@ -123,8 +127,13 @@ function SceneGeometry({
     () => wallNodes.map((n) => wallToMesh(n.entity, walls, selectedElement)),
     [selectedElement, wallNodes, walls],
   );
+  const roofMeshes = useMemo(
+    () => roofs.map((roof) => roofToMesh(roof, floors, selectedElement)),
+    [floors, roofs, selectedElement],
+  );
 
-  const hasGeometry = floorMeshes.length > 0 || wallMeshes.length > 0;
+  const hasGeometry =
+    floorMeshes.length > 0 || wallMeshes.length > 0 || roofMeshes.length > 0;
 
   // Compute per-level vertical offsets for exploded view
   const getYOffset = useCallback(
@@ -151,6 +160,17 @@ function SceneGeometry({
     (levelIndex: number) => levels[levelIndex]?.elevation ?? 0,
     [levels],
   );
+  const getRoofBaseElevation = useCallback(
+    (levelIndex: number) =>
+      getLevelBaseElevation(levelIndex) +
+      getRequiredLevelHeight(levelIndex, {
+        levels,
+        walls,
+        floors,
+        ceilings,
+      }),
+    [ceilings, floors, getLevelBaseElevation, levels, walls],
+  );
 
   return (
     <Bounds fit clip observe margin={1.25}>
@@ -174,6 +194,18 @@ function SceneGeometry({
             <group
               key={`wall-${wallNodes[index].id}`}
               position-y={getLevelBaseElevation(levelIndex) + getYOffset(levelIndex)}
+            >
+              <primitive object={mesh} />
+            </group>
+          );
+        })}
+        {roofMeshes.map((mesh, index) => {
+          const levelIndex = Math.min(roofs[index].level ?? 0, levelCount - 1);
+          if (!isLevelVisible(levelIndex)) return null;
+          return (
+            <group
+              key={`roof-${roofs[index].id}`}
+              position-y={getRoofBaseElevation(levelIndex) + getYOffset(levelIndex)}
             >
               <primitive object={mesh} />
             </group>

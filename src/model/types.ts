@@ -341,6 +341,30 @@ export type PlannerSelection =
       type: 'opening';
       wallId: string;
       openingId: string;
+    }
+  | {
+      type: 'floor';
+      floorId: string;
+    }
+  | {
+      type: 'zone';
+      zoneId: string;
+    }
+  | {
+      type: 'ceiling';
+      ceilingId: string;
+    }
+  | {
+      type: 'roof';
+      roofId: string;
+    }
+  | {
+      type: 'measurement';
+      measurementId: string;
+    }
+  | {
+      type: 'text';
+      textElementId: string;
     };
 
 export type PlannerSceneNodeType = 'floor' | 'wall' | 'opening';

@@ -83,6 +83,9 @@ function IconButton({
       <button
         type="button"
         onClick={onClick}
+        aria-label={tooltip}
+        aria-pressed={active}
+        title={tooltip}
         className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
           active
             ? 'bg-blue-500/20 text-blue-400'
@@ -125,6 +128,10 @@ function MiniDropdown<T extends string>({
         <button
           type="button"
           onClick={() => setOpen(!open)}
+          aria-label={tooltip}
+          aria-expanded={open}
+          aria-haspopup="menu"
+          title={`${tooltip}: ${currentLabel}`}
           className="flex h-8 items-center gap-1 rounded-md px-2 text-slate-400 transition-colors hover:bg-slate-700/60 hover:text-slate-200"
         >
           {icon}
@@ -141,6 +148,7 @@ function MiniDropdown<T extends string>({
                 key={option.value}
                 type="button"
                 onClick={() => handleSelect(option.value)}
+                aria-label={option.label}
                 className={`flex w-full items-center rounded-md px-3 py-1.5 text-left text-xs transition-colors ${
                   value === option.value
                     ? 'bg-blue-500/20 text-blue-400'

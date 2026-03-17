@@ -1,6 +1,6 @@
 'use client';
 
-import { EditorPhase } from '@/src/model/phases';
+import { EditorMode, EditorPhase } from '@/src/model/phases';
 
 export type PlannerToolId =
   | 'select'
@@ -141,6 +141,10 @@ export const PLANNER_TOOLS: PlannerToolDefinition[] = [
   },
 ];
 
+const TOOL_BY_ID = Object.fromEntries(
+  PLANNER_TOOLS.map((tool) => [tool.id, tool]),
+) as Record<PlannerToolId, PlannerToolDefinition>;
+
 /** Backward-compatible label map. */
 export const PLANNER_TOOL_LABELS = Object.fromEntries(
   PLANNER_TOOLS.map((tool) => [tool.id, tool.name]),
@@ -154,6 +158,39 @@ export function getPlannerToolForShortcut(
   key: string,
 ): PlannerToolId | null {
   return TOOL_BY_SHORTCUT[key.toLowerCase()] ?? null;
+}
+
+export function getPlannerToolDefinition(
+  tool: PlannerTool | PlannerToolId,
+): PlannerToolDefinition | null {
+  if (!tool) {
+    return null;
+  }
+
+  return TOOL_BY_ID[tool] ?? null;
+}
+
+export function getModeForPlannerTool(
+  tool: PlannerTool | PlannerToolId,
+): EditorMode {
+  if (!tool || tool === 'select') {
+    return 'select';
+  }
+
+  return getPlannerToolDefinition(tool)?.requiresBuildMode ? 'build' : 'select';
+}
+
+export function getToolForEditorMode(
+  mode: EditorMode,
+  currentTool: PlannerTool | PlannerToolId = null,
+): PlannerToolId {
+  if (mode === 'build') {
+    return getPlannerToolDefinition(currentTool)?.requiresBuildMode
+      ? currentTool
+      : 'wall';
+  }
+
+  return 'select';
 }
 
 /** Return tools available in a given phase. */

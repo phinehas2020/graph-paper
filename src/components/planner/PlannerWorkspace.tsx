@@ -50,7 +50,12 @@ import useDefaultsStore from '@/src/planner/stores/useDefaultsStore';
 import useEnhancedEditorStore from '@/src/planner/stores/useEnhancedEditorStore';
 import { getSuggestedLevelElevation } from '@/src/planner/level-utils';
 import PlannerToolManager from '@/src/planner/tooling/PlannerToolManager';
-import { PLANNER_TOOLS, type PlannerToolId } from '@/src/planner/tooling/tools';
+import {
+  PLANNER_TOOLS,
+  getModeForPlannerTool,
+  getToolForEditorMode,
+  type PlannerToolId,
+} from '@/src/planner/tooling/tools';
 import { PHASES, MODES, type EditorPhase, type EditorMode } from '@/src/model/phases';
 import { Viewer } from '@/src/three/Viewer';
 import { LevelNavigator, type Level } from '@/src/components/level-navigator';
@@ -116,14 +121,23 @@ function viewportModeToLayout(mode: PlannerViewportMode): '2d' | 'split' | '3d' 
 
 function LeftPanelContent({
   tab,
+  onToolChange,
 }: {
   tab: 'tree' | 'tools' | 'settings';
+  onToolChange: (tool: PlannerToolId) => void;
 }) {
   const activeTool = usePlannerEditorStore((s) => s.activeTool);
-  const selectTool = usePlannerEditorStore((s) => s.selectTool);
   const nodes = usePlannerSceneStore((s) => s.nodes);
   const rootNodeIds = usePlannerSceneStore((s) => s.rootNodeIds);
   const selectedElement = usePlannerViewerStore((s) => s.selectedElement);
+  const selectedNodeId =
+    selectedElement?.type === 'wall'
+      ? selectedElement.wallId
+      : selectedElement?.type === 'opening'
+        ? selectedElement.openingId
+        : selectedElement?.type === 'floor'
+          ? selectedElement.floorId
+          : null;
 
   if (tab === 'tree') {
     return (
@@ -136,7 +150,7 @@ function LeftPanelContent({
         <SceneTree
           nodes={nodes}
           rootNodeIds={rootNodeIds}
-          selectedId={selectedElement?.wallId ?? null}
+          selectedId={selectedNodeId}
         />
       </div>
     );
@@ -145,7 +159,7 @@ function LeftPanelContent({
   if (tab === 'tools') {
     return (
       <div className="h-full overflow-y-auto p-2">
-        <DarkToolList activeTool={activeTool} onToolChange={selectTool} />
+        <DarkToolList activeTool={activeTool} onToolChange={onToolChange} />
       </div>
     );
   }
@@ -179,6 +193,9 @@ function DarkToolList({
           <button
             key={tool.id}
             type="button"
+            title={`${tool.name} (${tool.shortcut})`}
+            aria-label={`${tool.name} (${tool.shortcut})`}
+            aria-pressed={isActive}
             onClick={() => onToolChange(tool.id)}
             className={cn(
               'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all',
@@ -247,7 +264,9 @@ export function PlannerWorkspace() {
   const [propertyPanelOpen, setPropertyPanelOpen] = useState(false);
   const [viewerRevision, setViewerRevision] = useState(0);
   useEffect(() => {
-    setPropertyPanelOpen(selectedElement != null);
+    setPropertyPanelOpen(
+      selectedElement?.type === 'wall' || selectedElement?.type === 'opening',
+    );
   }, [selectedElement]);
 
   /* Sync viewport layout <-> legacy viewport mode */
@@ -305,6 +324,35 @@ export function PlannerWorkspace() {
       setViewportLayout(layout);
     },
     [setViewportLayout],
+  );
+
+  const handlePlannerToolChange = useCallback(
+    (tool: PlannerToolId) => {
+      setMode(getModeForPlannerTool(tool));
+      selectTool(tool);
+    },
+    [selectTool, setMode],
+  );
+
+  const handleModeChange = useCallback(
+    (nextMode: EditorMode) => {
+      setMode(nextMode);
+      selectTool(
+        getToolForEditorMode(
+          nextMode,
+          usePlannerEditorStore.getState().activeTool,
+        ),
+      );
+    },
+    [selectTool, setMode],
+  );
+
+  const handlePhaseChange = useCallback(
+    (nextPhase: EditorPhase) => {
+      setPhase(nextPhase);
+      selectTool(getToolForEditorMode('select'));
+    },
+    [selectTool, setPhase],
   );
 
   const handleToggleLeftPanel = useCallback(
@@ -378,7 +426,9 @@ export function PlannerWorkspace() {
               key={p.id}
               type="button"
               title={`${p.label} (${p.shortcut})`}
-              onClick={() => setPhase(p.id)}
+              aria-label={`${p.label} (${p.shortcut})`}
+              aria-pressed={phase === p.id}
+              onClick={() => handlePhaseChange(p.id)}
               className={cn(
                 'flex h-6 w-10 items-center justify-center rounded-md text-[10px] font-semibold transition-all',
                 phase === p.id
@@ -406,7 +456,10 @@ export function PlannerWorkspace() {
         <aside
           className="z-20 flex w-[260px] shrink-0 flex-col border-r border-slate-800/60 bg-slate-950/95 backdrop-blur-xl transition-all"
         >
-          <LeftPanelContent tab={leftPanelTab} />
+          <LeftPanelContent
+            tab={leftPanelTab}
+            onToolChange={handlePlannerToolChange}
+          />
         </aside>
       )}
 
@@ -479,6 +532,7 @@ export function PlannerWorkspace() {
           <button
             type="button"
             title="Add Level"
+            aria-label="Add Level"
             onClick={() => {
               const newIndex = navigatorLevels.length;
               const elevation = getSuggestedLevelElevation(newIndex, {
@@ -519,7 +573,7 @@ export function PlannerWorkspace() {
                     label={m.label}
                     shortcut={m.shortcut}
                     active={mode === m.id}
-                    onClick={() => setMode(m.id)}
+                    onClick={() => handleModeChange(m.id)}
                   />
                 );
               })}
@@ -538,7 +592,7 @@ export function PlannerWorkspace() {
                     label={t.name}
                     shortcut={t.shortcut}
                     active={activeTool === t.id}
-                    onClick={() => selectTool(t.id)}
+                    onClick={() => handlePlannerToolChange(t.id)}
                   />
                 );
               })}

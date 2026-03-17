@@ -48,6 +48,8 @@ export function ActionMenuButton({
       type="button"
       onClick={onClick}
       title={title}
+      aria-label={title}
+      aria-pressed={active}
       className={cn(
         'relative flex items-center justify-center rounded-md transition-all',
         showLabel ? 'gap-1.5 px-2.5 py-1.5' : 'h-8 w-8',
