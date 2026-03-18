@@ -5,43 +5,17 @@ import { DoubleSide, type Group, type Mesh, Shape, ShapeGeometry, Vector3 } from
 import { EDITOR_LAYER } from '../../../lib/constants'
 import { sfxEmitter } from '../../../lib/sfx-bus'
 import { CursorSphere } from '../shared/cursor-sphere'
+import { DrawingLengthBadge } from '../shared/drawing-length-badge'
 import { DrawingLengthOverlay } from '../shared/drawing-length-overlay'
 import {
+  calculateDirectionLength,
   formatLength,
   parseLengthInput,
   projectPointAlongDirection,
+  snapPointTo45Degrees,
 } from '../shared/drawing-length-utils'
 
 const WALL_HEIGHT = 2.5
-const WALL_THICKNESS = 0.15
-
-/**
- * Snap point to 45° angle increments relative to start point
- * Also snaps end point to 0.5 grid
- */
-const snapTo45Degrees = (start: Vector3, cursor: Vector3): Vector3 => {
-  const dx = cursor.x - start.x
-  const dz = cursor.z - start.z
-
-  // Calculate angle in radians
-  const angle = Math.atan2(dz, dx)
-
-  // Round to nearest 45° (π/4 radians)
-  const snappedAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4)
-
-  // Calculate distance from start to cursor
-  const distance = Math.sqrt(dx * dx + dz * dz)
-
-  // Project end point along snapped angle
-  let snappedX = start.x + Math.cos(snappedAngle) * distance
-  let snappedZ = start.z + Math.sin(snappedAngle) * distance
-
-  // Snap to 0.5 grid
-  snappedX = Math.round(snappedX * 2) / 2
-  snappedZ = Math.round(snappedZ * 2) / 2
-
-  return new Vector3(snappedX, cursor.y, snappedZ)
-}
 
 /**
  * Update wall preview mesh geometry to create a vertical plane between two points
@@ -58,9 +32,6 @@ const updateWallPreview = (mesh: Mesh, start: Vector3, end: Vector3) => {
 
   mesh.visible = true
   direction.normalize()
-
-  // Perpendicular vector for thickness
-  const perpendicular = new Vector3(-direction.z, 0, direction.x).multiplyScalar(WALL_THICKNESS / 2)
 
   // Create wall shape (vertical rectangle in XY plane)
   const shape = new Shape()
@@ -115,6 +86,10 @@ export const WallTool: React.FC = () => {
   const [lengthInputPosition, setLengthInputPosition] = useState<[number, number, number]>([
     0, 0, 0,
   ])
+  const [lengthBadge, setLengthBadge] = useState<{
+    position: [number, number, number]
+    value: string
+  } | null>(null)
   const isLengthInputOpenRef = useRef(false)
   const lengthInputValueRef = useRef('')
 
@@ -165,6 +140,7 @@ export const WallTool: React.FC = () => {
     const dz = end[1] - startingPoint.current.z
     if (dx * dx + dz * dz < 0.01 * 0.01) return
 
+    setLengthBadge(null)
     commitWallDrawing([startingPoint.current.x, startingPoint.current.z], end)
     wallPreviewRef.current.visible = false
     buildingState.current = 0
@@ -183,14 +159,27 @@ export const WallTool: React.FC = () => {
 
       if (buildingState.current === 1) {
         // Snap to 45° angles only if shift is not pressed
-        const snapped = shiftPressed.current
-          ? cursorPosition
-          : snapTo45Degrees(startingPoint.current, cursorPosition)
-        endingPoint.current.copy(snapped)
+        if (shiftPressed.current) {
+          endingPoint.current.copy(cursorPosition)
+        } else {
+          const snapped = snapPointTo45Degrees(
+            [startingPoint.current.x, startingPoint.current.z],
+            [cursorPosition.x, cursorPosition.z],
+          )
+          endingPoint.current.set(snapped[0], event.position[1], snapped[1])
+        }
 
         // Position the cursor at the end of the wall being drawn
-        cursorRef.current.position.set(snapped.x, snapped.y, snapped.z)
-        setLengthInputPosition([snapped.x, snapped.y, snapped.z])
+        cursorRef.current.position.set(
+          endingPoint.current.x,
+          endingPoint.current.y,
+          endingPoint.current.z,
+        )
+        setLengthInputPosition([
+          endingPoint.current.x,
+          endingPoint.current.y,
+          endingPoint.current.z,
+        ])
 
         // Play snap sound only when the actual wall end position changes
         const currentWallEnd: [number, number] = [endingPoint.current.x, endingPoint.current.z]
@@ -204,6 +193,24 @@ export const WallTool: React.FC = () => {
 
         // Update wall preview geometry
         updateWallPreview(wallPreviewRef.current, startingPoint.current, endingPoint.current)
+
+        const { length } = calculateDirectionLength(
+          [startingPoint.current.x, startingPoint.current.z],
+          [endingPoint.current.x, endingPoint.current.z],
+        )
+
+        if (length >= 0.01) {
+          setLengthBadge({
+            position: [
+              (startingPoint.current.x + endingPoint.current.x) / 2,
+              endingPoint.current.y + 0.18,
+              (startingPoint.current.z + endingPoint.current.z) / 2,
+            ],
+            value: formatLength(length),
+          })
+        } else {
+          setLengthBadge(null)
+        }
       } else {
         // Not drawing a wall, just follow the grid position
         cursorRef.current.position.set(gridPosition[0], event.position[1], gridPosition[1])
@@ -215,12 +222,14 @@ export const WallTool: React.FC = () => {
         startingPoint.current.set(gridPosition[0], event.position[1], gridPosition[1])
         buildingState.current = 1
         wallPreviewRef.current.visible = true
+        setLengthBadge(null)
         setLengthInputPosition([gridPosition[0], event.position[1], gridPosition[1]])
       } else if (buildingState.current === 1) {
         if (isLengthInputOpenRef.current) return
         const dx = endingPoint.current.x - startingPoint.current.x
         const dz = endingPoint.current.z - startingPoint.current.z
         if (dx * dx + dz * dz < 0.01 * 0.01) return
+        setLengthBadge(null)
         commitWallDrawing(
           [startingPoint.current.x, startingPoint.current.z],
           [endingPoint.current.x, endingPoint.current.z],
@@ -254,6 +263,7 @@ export const WallTool: React.FC = () => {
       if (buildingState.current === 1) {
         buildingState.current = 0
         wallPreviewRef.current.visible = false
+        setLengthBadge(null)
         closeLengthInput()
       }
     }
@@ -298,6 +308,12 @@ export const WallTool: React.FC = () => {
         onValueChange={setLengthInputValueState}
         position={lengthInputPosition}
         value={lengthInputValue}
+      />
+
+      <DrawingLengthBadge
+        isVisible={buildingState.current === 1 && lengthBadge !== null}
+        position={lengthBadge?.position ?? [0, 0, 0]}
+        value={lengthBadge?.value ?? ''}
       />
     </group>
   )

@@ -7,6 +7,8 @@ const useViewer = create()(persist((set) => ({
     setHoveredId: (id) => set({ hoveredId: id }),
     cameraMode: 'perspective',
     setCameraMode: (mode) => set({ cameraMode: mode }),
+    cameraInteractionMode: 'orbit',
+    setCameraInteractionMode: (mode) => set({ cameraInteractionMode: mode }),
     theme: 'light',
     setTheme: (theme) => set({ theme }),
     levelMode: 'stacked',

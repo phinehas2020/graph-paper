@@ -7,7 +7,6 @@ import { cn } from '../../../lib/utils'
 import useEditor, {
   type CatalogCategory,
   type StructureTool,
-  Tool,
 } from '../../../store/use-editor'
 import { ActionButton } from './action-button'
 
@@ -20,6 +19,7 @@ export type ToolConfig = {
 
 export const tools: ToolConfig[] = [
   { id: 'wall', iconSrc: '/icons/wall.png', label: 'Wall' },
+  { id: 'measure', iconSrc: '/icons/measure.svg', label: 'Measure' },
   // { id: 'room', iconSrc: '/icons/room.png', label: 'Room' },
   // { id: 'custom-room', iconSrc: '/icons/custom-room.png', label: 'Custom Room' },
   { id: 'slab', iconSrc: '/icons/floor.png', label: 'Slab' },
@@ -45,11 +45,6 @@ export function StructureTools() {
       ? tools.filter((t) => t.id === 'zone')
       : tools.filter((t) => t.id !== 'zone')
 
-  const hasActiveTool = visibleTools.some(
-    (t) =>
-      activeTool === t.id && (t.catalogCategory ? catalogCategory === t.catalogCategory : true),
-  )
-
   return (
     <div className="flex items-center gap-1.5 px-1">
       {visibleTools.map((tool, index) => {
@@ -57,7 +52,6 @@ export function StructureTools() {
         const isActive =
           activeTool === tool.id &&
           (tool.catalogCategory ? catalogCategory === tool.catalogCategory : true)
-
         const isContextual = contextualTools.includes(tool.id)
 
         return (
@@ -66,7 +60,10 @@ export function StructureTools() {
               'rounded-lg duration-300',
               isActive
                 ? 'z-10 scale-110 bg-black/40 hover:bg-black/40'
-                : 'scale-95 bg-transparent opacity-60 grayscale hover:bg-black/20 hover:opacity-100 hover:grayscale-0',
+                : cn(
+                    'scale-95 bg-transparent opacity-60 grayscale hover:bg-black/20 hover:opacity-100 hover:grayscale-0',
+                    isContextual && 'opacity-90 grayscale-0',
+                  ),
             )}
             key={`${tool.id}-${tool.catalogCategory ?? index}`}
             label={tool.label}

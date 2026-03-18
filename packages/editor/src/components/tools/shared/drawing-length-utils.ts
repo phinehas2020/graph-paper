@@ -17,6 +17,20 @@ export const calculateDirectionLength = (
   }
 }
 
+export const snapPointTo45Degrees = (start: Point2D, to: Point2D): Point2D => {
+  const dx = to[0] - start[0]
+  const dz = to[1] - start[1]
+
+  const angle = Math.atan2(dz, dx)
+  const snappedAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4)
+  const distance = Math.sqrt(dx * dx + dz * dz)
+
+  return [
+    roundToGridHalf(start[0] + Math.cos(snappedAngle) * distance),
+    roundToGridHalf(start[1] + Math.sin(snappedAngle) * distance),
+  ]
+}
+
 export const projectPointAlongDirection = (
   start: Point2D,
   to: Point2D,

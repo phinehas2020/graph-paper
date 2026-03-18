@@ -16,6 +16,8 @@ type ViewerState = {
     setHoveredId: (id: AnyNode['id'] | ZoneNode['id'] | null) => void;
     cameraMode: 'perspective' | 'orthographic';
     setCameraMode: (mode: 'perspective' | 'orthographic') => void;
+    cameraInteractionMode: 'orbit' | 'pan';
+    setCameraInteractionMode: (mode: 'orbit' | 'pan') => void;
     theme: 'light' | 'dark';
     setTheme: (theme: 'light' | 'dark') => void;
     levelMode: 'stacked' | 'exploded' | 'solo' | 'manual';

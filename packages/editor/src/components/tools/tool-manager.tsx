@@ -7,6 +7,7 @@ import { CeilingTool } from './ceiling/ceiling-tool'
 import { DoorTool } from './door/door-tool'
 import { ItemTool } from './item/item-tool'
 import { MoveTool } from './item/move-tool'
+import { MeasureTool } from './measure/measure-tool'
 import { RoofTool } from './roof/roof-tool'
 import { SiteBoundaryEditor } from './site/site-boundary-editor'
 import { SlabBoundaryEditor } from './slab/slab-boundary-editor'
@@ -23,6 +24,7 @@ const tools: Record<Phase, Partial<Record<Tool, React.FC>>> = {
   },
   structure: {
     wall: WallTool,
+    measure: MeasureTool,
     slab: SlabTool,
     ceiling: CeilingTool,
     roof: RoofTool,

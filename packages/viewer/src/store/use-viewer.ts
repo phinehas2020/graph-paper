@@ -25,6 +25,8 @@ type ViewerState = {
 
   cameraMode: 'perspective' | 'orthographic'
   setCameraMode: (mode: 'perspective' | 'orthographic') => void
+  cameraInteractionMode: 'orbit' | 'pan'
+  setCameraInteractionMode: (mode: 'orbit' | 'pan') => void
 
   theme: 'light' | 'dark'
   setTheme: (theme: 'light' | 'dark') => void
@@ -74,6 +76,8 @@ const useViewer = create<ViewerState>()(
 
       cameraMode: 'perspective',
       setCameraMode: (mode) => set({ cameraMode: mode }),
+      cameraInteractionMode: 'orbit',
+      setCameraInteractionMode: (mode) => set({ cameraInteractionMode: mode }),
 
       theme: 'light',
       setTheme: (theme) => set({ theme }),

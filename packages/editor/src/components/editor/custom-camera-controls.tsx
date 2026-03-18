@@ -53,6 +53,7 @@ export const CustomCameraControls = () => {
 
   // Configure mouse buttons based on control mode and camera mode
   const cameraMode = useViewer((state) => state.cameraMode)
+  const cameraInteractionMode = useViewer((state) => state.cameraInteractionMode)
   const mouseButtons = useMemo(() => {
     // Use ZOOM for orthographic camera, DOLLY for perspective camera
     const wheelAction =
@@ -61,12 +62,15 @@ export const CustomCameraControls = () => {
         : CameraControlsImpl.ACTION.DOLLY
 
     return {
-      left: isPreviewMode ? CameraControlsImpl.ACTION.SCREEN_PAN : CameraControlsImpl.ACTION.NONE,
+      left:
+        isPreviewMode || cameraInteractionMode === 'pan'
+          ? CameraControlsImpl.ACTION.SCREEN_PAN
+          : CameraControlsImpl.ACTION.NONE,
       middle: CameraControlsImpl.ACTION.SCREEN_PAN,
       right: CameraControlsImpl.ACTION.ROTATE,
       wheel: wheelAction,
     }
-  }, [cameraMode, isPreviewMode])
+  }, [cameraInteractionMode, cameraMode, isPreviewMode])
 
   useEffect(() => {
     const keyState = {
@@ -93,6 +97,8 @@ export const CustomCameraControls = () => {
       controls.current.mouseButtons.right = CameraControlsImpl.ACTION.ROTATE
       if (isPreviewMode) {
         // In preview mode, left-click is always pan (viewer-style)
+        controls.current.mouseButtons.left = CameraControlsImpl.ACTION.SCREEN_PAN
+      } else if (cameraInteractionMode === 'pan') {
         controls.current.mouseButtons.left = CameraControlsImpl.ACTION.SCREEN_PAN
       } else if (space) {
         controls.current.mouseButtons.left = CameraControlsImpl.ACTION.SCREEN_PAN
@@ -124,7 +130,9 @@ export const CustomCameraControls = () => {
     const onKeyUp = (event: KeyboardEvent) => {
       if (event.code === 'Space') {
         keyState.space = false
-        document.body.style.cursor = ''
+        if (!(isPreviewMode || cameraInteractionMode === 'pan')) {
+          document.body.style.cursor = ''
+        }
       }
       if (event.code === 'ShiftRight') {
         keyState.shiftRight = false
@@ -149,7 +157,18 @@ export const CustomCameraControls = () => {
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('keyup', onKeyUp)
     }
-  }, [cameraMode, isPreviewMode])
+  }, [cameraInteractionMode, cameraMode, isPreviewMode])
+
+  useEffect(() => {
+    if (isPreviewMode || cameraInteractionMode === 'pan') {
+      document.body.style.cursor = 'grab'
+      return () => {
+        document.body.style.cursor = ''
+      }
+    }
+
+    return undefined
+  }, [cameraInteractionMode, isPreviewMode])
 
   // Preview mode: auto-navigate camera to selected node (viewer behavior)
   const previewTargetNodeId = isPreviewMode
@@ -233,7 +252,7 @@ export const CustomCameraControls = () => {
       if (!controls.current) return
 
       const node = useScene.getState().nodes[nodeId]
-      if (!(node && node.camera)) return
+      if (!node?.camera) return
       const { position, target } = node.camera
 
       controls.current.setLookAt(

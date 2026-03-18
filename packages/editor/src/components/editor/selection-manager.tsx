@@ -64,16 +64,6 @@ const computeNextIds = (
   const isMeta = event?.metaKey || event?.nativeEvent?.metaKey || modifierKeys?.meta
   const isCtrl = event?.ctrlKey || event?.nativeEvent?.ctrlKey || modifierKeys?.ctrl
 
-  console.log('computeNextIds:', {
-    nodeId: node.id,
-    selectedIds,
-    isMeta,
-    isCtrl,
-    eventMeta: event?.metaKey,
-    nativeMeta: event?.nativeEvent?.metaKey,
-    modMeta: modifierKeys?.meta,
-  })
-
   if (isMeta || isCtrl) {
     if (selectedIds.includes(node.id)) {
       return selectedIds.filter((id) => id !== node.id)
@@ -191,6 +181,7 @@ const SELECTION_STRATEGIES: Record<string, SelectionStrategy> = {
 export const SelectionManager = () => {
   const phase = useEditor((s) => s.phase)
   const mode = useEditor((s) => s.mode)
+  const cameraInteractionMode = useViewer((s) => s.cameraInteractionMode)
   const modifierKeysRef = useRef<ModifierKeys>({
     meta: false,
     ctrl: false,
@@ -228,6 +219,7 @@ export const SelectionManager = () => {
 
   useEffect(() => {
     if (mode !== 'select') return
+    if (cameraInteractionMode === 'pan') return
     if (movingNode) return
 
     const onClick = (event: NodeEvent) => {
@@ -271,13 +263,6 @@ export const SelectionManager = () => {
         event.stopPropagation()
         clickHandledRef.current = true
 
-        console.log(
-          '[SelectionManager] Valid click on:',
-          node.type,
-          node.id,
-          'Shift:',
-          event.nativeEvent.shiftKey,
-        )
         activeStrategy.handleSelect(node, event.nativeEvent, modifierKeysRef.current)
 
         // Reset the handled flag after a short delay to allow grid:click to be ignored
@@ -304,7 +289,6 @@ export const SelectionManager = () => {
 
     const onGridClick = () => {
       if (clickHandledRef.current) return
-      console.log('onGridClick triggered! Deselecting.')
       const activeStrategy = SELECTION_STRATEGIES[useEditor.getState().phase]
       if (activeStrategy) activeStrategy.handleDeselect()
     }
@@ -316,11 +300,12 @@ export const SelectionManager = () => {
       })
       emitter.off('grid:click', onGridClick)
     }
-  }, [mode, movingNode])
+  }, [cameraInteractionMode, mode, movingNode])
 
   // Global double-click handler for auto-switching phases and cross-phase hover
   useEffect(() => {
     if (mode !== 'select') return
+    if (cameraInteractionMode === 'pan') return
     if (movingNode) return
 
     const onEnter = (event: NodeEvent) => {
@@ -432,7 +417,7 @@ export const SelectionManager = () => {
         emitter.off(`${type}:double-click` as any, onDoubleClick as any)
       })
     }
-  }, [mode, movingNode])
+  }, [cameraInteractionMode, mode, movingNode])
 
   return <EditorOutlinerSync />
 }

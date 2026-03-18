@@ -27,6 +27,7 @@ const KEY_DISPLAY_MAP: Record<string, string> = {
   Esc: '⎋',
   Shift: '⇧',
   Space: '␣',
+  Tab: '⇥',
 }
 
 const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
@@ -79,8 +80,12 @@ const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
     shortcuts: [
       {
         keys: ['Shift'],
-        action: 'Temporarily disable angle snapping while drawing walls, slabs, and ceilings',
+        action: 'Temporarily disable angle snapping while drawing walls, measurements, slabs, and ceilings',
         note: 'Hold while drawing.',
+      },
+      {
+        keys: ['Tab'],
+        action: 'Type an exact segment length while drawing or measuring',
       },
     ],
   },
@@ -99,6 +104,10 @@ const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
   {
     title: 'Camera',
     shortcuts: [
+      {
+        keys: ['H'],
+        action: 'Toggle pan mode for left-drag camera movement',
+      },
       {
         keys: ['Space', 'Drag'],
         action: 'Pan camera',

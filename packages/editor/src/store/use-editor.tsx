@@ -20,6 +20,7 @@ export type Mode = 'select' | 'edit' | 'delete' | 'build'
 // Structure mode tools (building elements)
 export type StructureTool =
   | 'wall'
+  | 'measure'
   | 'room'
   | 'custom-room'
   | 'slab'

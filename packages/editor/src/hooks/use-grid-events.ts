@@ -53,36 +53,39 @@ export function useGridEvents(gridY: number) {
       emitter.emit(eventKey, payload)
     }
 
+    const isPanModeActive = () => useViewer.getState().cameraInteractionMode === 'pan'
+
     const handlePointerDown = (e: PointerEvent) => {
-      if (useViewer.getState().cameraDragging) return
+      if (useViewer.getState().cameraDragging || isPanModeActive()) return
       if (e.button !== 0) return
       emit('pointerdown', e)
     }
 
     const handlePointerUp = (e: PointerEvent) => {
-      if (useViewer.getState().cameraDragging) return
+      if (useViewer.getState().cameraDragging || isPanModeActive()) return
       if (e.button !== 0) return
       emit('pointerup', e)
     }
 
     const handleClick = (e: PointerEvent) => {
-      if (useViewer.getState().cameraDragging) return
+      if (useViewer.getState().cameraDragging || isPanModeActive()) return
       if (e.button !== 0) return
       emit('click', e)
     }
 
     const handlePointerMove = (e: PointerEvent) => {
+      if (isPanModeActive()) return
       // Emit move even if camera is dragging, so tools like PolygonEditor still work
       emit('move', e)
     }
 
     const handleDoubleClick = (e: MouseEvent) => {
-      if (useViewer.getState().cameraDragging) return
+      if (useViewer.getState().cameraDragging || isPanModeActive()) return
       emit('double-click', e)
     }
 
     const handleContextMenu = (e: MouseEvent) => {
-      if (useViewer.getState().cameraDragging) return
+      if (useViewer.getState().cameraDragging || isPanModeActive()) return
       emit('context-menu', e)
     }
 

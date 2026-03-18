@@ -17,6 +17,7 @@ import {
   EyeOff,
   FileJson,
   Grid3X3,
+  Hand,
   Hexagon,
   Layers,
   Map,
@@ -28,6 +29,7 @@ import {
   PencilLine,
   Plus,
   Redo2,
+  Ruler,
   Search,
   Square,
   SquareStack,
@@ -174,6 +176,8 @@ export function CommandPalette() {
 
   const cameraMode = useViewer((s) => s.cameraMode)
   const setCameraMode = useViewer((s) => s.setCameraMode)
+  const cameraInteractionMode = useViewer((s) => s.cameraInteractionMode)
+  const setCameraInteractionMode = useViewer((s) => s.setCameraInteractionMode)
   const levelMode = useViewer((s) => s.levelMode)
   const setLevelMode = useViewer((s) => s.setLevelMode)
   const wallMode = useViewer((s) => s.wallMode)
@@ -276,7 +280,7 @@ export function CommandPalette() {
     run(() => {
       setPhase('structure')
       setMode('build')
-      if (tool === 'zone') setStructureLayer('zones')
+      setStructureLayer(tool === 'zone' ? 'zones' : 'elements')
       setTool(tool)
     })
   }
@@ -454,6 +458,12 @@ export function CommandPalette() {
                     onSelect={() => activateTool('wall')}
                   />
                   <Item
+                    icon={<Ruler className="h-4 w-4" />}
+                    keywords={['measure', 'dimension', 'distance', 'length']}
+                    label="Measure Tool"
+                    onSelect={() => activateTool('measure')}
+                  />
+                  <Item
                     icon={<Layers className="h-4 w-4" />}
                     keywords={['floor', 'build']}
                     label="Slab Tool"
@@ -556,6 +566,18 @@ export function CommandPalette() {
                       run(() =>
                         setCameraMode(
                           cameraMode === 'perspective' ? 'orthographic' : 'perspective',
+                        ),
+                      )
+                    }
+                  />
+                  <Item
+                    icon={<Hand className="h-4 w-4" />}
+                    keywords={['camera', 'pan', 'move', 'drag', 'hand']}
+                    label={cameraInteractionMode === 'pan' ? 'Camera: Exit Pan Mode' : 'Camera: Enter Pan Mode'}
+                    onSelect={() =>
+                      run(() =>
+                        setCameraInteractionMode(
+                          cameraInteractionMode === 'pan' ? 'orbit' : 'pan',
                         ),
                       )
                     }
