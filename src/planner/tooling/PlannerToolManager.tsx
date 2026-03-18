@@ -132,8 +132,53 @@ export function PlannerToolManager() {
       // Delete / Backspace → delete selected elements
       if (lowerKey === 'delete' || lowerKey === 'backspace') {
         event.preventDefault();
-        // Deletion is handled by the canvas / selection layer.
-        // This prevents the browser from navigating back on Backspace.
+        const { selectedElement } = usePlannerViewerStore.getState();
+        if (!selectedElement) {
+          return;
+        }
+
+        const scene = usePlannerSceneStore.getState();
+        let deleted = true;
+
+        switch (selectedElement.type) {
+          case 'level':
+            deleted = false;
+            break;
+          case 'wall':
+            scene.deleteWall(selectedElement.wallId);
+            break;
+          case 'opening':
+            scene.deleteWallOpening(
+              selectedElement.wallId,
+              selectedElement.openingId,
+            );
+            break;
+          case 'floor':
+            scene.deleteFloor(selectedElement.floorId);
+            break;
+          case 'zone':
+            scene.deleteZone(selectedElement.zoneId);
+            break;
+          case 'ceiling':
+            scene.deleteCeiling(selectedElement.ceilingId);
+            break;
+          case 'roof':
+            scene.deleteRoof(selectedElement.roofId);
+            break;
+          case 'measurement':
+            scene.deleteMeasurement(selectedElement.measurementId);
+            break;
+          case 'text':
+            scene.deleteTextElement(selectedElement.textElementId);
+            break;
+          default:
+            deleted = false;
+            break;
+        }
+
+        if (deleted) {
+          clearSelection();
+        }
         return;
       }
 
@@ -189,7 +234,6 @@ export function PlannerToolManager() {
       if (lowerKey === 'h') {
         event.preventDefault();
         toggleGuides();
-        return;
       }
     };
 
