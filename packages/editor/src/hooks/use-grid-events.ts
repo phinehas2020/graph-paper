@@ -1,24 +1,19 @@
 import { type EventSuffix, emitter, type GridEvent } from '@pascal-app/core'
 import { useViewer } from '@pascal-app/viewer'
 import { useThree } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
+import { type MutableRefObject, useEffect, useRef } from 'react'
 import { Plane, Raycaster, Vector2, Vector3 } from 'three'
 
 /**
  * Custom grid events hook that uses manual raycasting instead of mesh events.
  * This ensures grid events work even when other meshes block pointer events with stopPropagation.
  */
-export function useGridEvents(gridY: number) {
+export function useGridEvents(gridYRef: MutableRefObject<number>) {
   const { camera, gl } = useThree()
   const raycaster = useRef(new Raycaster())
   const pointer = useRef(new Vector2())
   const groundPlane = useRef(new Plane(new Vector3(0, 1, 0), 0))
   const intersectionPoint = useRef(new Vector3())
-
-  // Update ground plane when grid Y changes
-  useEffect(() => {
-    groundPlane.current.constant = -gridY
-  }, [gridY])
 
   useEffect(() => {
     const canvas = gl.domElement
@@ -33,6 +28,7 @@ export function useGridEvents(gridY: number) {
       raycaster.current.setFromCamera(pointer.current, camera)
 
       // Intersect with ground plane
+      groundPlane.current.constant = -gridYRef.current
       if (raycaster.current.ray.intersectPlane(groundPlane.current, intersectionPoint.current)) {
         return intersectionPoint.current.clone()
       }
@@ -105,5 +101,5 @@ export function useGridEvents(gridY: number) {
       canvas.removeEventListener('dblclick', handleDoubleClick)
       canvas.removeEventListener('contextmenu', handleContextMenu)
     }
-  }, [camera, gl])
+  }, [camera, gl, gridYRef])
 }
