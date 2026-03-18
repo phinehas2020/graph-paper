@@ -1,0 +1,204 @@
+$ tsc --noEmit
+src/components/editor/floating-action-menu.tsx(118,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/editor/floating-action-menu.tsx(155,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/editor/grid.tsx(151,5): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/editor/grid.tsx(158,7): error TS2339: Property 'planeGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/editor/grid.tsx(159,5): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(385,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(390,7): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(396,9): error TS2339: Property 'ringGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(397,9): error TS2339: Property 'meshBasicMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(405,7): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(410,9): error TS2339: Property 'lineBasicNodeMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(421,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(427,11): error TS2339: Property 'shapeGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(428,11): error TS2339: Property 'meshBasicMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(435,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(440,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(446,11): error TS2339: Property 'shapeGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(447,11): error TS2339: Property 'meshBasicMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(454,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(462,9): error TS2322: Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'Ref<SVGLineElement> | undefined'.
+  Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'RefObject<SVGLineElement | null>'.
+    Type 'Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>' is missing the following properties from type 'SVGLineElement': x1, x2, y1, y2, and 296 more.
+src/components/tools/ceiling/ceiling-tool.tsx(466,9): error TS2339: Property 'bufferGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(467,9): error TS2339: Property 'lineBasicNodeMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(475,9): error TS2322: Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'Ref<SVGLineElement> | undefined'.
+  Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'RefObject<SVGLineElement | null>'.
+    Type 'Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>' is missing the following properties from type 'SVGLineElement': x1, x2, y1, y2, and 296 more.
+src/components/tools/ceiling/ceiling-tool.tsx(479,9): error TS2339: Property 'bufferGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(480,9): error TS2339: Property 'lineBasicNodeMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(495,9): error TS2322: Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'Ref<SVGLineElement> | undefined'.
+  Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'RefObject<SVGLineElement | null>'.
+    Type 'Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>' is missing the following properties from type 'SVGLineElement': x1, x2, y1, y2, and 296 more.
+src/components/tools/ceiling/ceiling-tool.tsx(499,9): error TS2339: Property 'bufferGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(500,9): error TS2339: Property 'lineBasicNodeMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(515,9): error TS2322: Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'Ref<SVGLineElement> | undefined'.
+  Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'RefObject<SVGLineElement | null>'.
+    Type 'Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>' is missing the following properties from type 'SVGLineElement': x1, x2, y1, y2, and 296 more.
+src/components/tools/ceiling/ceiling-tool.tsx(519,9): error TS2339: Property 'bufferGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(520,9): error TS2339: Property 'lineBasicNodeMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/ceiling/ceiling-tool.tsx(548,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/door/door-tool.tsx(284,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/door/door-tool.tsx(285,7): error TS2339: Property 'lineSegments' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/door/door-tool.tsx(291,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/door/move-door-tool.tsx(369,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/door/move-door-tool.tsx(370,7): error TS2339: Property 'lineSegments' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/door/move-door-tool.tsx(371,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/item/use-placement-coordinator.tsx(804,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/item/use-placement-coordinator.tsx(805,7): error TS2339: Property 'lineSegments' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/item/use-placement-coordinator.tsx(806,9): error TS2339: Property 'edgesGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/item/use-placement-coordinator.tsx(807,7): error TS2339: Property 'lineSegments' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/item/use-placement-coordinator.tsx(808,7): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/item/use-placement-coordinator.tsx(814,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/roof/roof-tool.tsx(290,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/roof/roof-tool.tsx(299,9): error TS2322: Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'Ref<SVGLineElement> | undefined'.
+  Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'RefObject<SVGLineElement | null>'.
+    Type 'Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>' is missing the following properties from type 'SVGLineElement': x1, x2, y1, y2, and 296 more.
+src/components/tools/roof/roof-tool.tsx(303,9): error TS2339: Property 'bufferGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/roof/roof-tool.tsx(304,9): error TS2339: Property 'lineBasicNodeMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/roof/roof-tool.tsx(325,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/roof/roof-tool.tsx(330,11): error TS2339: Property 'planeGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/roof/roof-tool.tsx(331,11): error TS2339: Property 'meshBasicMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/roof/roof-tool.tsx(339,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/roof/roof-tool.tsx(350,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(36,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(38,7): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(40,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(41,11): error TS2339: Property 'circleGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(42,11): error TS2339: Property 'meshBasicMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(49,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(52,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(53,11): error TS2339: Property 'circleGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(54,11): error TS2339: Property 'meshBasicMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(61,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(62,7): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(66,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(67,11): error TS2339: Property 'cylinderGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(68,11): error TS2339: Property 'meshBasicMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(75,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/cursor-sphere.tsx(110,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(236,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(239,9): error TS2578: Unused '@ts-expect-error' directive.
+src/components/tools/shared/polygon-editor.tsx(243,9): error TS2322: Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'Ref<SVGLineElement> | undefined'.
+  Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'RefObject<SVGLineElement | null>'.
+    Type 'Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>' is missing the following properties from type 'SVGLineElement': x1, x2, y1, y2, and 296 more.
+src/components/tools/shared/polygon-editor.tsx(246,9): error TS2339: Property 'bufferGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(247,9): error TS2339: Property 'lineBasicNodeMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(265,11): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(269,23): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/tools/shared/polygon-editor.tsx(273,29): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/tools/shared/polygon-editor.tsx(280,29): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/tools/shared/polygon-editor.tsx(290,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/tools/shared/polygon-editor.tsx(294,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/tools/shared/polygon-editor.tsx(300,13): error TS2339: Property 'cylinderGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(301,13): error TS2339: Property 'meshStandardMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(304,11): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(316,13): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(319,25): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/tools/shared/polygon-editor.tsx(323,31): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/tools/shared/polygon-editor.tsx(337,32): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/tools/shared/polygon-editor.tsx(341,32): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/tools/shared/polygon-editor.tsx(347,15): error TS2339: Property 'cylinderGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(348,15): error TS2339: Property 'meshStandardMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(353,13): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/shared/polygon-editor.tsx(356,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/slab/slab-tool.tsx(332,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/slab/slab-tool.tsx(338,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/slab/slab-tool.tsx(344,11): error TS2339: Property 'shapeGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/slab/slab-tool.tsx(345,11): error TS2339: Property 'meshBasicMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/slab/slab-tool.tsx(352,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/slab/slab-tool.tsx(360,9): error TS2322: Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'Ref<SVGLineElement> | undefined'.
+  Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'RefObject<SVGLineElement | null>'.
+    Type 'Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>' is missing the following properties from type 'SVGLineElement': x1, x2, y1, y2, and 296 more.
+src/components/tools/slab/slab-tool.tsx(364,9): error TS2339: Property 'bufferGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/slab/slab-tool.tsx(365,9): error TS2339: Property 'lineBasicNodeMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/slab/slab-tool.tsx(373,9): error TS2322: Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'Ref<SVGLineElement> | undefined'.
+  Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'RefObject<SVGLineElement | null>'.
+    Type 'Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>' is missing the following properties from type 'SVGLineElement': x1, x2, y1, y2, and 296 more.
+src/components/tools/slab/slab-tool.tsx(377,9): error TS2339: Property 'bufferGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/slab/slab-tool.tsx(378,9): error TS2339: Property 'lineBasicNodeMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/slab/slab-tool.tsx(407,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/wall/wall-tool.tsx(275,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/wall/wall-tool.tsx(280,7): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/wall/wall-tool.tsx(281,9): error TS2339: Property 'shapeGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/wall/wall-tool.tsx(282,9): error TS2339: Property 'meshBasicMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/wall/wall-tool.tsx(290,7): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/wall/wall-tool.tsx(300,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/window/move-window-tool.tsx(406,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/window/move-window-tool.tsx(407,7): error TS2339: Property 'lineSegments' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/window/move-window-tool.tsx(408,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/window/window-tool.tsx(294,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/window/window-tool.tsx(295,7): error TS2339: Property 'lineSegments' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/window/window-tool.tsx(301,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/zone/zone-tool.tsx(336,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/zone/zone-tool.tsx(342,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/zone/zone-tool.tsx(348,11): error TS2339: Property 'shapeGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/zone/zone-tool.tsx(349,11): error TS2339: Property 'meshBasicMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/zone/zone-tool.tsx(356,9): error TS2339: Property 'mesh' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/zone/zone-tool.tsx(364,9): error TS2322: Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'Ref<SVGLineElement> | undefined'.
+  Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'RefObject<SVGLineElement | null>'.
+    Type 'Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>' is missing the following properties from type 'SVGLineElement': x1, x2, y1, y2, and 296 more.
+src/components/tools/zone/zone-tool.tsx(368,9): error TS2339: Property 'bufferGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/zone/zone-tool.tsx(369,9): error TS2339: Property 'lineBasicNodeMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/zone/zone-tool.tsx(377,9): error TS2322: Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'Ref<SVGLineElement> | undefined'.
+  Type 'RefObject<Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>>' is not assignable to type 'RefObject<SVGLineElement | null>'.
+    Type 'Line<BufferGeometry<NormalBufferAttributes, BufferGeometryEventMap>, Material | Material[], Object3DEventMap>' is missing the following properties from type 'SVGLineElement': x1, x2, y1, y2, and 296 more.
+src/components/tools/zone/zone-tool.tsx(381,9): error TS2339: Property 'bufferGeometry' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/zone/zone-tool.tsx(382,9): error TS2339: Property 'lineBasicNodeMaterial' does not exist on type 'JSX.IntrinsicElements'.
+src/components/tools/zone/zone-tool.tsx(413,5): error TS2339: Property 'group' does not exist on type 'JSX.IntrinsicElements'.
+src/components/ui/action-menu/structure-tools.tsx(10,3): error TS1484: 'Tool' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/ui/primitives/button.tsx(50,8): error TS2322: Type '{ key?: Key | null | undefined; disabled?: boolean | undefined; form?: string | undefined; formAction?: string | ((formData: FormData) => void | Promise<void>) | undefined; ... 286 more ...; ref: never; }' is not assignable to type 'SlotProps'.
+  Types of property 'onChange' are incompatible.
+    Type 'FormEventHandler<HTMLButtonElement> | undefined' is not assignable to type 'ChangeEventHandler<HTMLElement, Element> | undefined'.
+      Type 'FormEventHandler<HTMLButtonElement>' is not assignable to type 'ChangeEventHandler<HTMLElement, Element>'.
+        Types of parameters 'event' and 'event' are incompatible.
+          Type 'ChangeEvent<HTMLElement, Element>' is not assignable to type 'FormEvent<HTMLButtonElement>'.
+            Types of property 'currentTarget' are incompatible.
+              Type 'EventTarget & HTMLElement' is not assignable to type 'EventTarget & HTMLButtonElement'.
+                Type 'EventTarget & HTMLElement' is missing the following properties from type 'HTMLButtonElement': disabled, form, formAction, formEnctype, and 15 more.
+src/components/ui/primitives/sidebar.tsx(467,8): error TS2322: Type '{ key?: Key | null | undefined; defaultChecked?: boolean | undefined; defaultValue?: string | number | readonly string[] | undefined; suppressContentEditableWarning?: boolean | undefined; ... 277 more ...; ref: never; }' is not assignable to type 'SlotProps'.
+  Types of property 'onChange' are incompatible.
+    Type 'FormEventHandler<HTMLDivElement> | undefined' is not assignable to type 'ChangeEventHandler<HTMLElement, Element> | undefined'.
+      Type 'FormEventHandler<HTMLDivElement>' is not assignable to type 'ChangeEventHandler<HTMLElement, Element>'.
+        Types of parameters 'event' and 'event' are incompatible.
+          Type 'ChangeEvent<HTMLElement, Element>' is not assignable to type 'FormEvent<HTMLDivElement>'.
+            Types of property 'currentTarget' are incompatible.
+              Type 'EventTarget & HTMLElement' is not assignable to type 'EventTarget & HTMLDivElement'.
+                Property 'align' is missing in type 'EventTarget & HTMLElement' but required in type 'HTMLDivElement'.
+src/components/ui/primitives/sidebar.tsx(511,8): error TS2322: Type '{ key?: Key | null | undefined; disabled?: boolean | undefined; form?: string | undefined; formAction?: string | ((formData: FormData) => void | Promise<void>) | undefined; ... 287 more ...; ref: never; }' is not assignable to type 'SlotProps'.
+  Types of property 'onChange' are incompatible.
+    Type 'FormEventHandler<HTMLButtonElement> | undefined' is not assignable to type 'ChangeEventHandler<HTMLElement, Element> | undefined'.
+      Type 'FormEventHandler<HTMLButtonElement>' is not assignable to type 'ChangeEventHandler<HTMLElement, Element>'.
+        Types of parameters 'event' and 'event' are incompatible.
+          Type 'ChangeEvent<HTMLElement, Element>' is not assignable to type 'FormEvent<HTMLButtonElement>'.
+            Types of property 'currentTarget' are incompatible.
+              Type 'EventTarget & HTMLElement' is not assignable to type 'EventTarget & HTMLButtonElement'.
+                Type 'EventTarget & HTMLElement' is missing the following properties from type 'HTMLButtonElement': disabled, form, formAction, formEnctype, and 15 more.
+src/components/ui/primitives/sidebar.tsx(605,6): error TS2322: Type '{ key?: Key | null | undefined; disabled?: boolean | undefined; form?: string | undefined; formAction?: string | ((formData: FormData) => void | Promise<void>) | undefined; ... 289 more ...; ref: never; }' is not assignable to type 'SlotProps'.
+  Types of property 'onChange' are incompatible.
+    Type 'FormEventHandler<HTMLButtonElement> | undefined' is not assignable to type 'ChangeEventHandler<HTMLElement, Element> | undefined'.
+      Type 'FormEventHandler<HTMLButtonElement>' is not assignable to type 'ChangeEventHandler<HTMLElement, Element>'.
+        Types of parameters 'event' and 'event' are incompatible.
+          Type 'ChangeEvent<HTMLElement, Element>' is not assignable to type 'FormEvent<HTMLButtonElement>'.
+            Types of property 'currentTarget' are incompatible.
+              Type 'EventTarget & HTMLElement' is not assignable to type 'EventTarget & HTMLButtonElement'.
+                Type 'EventTarget & HTMLElement' is missing the following properties from type 'HTMLButtonElement': disabled, form, formAction, formEnctype, and 15 more.
+src/components/ui/primitives/sidebar.tsx(673,8): error TS2322: Type '{ key?: Key | null | undefined; disabled?: boolean | undefined; form?: string | undefined; formAction?: string | ((formData: FormData) => void | Promise<void>) | undefined; ... 287 more ...; ref: never; }' is not assignable to type 'SlotProps'.
+  Types of property 'onChange' are incompatible.
+    Type 'FormEventHandler<HTMLButtonElement> | undefined' is not assignable to type 'ChangeEventHandler<HTMLElement, Element> | undefined'.
+      Type 'FormEventHandler<HTMLButtonElement>' is not assignable to type 'ChangeEventHandler<HTMLElement, Element>'.
+        Types of parameters 'event' and 'event' are incompatible.
+          Type 'ChangeEvent<HTMLElement, Element>' is not assignable to type 'FormEvent<HTMLButtonElement>'.
+            Types of property 'currentTarget' are incompatible.
+              Type 'EventTarget & HTMLElement' is not assignable to type 'EventTarget & HTMLButtonElement'.
+                Type 'EventTarget & HTMLElement' is missing the following properties from type 'HTMLButtonElement': disabled, form, formAction, formEnctype, and 15 more.
+src/components/ui/primitives/sidebar.tsx(793,8): error TS2322: Type '{ key?: Key | null | undefined; download?: any; href?: string | undefined; hrefLang?: string | undefined; media?: string | undefined; ping?: string | undefined; target?: HTMLAttributeAnchorTarget | undefined; ... 284 more ...; ref: never; }' is not assignable to type 'SlotProps'.
+  Types of property 'onChange' are incompatible.
+    Type 'FormEventHandler<HTMLAnchorElement> | undefined' is not assignable to type 'ChangeEventHandler<HTMLElement, Element> | undefined'.
+      Type 'FormEventHandler<HTMLAnchorElement>' is not assignable to type 'ChangeEventHandler<HTMLElement, Element>'.
+        Types of parameters 'event' and 'event' are incompatible.
+          Type 'ChangeEvent<HTMLElement, Element>' is not assignable to type 'FormEvent<HTMLAnchorElement>'.
+            Types of property 'currentTarget' are incompatible.
+              Type 'EventTarget & HTMLElement' is not assignable to type 'EventTarget & HTMLAnchorElement'.
+                Type 'EventTarget & HTMLElement' is missing the following properties from type 'HTMLAnchorElement': charset, coords, download, hreflang, and 21 more.

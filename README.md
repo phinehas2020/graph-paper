@@ -1,130 +1,403 @@
-# Graph Paper 3D
+# Pascal Editor
 
-A modern web application for interactive 3D modeling and drawing, built with Next.js, TypeScript, and Three.js.
+A 3D building editor built with React Three Fiber and WebGPU.
 
-## 🎉 NEW: 2D-to-3D Floor Plan Builder
 
-Transform your 2D floor plans into stunning 3D models with just a few clicks!
 
-### Quick Start Guide
+https://github.com/user-attachments/assets/8b50e7cf-cebe-4579-9cf3-8786b35f7b6b
 
-1. **Start the application:**
-   \`\`\`bash
-   npm run dev
-   \`\`\`
 
-2. **Open the editor:**
-   Navigate to `http://localhost:3000/three`.
 
-3. **Design your floor plan in 2D:**
-   - Press **F** to activate the Floor tool. Click to add points and close the shape.
-   - Press **W** to activate the Wall tool. Click start and end points to draw walls.
-   - Press **S** for Select, **M** for Measure, or **T** for Text.
-   - Press **ESC** to cancel the current drawing.
+## Repository Architecture
 
-4. **View in 3D:**
-   - Click **"Switch to 3D"** to see your plan rendered in Three.js.
-   - Use the mouse to orbit, zoom, and explore.
-   - Click **"Switch to 2D"** to return to editing.
+This is a Turborepo monorepo with three main packages:
 
-## Features
-- **2D Floor Plan Designer:** Intuitive click-to-draw interface
-- **Smart Wall Connections:** Automatic endpoint detection and connection
-- **Real-time 3D Generation:** Instant conversion from 2D to 3D
-- **Interactive 3D Viewer:** Professional orbit controls with lighting and shadows
-- **Visual Feedback:** Grid snapping, connection indicators, and drawing previews
-- **Keyboard Shortcuts:** Fast tool switching (F/W/S keys)
-- **Progressive Web App:** Offline support and installability
-- **Responsive Design:** Works on desktop and mobile
-- **Export Options:** Utilities for exporting your creations
-- **Testing:** Unit tests for core logic and tools
+```
+editor-v2/
+├── apps/
+│   └── editor/          # Next.js application
+├── packages/
+│   ├── core/            # Schema definitions, state management, systems
+│   └── viewer/          # 3D rendering components
+```
 
-## Technologies Used
-- [Next.js](https://nextjs.org/) (App Router)
-- [React](https://react.dev/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Three.js](https://threejs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Zustand](https://github.com/pmndrs/zustand) (State Management)
-- [Jest](https://jestjs.io/) (for testing)
+### Separation of Concerns
 
-## Getting Started
+| Package | Responsibility |
+|---------|---------------|
+| **@pascal-app/core** | Node schemas, scene state (Zustand), systems (geometry generation), spatial queries, event bus |
+| **@pascal-app/viewer** | 3D rendering via React Three Fiber, default camera/controls, post-processing |
+| **apps/editor** | UI components, tools, custom behaviors, editor-specific systems |
 
-### Prerequisites
-- Node.js (v18+ recommended)
-- npm or pnpm
+The **viewer** renders the scene with sensible defaults. The **editor** extends it with interactive tools, selection management, and editing capabilities.
 
-### Installation
-\`\`\`bash
-npm install --legacy-peer-deps
-\`\`\`
+### Stores
 
-### Development
-\`\`\`bash
-npm run dev
-\`\`\`
+Each package has its own Zustand store for managing state:
 
-### Build
-\`\`\`bash
-npm run build
-\`\`\`
+| Store | Package | Responsibility |
+|-------|---------|----------------|
+| `useScene` | `@pascal-app/core` | Scene data: nodes, root IDs, dirty nodes, CRUD operations. Persisted to IndexedDB with undo/redo via Zundo. |
+| `useViewer` | `@pascal-app/viewer` | Viewer state: current selection (building/level/zone IDs), level display mode (stacked/exploded/solo), camera mode. |
+| `useEditor` | `apps/editor` | Editor state: active tool, structure layer visibility, panel states, editor-specific preferences. |
 
-### Test
-\`\`\`bash
-npm test
-\`\`\`
+**Access patterns:**
 
-## Project Structure
-- `app/` – Next.js app directory (pages, layouts, global styles)
-- `components/` – Reusable React components and UI primitives
-- `hooks/` – Custom React hooks
-- `lib/` – Utility functions
-- `public/` – Static assets and PWA files
-- `src/` – Core logic
-  - `animation/` – Animation components
-  - `components/` – 2D canvas, tools, and controls
-  - `export/` – Export utilities
-  - `model/` – Data types and state management
-  - `three/` – 3D mesh generation and viewer
-  - `tools/` – Floor and wall drawing tools
+```typescript
+// Subscribe to state changes (React component)
+const nodes = useScene((state) => state.nodes)
+const levelId = useViewer((state) => state.selection.levelId)
+const activeTool = useEditor((state) => state.tool)
 
-## Usage Tips
-
-### Drawing Floors
-1. Press **F** to activate Floor tool
-2. Click to place points around your floor perimeter
-3. Click near the first point to close the shape
-4. The floor will appear as a light gray filled area
-
-### Drawing Walls
-1. Press **W** to activate Wall tool
-2. Click to set the start point of your wall
-3. Click again to set the end point
-4. Continue clicking to add more walls
-5. Press **Enter** or **ESC** when finished
-
-### Connecting Walls
-- Walls automatically snap to nearby endpoints
-- Click "Auto-Connect Walls" to connect all nearby endpoints at once
-- Connected walls show in green instead of blue
-- Orange circles indicate connection points
-
-### 3D Mode
-- Click "Build 3D Model" to switch to 3D view
-- Use mouse to orbit around your model
-- Scroll to zoom in/out
-- Click "Back to 2D" to return to editing
-
-## Keyboard Shortcuts
-- **F** - Floor drawing tool
-- **W** - Wall drawing tool  
-- **S** - Select tool
-- **ESC** - Cancel current drawing/tool
-- **Enter** - Finish wall drawing (when in wall mode)
-
-## License
-MIT
+// Access state outside React (callbacks, systems)
+const node = useScene.getState().nodes[id]
+useViewer.getState().setSelection({ levelId: 'level_123' })
+```
 
 ---
 
-Built with ❤️ using modern web technologies. Start designing your dream floor plans today!
+## Core Concepts
+
+### Nodes
+
+Nodes are the data primitives that describe the 3D scene. All nodes extend `BaseNode`:
+
+```typescript
+BaseNode {
+  id: string              // Auto-generated with type prefix (e.g., "wall_abc123")
+  type: string            // Discriminator for type-safe handling
+  parentId: string | null // Parent node reference
+  visible: boolean
+  camera?: Camera         // Optional saved camera position
+  metadata?: JSON         // Arbitrary metadata (e.g., { isTransient: true })
+}
+```
+
+**Node Hierarchy:**
+
+```
+Site
+└── Building
+    └── Level
+        ├── Wall → Item (doors, windows)
+        ├── Slab
+        ├── Ceiling → Item (lights)
+        ├── Roof
+        ├── Zone
+        ├── Scan (3D reference)
+        └── Guide (2D reference)
+```
+
+Nodes are stored in a **flat dictionary** (`Record<id, Node>`), not a nested tree. Parent-child relationships are defined via `parentId` and `children` arrays.
+
+---
+
+### Scene State (Zustand Store)
+
+The scene is managed by a Zustand store in `@pascal-app/core`:
+
+```typescript
+useScene.getState() = {
+  nodes: Record<id, AnyNode>,  // All nodes
+  rootNodeIds: string[],       // Top-level nodes (sites)
+  dirtyNodes: Set<string>,     // Nodes pending system updates
+
+  createNode(node, parentId),
+  updateNode(id, updates),
+  deleteNode(id),
+}
+```
+
+**Middleware:**
+- **Persist** - Saves to IndexedDB (excludes transient nodes)
+- **Temporal** (Zundo) - Undo/redo with 50-step history
+
+---
+
+### Scene Registry
+
+The registry maps node IDs to their Three.js objects for fast lookup:
+
+```typescript
+sceneRegistry = {
+  nodes: Map<id, Object3D>,    // ID → 3D object
+  byType: {
+    wall: Set<id>,
+    item: Set<id>,
+    zone: Set<id>,
+    // ...
+  }
+}
+```
+
+Renderers register their refs using the `useRegistry` hook:
+
+```tsx
+const ref = useRef<Mesh>(null!)
+useRegistry(node.id, 'wall', ref)
+```
+
+This allows systems to access 3D objects directly without traversing the scene graph.
+
+---
+
+### Node Renderers
+
+Renderers are React components that create Three.js objects for each node type:
+
+```
+SceneRenderer
+└── NodeRenderer (dispatches by type)
+    ├── BuildingRenderer
+    ├── LevelRenderer
+    ├── WallRenderer
+    ├── SlabRenderer
+    ├── ZoneRenderer
+    ├── ItemRenderer
+    └── ...
+```
+
+**Pattern:**
+1. Renderer creates a placeholder mesh/group
+2. Registers it with `useRegistry`
+3. Systems update geometry based on node data
+
+Example (simplified):
+```tsx
+const WallRenderer = ({ node }) => {
+  const ref = useRef<Mesh>(null!)
+  useRegistry(node.id, 'wall', ref)
+
+  return (
+    <mesh ref={ref}>
+      <boxGeometry args={[0, 0, 0]} />  {/* Replaced by WallSystem */}
+      <meshStandardMaterial />
+      {node.children.map(id => <NodeRenderer key={id} nodeId={id} />)}
+    </mesh>
+  )
+}
+```
+
+---
+
+### Systems
+
+Systems are React components that run in the render loop (`useFrame`) to update geometry and transforms. They process **dirty nodes** marked by the store.
+
+**Core Systems (in `@pascal-app/core`):**
+
+| System | Responsibility |
+|--------|---------------|
+| `WallSystem` | Generates wall geometry with mitering and CSG cutouts for doors/windows |
+| `SlabSystem` | Generates floor geometry from polygons |
+| `CeilingSystem` | Generates ceiling geometry |
+| `RoofSystem` | Generates roof geometry |
+| `ItemSystem` | Positions items on walls, ceilings, or floors (slab elevation) |
+
+**Viewer Systems (in `@pascal-app/viewer`):**
+
+| System | Responsibility |
+|--------|---------------|
+| `LevelSystem` | Handles level visibility and vertical positioning (stacked/exploded/solo modes) |
+| `ScanSystem` | Controls 3D scan visibility |
+| `GuideSystem` | Controls guide image visibility |
+
+**Processing Pattern:**
+```typescript
+useFrame(() => {
+  for (const id of dirtyNodes) {
+    const obj = sceneRegistry.nodes.get(id)
+    const node = useScene.getState().nodes[id]
+
+    // Update geometry, transforms, etc.
+    updateGeometry(obj, node)
+
+    dirtyNodes.delete(id)
+  }
+})
+```
+
+---
+
+### Dirty Nodes
+
+When a node changes, it's marked as **dirty** in `useScene.getState().dirtyNodes`. Systems check this set each frame and only recompute geometry for dirty nodes.
+
+```typescript
+// Automatic: createNode, updateNode, deleteNode mark nodes dirty
+useScene.getState().updateNode(wallId, { thickness: 0.2 })
+// → wallId added to dirtyNodes
+// → WallSystem regenerates geometry next frame
+// → wallId removed from dirtyNodes
+```
+
+**Manual marking:**
+```typescript
+useScene.getState().dirtyNodes.add(wallId)
+```
+
+---
+
+### Event Bus
+
+Inter-component communication uses a typed event emitter (mitt):
+
+```typescript
+// Node events
+emitter.on('wall:click', (event) => { ... })
+emitter.on('item:enter', (event) => { ... })
+emitter.on('zone:context-menu', (event) => { ... })
+
+// Grid events (background)
+emitter.on('grid:click', (event) => { ... })
+
+// Event payload
+NodeEvent {
+  node: AnyNode
+  position: [x, y, z]
+  localPosition: [x, y, z]
+  normal?: [x, y, z]
+  stopPropagation: () => void
+}
+```
+
+---
+
+### Spatial Grid Manager
+
+Handles collision detection and placement validation:
+
+```typescript
+spatialGridManager.canPlaceOnFloor(levelId, position, dimensions, rotation)
+spatialGridManager.canPlaceOnWall(wallId, t, height, dimensions)
+spatialGridManager.getSlabElevationAt(levelId, x, z)
+```
+
+Used by item placement tools to validate positions and calculate slab elevations.
+
+---
+
+## Editor Architecture
+
+The editor extends the viewer with:
+
+### Tools
+
+Tools are activated via the toolbar and handle user input for specific operations:
+
+- **SelectTool** - Selection and manipulation
+- **WallTool** - Draw walls
+- **ZoneTool** - Create zones
+- **ItemTool** - Place furniture/fixtures
+- **SlabTool** - Create floor slabs
+
+### Selection Manager
+
+The editor uses a custom selection manager with hierarchical navigation:
+
+```
+Site → Building → Level → Zone → Items
+```
+
+Each depth level has its own selection strategy for hover/click behavior.
+
+### Editor-Specific Systems
+
+- `ZoneSystem` - Controls zone visibility based on level mode
+- Custom camera controls with node focusing
+
+---
+
+## Data Flow
+
+```
+User Action (click, drag)
+       ↓
+Tool Handler
+       ↓
+useScene.createNode() / updateNode()
+       ↓
+Node added/updated in store
+Node marked dirty
+       ↓
+React re-renders NodeRenderer
+useRegistry() registers 3D object
+       ↓
+System detects dirty node (useFrame)
+Updates geometry via sceneRegistry
+Clears dirty flag
+```
+
+---
+
+## Technology Stack
+
+- **React 19** + **Next.js 16**
+- **Three.js** (WebGPU renderer)
+- **React Three Fiber** + **Drei**
+- **Zustand** (state management)
+- **Zod** (schema validation)
+- **Zundo** (undo/redo)
+- **three-bvh-csg** (Boolean geometry operations)
+- **Turborepo** (monorepo management)
+- **Bun** (package manager)
+
+---
+
+## Getting Started
+
+### Development
+
+Run the development server from the **root directory** to enable hot reload for all packages:
+
+```bash
+# Install dependencies
+bun install
+
+# Run development server (builds packages + starts editor with watch mode)
+bun dev
+
+# This will:
+# 1. Build @pascal-app/core and @pascal-app/viewer
+# 2. Start watching both packages for changes
+# 3. Start the Next.js editor dev server
+# Open http://localhost:3000
+```
+
+**Important:** Always run `bun dev` from the root directory to ensure the package watchers are running. This enables hot reload when you edit files in `packages/core/src/` or `packages/viewer/src/`.
+
+### Building for Production
+
+```bash
+# Build all packages
+turbo build
+
+# Build specific package
+turbo build --filter=@pascal-app/core
+```
+
+### Publishing Packages
+
+```bash
+# Build packages
+turbo build --filter=@pascal-app/core --filter=@pascal-app/viewer
+
+# Publish to npm
+npm publish --workspace=@pascal-app/core --access public
+npm publish --workspace=@pascal-app/viewer --access public
+```
+
+---
+
+## Key Files
+
+| Path | Description |
+|------|-------------|
+| `packages/core/src/schema/` | Node type definitions (Zod schemas) |
+| `packages/core/src/store/use-scene.ts` | Scene state store |
+| `packages/core/src/hooks/scene-registry/` | 3D object registry |
+| `packages/core/src/systems/` | Geometry generation systems |
+| `packages/viewer/src/components/renderers/` | Node renderers |
+| `packages/viewer/src/components/viewer/` | Main Viewer component |
+| `apps/editor/components/tools/` | Editor tools |
+| `apps/editor/store/` | Editor-specific state |

@@ -1,0 +1,4 @@
+
+$ tsc --build
+src/lib/asset-url.ts(3,1): error TS2578: Unused '@ts-expect-error' directive.
+error: script "build" exited with code 1
