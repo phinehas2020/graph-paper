@@ -17,6 +17,13 @@ import { getRequiredLevelHeight } from '@/src/planner/level-utils';
 import { floorToMesh, roofToMesh, wallToMesh } from './meshes';
 import type { CameraMode, LevelDisplayMode, WallViewMode } from '@/src/components/view-controls';
 
+const PREVIEW_BACKGROUND = '#d4dee7';
+const PREVIEW_GROUND = '#bccbd7';
+const PREVIEW_GRID_CELL = '#92a6b8';
+const PREVIEW_GRID_SECTION = '#7e95a8';
+const PERSPECTIVE_CAMERA_POSITION: [number, number, number] = [9, 8, 9];
+const ORTHOGRAPHIC_CAMERA_POSITION: [number, number, number] = [0, 20, 0.01];
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -237,14 +244,14 @@ function EnhancedScene({
 }: Required<Omit<EnhancedViewerProps, 'className' | 'style'>>) {
   return (
     <>
-      <color attach="background" args={['#a0adb8']} />
+      <color attach="background" args={[PREVIEW_BACKGROUND]} />
 
       {/* Lighting */}
-      <ambientLight intensity={0.6} />
-      <hemisphereLight intensity={0.5} color="#f9fdff" groundColor="#d9e7f2" />
+      <ambientLight intensity={0.42} />
+      <hemisphereLight intensity={0.34} color="#f9fdff" groundColor="#c7d6e3" />
       <directionalLight
         position={[10, 18, 8]}
-        intensity={1.45}
+        intensity={1.2}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-near={0.5}
@@ -260,7 +267,7 @@ function EnhancedScene({
       {/* Ground plane */}
       <mesh receiveShadow position={[0, -0.026, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[120, 120]} />
-        <meshStandardMaterial color="#eef4f8" roughness={1} metalness={0} />
+        <meshStandardMaterial color={PREVIEW_GROUND} roughness={1} metalness={0} />
       </mesh>
 
       {/* Grid */}
@@ -268,8 +275,8 @@ function EnhancedScene({
         <Grid
           position={[0, -0.02, 0]}
           args={[80, 80]}
-          cellColor="#d3ddea"
-          sectionColor="#b9c7d8"
+          cellColor={PREVIEW_GRID_CELL}
+          sectionColor={PREVIEW_GRID_SECTION}
           cellSize={1}
           sectionSize={5}
           infiniteGrid
@@ -294,7 +301,7 @@ function EnhancedScene({
         position={[0, -0.02, 0]}
         scale={28}
         blur={2.6}
-        opacity={0.3}
+        opacity={0.42}
         far={20}
       />
 
@@ -332,8 +339,8 @@ export function EnhancedViewer({
 }: EnhancedViewerProps) {
   const cameraProps =
     cameraMode === 'perspective'
-      ? { position: [9, 8, 9] as [number, number, number], fov: 42 }
-      : { position: [0, 20, 0] as [number, number, number], zoom: 30 };
+      ? { position: PERSPECTIVE_CAMERA_POSITION, fov: 42 }
+      : { position: ORTHOGRAPHIC_CAMERA_POSITION, zoom: 30 };
 
   return (
     <Canvas

@@ -8,6 +8,25 @@ import {
 } from '@/src/model/types';
 
 const WALL_JOIN_EPSILON = 0.001;
+const LEGACY_DEFAULT_WALL_COLOR = 0xf5f3ef;
+const PREVIEW_DEFAULT_WALL_COLOR = 0xe2d6c6;
+const PREVIEW_WALL_EDGE_COLOR = 0x7d8d9c;
+const PREVIEW_FLOOR_COLOR = 0xe7dfd2;
+const PREVIEW_FLOOR_EDGE_COLOR = 0x8d9dac;
+
+function planToWorld(point: { x: number; y: number }) {
+  return {
+    x: point.x,
+    z: -point.y,
+  };
+}
+
+function getPreviewWallColor(color?: string) {
+  const resolvedColor = new THREE.Color(color ?? LEGACY_DEFAULT_WALL_COLOR);
+  return resolvedColor.getHex() === LEGACY_DEFAULT_WALL_COLOR
+    ? new THREE.Color(PREVIEW_DEFAULT_WALL_COLOR)
+    : resolvedColor;
+}
 
 interface PreparedWallOpening {
   opening: WallOpening;
@@ -308,11 +327,13 @@ export function wallToMesh(
   walls: Wall[],
   selectedElement: PlannerSelection | null = null,
 ): THREE.Group {
-  const dx = wall.end.x - wall.start.x;
-  const dy = wall.end.y - wall.start.y;
-  const baseLength = Math.sqrt(dx * dx + dy * dy);
+  const worldStart = planToWorld(wall.start);
+  const worldEnd = planToWorld(wall.end);
+  const dx = worldEnd.x - worldStart.x;
+  const dz = worldEnd.z - worldStart.z;
+  const baseLength = Math.sqrt(dx * dx + dz * dz);
   const directionX = baseLength === 0 ? 0 : dx / baseLength;
-  const directionZ = baseLength === 0 ? 0 : dy / baseLength;
+  const directionZ = baseLength === 0 ? 0 : dz / baseLength;
   const startExtension = getWallEndpointExtension(wall, 'start', walls);
   const endExtension = getWallEndpointExtension(wall, 'end', walls);
   const totalLength = baseLength + startExtension + endExtension;
@@ -328,7 +349,7 @@ export function wallToMesh(
       : null;
 
   const material = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(wall.color ?? 0xf5f3ef),
+    color: getPreviewWallColor(wall.color),
     roughness: 0.88,
     metalness: 0.02,
     emissive: isSelectedWall ? new THREE.Color(0xf59e0b).multiplyScalar(0.18) : new THREE.Color(0x000000),
@@ -340,15 +361,17 @@ export function wallToMesh(
 
   const edges = new THREE.LineSegments(
     new THREE.EdgesGeometry(geometry),
-    new THREE.LineBasicMaterial({ color: isSelectedWall ? 0xf59e0b : 0xa1adb8 }),
+    new THREE.LineBasicMaterial({
+      color: isSelectedWall ? 0xf59e0b : PREVIEW_WALL_EDGE_COLOR,
+    }),
   );
   wallMesh.add(edges);
 
   const group = new THREE.Group();
-  const originX = wall.start.x - directionX * startExtension;
-  const originZ = wall.start.y - directionZ * startExtension;
+  const originX = worldStart.x - directionX * startExtension;
+  const originZ = worldStart.z - directionZ * startExtension;
   group.position.set(originX, 0, originZ);
-  group.rotation.y = -Math.atan2(dy, dx);
+  group.rotation.y = baseLength === 0 ? 0 : -Math.atan2(dz, dx);
   group.add(wallMesh);
 
   openings.forEach((opening) => {
@@ -378,10 +401,10 @@ export function floorToMesh(floor: Floor): THREE.Mesh {
   const shape = new THREE.Shape();
   if (floor.points.length > 0) {
     const first = floor.points[0];
-    shape.moveTo(first.x, -first.y);
+    shape.moveTo(first.x, first.y);
     for (let index = 1; index < floor.points.length; index += 1) {
       const p = floor.points[index];
-      shape.lineTo(p.x, -p.y);
+      shape.lineTo(p.x, p.y);
     }
     shape.closePath();
   }
@@ -392,8 +415,8 @@ export function floorToMesh(floor: Floor): THREE.Mesh {
   });
 
   const material = new THREE.MeshStandardMaterial({
-    color: 0xf8fbff,
-    roughness: 0.95,
+    color: PREVIEW_FLOOR_COLOR,
+    roughness: 0.94,
     metalness: 0,
   });
 
@@ -402,7 +425,7 @@ export function floorToMesh(floor: Floor): THREE.Mesh {
 
   const edges = new THREE.LineSegments(
     new THREE.EdgesGeometry(geometry),
-    new THREE.LineBasicMaterial({ color: 0xd5e0ea }),
+    new THREE.LineBasicMaterial({ color: PREVIEW_FLOOR_EDGE_COLOR }),
   );
   mesh.add(edges);
 
@@ -459,23 +482,25 @@ export function roofToMesh(
   floors: Floor[],
   selectedElement: PlannerSelection | null = null,
 ): THREE.Group {
-  const dx = roof.ridgeEnd.x - roof.ridgeStart.x;
-  const dy = roof.ridgeEnd.y - roof.ridgeStart.y;
-  const ridgeLength = Math.sqrt(dx * dx + dy * dy);
+  const ridgeStart = planToWorld(roof.ridgeStart);
+  const ridgeEnd = planToWorld(roof.ridgeEnd);
+  const dx = ridgeEnd.x - ridgeStart.x;
+  const dz = ridgeEnd.z - ridgeStart.z;
+  const ridgeLength = Math.sqrt(dx * dx + dz * dz);
   const directionX = ridgeLength === 0 ? 1 : dx / ridgeLength;
-  const directionZ = ridgeLength === 0 ? 0 : dy / ridgeLength;
+  const directionZ = ridgeLength === 0 ? 0 : dz / ridgeLength;
   const normalX = -directionZ;
   const normalZ = directionX;
   const roofFloors = floors.filter((floor) => (floor.level ?? 0) === (roof.level ?? 0));
   const footprintPoints = roofFloors.flatMap((floor) => floor.points);
   const pitchRadians = THREE.MathUtils.degToRad(roof.pitch);
   const projectionsAlong = footprintPoints.map((point) =>
-    (point.x - roof.ridgeStart.x) * directionX +
-    (point.y - roof.ridgeStart.y) * directionZ,
+    (planToWorld(point).x - ridgeStart.x) * directionX +
+    (planToWorld(point).z - ridgeStart.z) * directionZ,
   );
   const projectionsAcross = footprintPoints.map((point) =>
-    (point.x - roof.ridgeStart.x) * normalX +
-    (point.y - roof.ridgeStart.y) * normalZ,
+    (planToWorld(point).x - ridgeStart.x) * normalX +
+    (planToWorld(point).z - ridgeStart.z) * normalZ,
   );
 
   const alongStart = Math.min(0, ...projectionsAlong) - roof.overhang;
@@ -558,10 +583,10 @@ export function roofToMesh(
   rightSlope.add(edgeLines[1]);
 
   const group = new THREE.Group();
-  const originX = roof.ridgeStart.x + directionX * alongStart;
-  const originZ = roof.ridgeStart.y + directionZ * alongStart;
+  const originX = ridgeStart.x + directionX * alongStart;
+  const originZ = ridgeStart.z + directionZ * alongStart;
   group.position.set(originX, 0, originZ);
-  group.rotation.y = ridgeLength === 0 ? 0 : -Math.atan2(dy, dx);
+  group.rotation.y = ridgeLength === 0 ? 0 : -Math.atan2(dz, dx);
   group.add(leftSlope, rightSlope, startGable, endGable, ridgeCap);
 
   return group;

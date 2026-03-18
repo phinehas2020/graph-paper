@@ -4,7 +4,7 @@ import { Model, Measurement, TextElement, Wall, Floor, Zone, Ceiling, Roof, Leve
 
 // Helper for ID generation
 const generateId = () => Date.now().toString() + Math.random().toString(36).substring(2, 9);
-const DEFAULT_WALL_COLOR = '#f5f3ef';
+const DEFAULT_WALL_COLOR = '#e2d6c6';
 const PLANNER_HISTORY_LIMIT = 80;
 
 type PlannerSnapshot = Pick<Model, 'measurements' | 'textElements' | 'walls' | 'floors' | 'zones' | 'ceilings' | 'roofs' | 'levels'>;

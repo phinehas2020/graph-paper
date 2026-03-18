@@ -43,7 +43,7 @@ interface DefaultsState extends BuildingDefaults {
 const DEFAULT_VALUES: BuildingDefaults = {
   wallHeight: 3,
   wallThickness: 0.15,
-  wallColor: '#f5f3ef',
+  wallColor: '#e2d6c6',
 
   doorWidth: 3,
   doorHeight: 2.35,
