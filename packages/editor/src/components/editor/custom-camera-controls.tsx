@@ -85,14 +85,13 @@ export const CustomCameraControls = () => {
       if (!controls.current) return
 
       const shift = keyState.shiftRight || keyState.shiftLeft
-      const control = keyState.controlRight || keyState.controlLeft
       const space = keyState.space
 
       const wheelAction =
         cameraMode === 'orthographic'
           ? CameraControlsImpl.ACTION.ZOOM
           : CameraControlsImpl.ACTION.DOLLY
-      controls.current.mouseButtons.wheel = wheelAction
+      controls.current.mouseButtons.wheel = shift ? CameraControlsImpl.ACTION.ROTATE : wheelAction
       controls.current.mouseButtons.middle = CameraControlsImpl.ACTION.SCREEN_PAN
       controls.current.mouseButtons.right = CameraControlsImpl.ACTION.ROTATE
       if (isPreviewMode) {
@@ -105,6 +104,18 @@ export const CustomCameraControls = () => {
       } else {
         controls.current.mouseButtons.left = CameraControlsImpl.ACTION.NONE
       }
+    }
+
+    const resetModifiers = () => {
+      keyState.shiftRight = false
+      keyState.shiftLeft = false
+      keyState.controlRight = false
+      keyState.controlLeft = false
+      keyState.space = false
+      if (!(isPreviewMode || cameraInteractionMode === 'pan')) {
+        document.body.style.cursor = ''
+      }
+      updateConfig()
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -151,11 +162,13 @@ export const CustomCameraControls = () => {
 
     document.addEventListener('keydown', onKeyDown)
     document.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', resetModifiers)
     updateConfig()
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', resetModifiers)
     }
   }, [cameraInteractionMode, cameraMode, isPreviewMode])
 
