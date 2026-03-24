@@ -1,14 +1,52 @@
 'use client';
 import { temporal } from 'zundo';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { BuildingNode } from '../schema';
 import { generateCollectionId } from '../schema/collections';
 import { LevelNode } from '../schema/nodes/level';
 import { SiteNode } from '../schema/nodes/site';
-import { isObject } from '../utils/types';
 import * as nodeActions from './actions/node-actions';
-const useScene = create()(persist(temporal((set, get) => ({
+function migrateNodes(nodes) {
+    const patchedNodes = { ...nodes };
+    for (const [id, node] of Object.entries(patchedNodes)) {
+        // 1. Item scale migration
+        if (node.type === 'item' && !('scale' in node)) {
+            patchedNodes[id] = { ...node, scale: [1, 1, 1] };
+        }
+        // 2. Old roof to new roof + segment migration
+        if (node.type === 'roof' && !('children' in node)) {
+            const oldRoof = node;
+            const suffix = id.includes('_') ? id.split('_')[1] : Math.random().toString(36).slice(2);
+            const segmentId = `rseg_${suffix}`;
+            const segment = {
+                object: 'node',
+                id: segmentId,
+                type: 'roof-segment',
+                parentId: id,
+                visible: oldRoof.visible ?? true,
+                metadata: {},
+                position: [0, 0, 0],
+                rotation: 0,
+                roofType: 'gable',
+                width: oldRoof.length ?? 8,
+                depth: (oldRoof.leftWidth ?? 2.2) + (oldRoof.rightWidth ?? 2.2),
+                wallHeight: 0,
+                roofHeight: oldRoof.height ?? 2.5,
+                wallThickness: 0.1,
+                deckThickness: 0.1,
+                overhang: 0.3,
+                shingleThickness: 0.05,
+            };
+            patchedNodes[segmentId] = segment;
+            patchedNodes[id] = {
+                ...oldRoof,
+                children: [segmentId],
+            };
+        }
+    }
+    return patchedNodes;
+}
+const useScene = create()(temporal((set, get) => ({
     // 1. Flat dictionary of all nodes
     nodes: {},
     // 2. Root node IDs
@@ -17,24 +55,21 @@ const useScene = create()(persist(temporal((set, get) => ({
     dirtyNodes: new Set(),
     // 4. Collections
     collections: {},
-    clearScene: () => {
+    unloadScene: () => {
         set({
             nodes: {},
             rootNodeIds: [],
             dirtyNodes: new Set(),
             collections: {},
         });
+    },
+    clearScene: () => {
+        get().unloadScene();
         get().loadScene(); // Default scene
     },
     setScene: (nodes, rootNodeIds) => {
-        // Backward compat: add default scale to item nodes loaded from external sources
-        // (pascal_local_projects, Supabase) saved before scale was added to ItemNode
-        const patchedNodes = { ...nodes };
-        for (const [id, node] of Object.entries(patchedNodes)) {
-            if (node.type === 'item' && !('scale' in node)) {
-                patchedNodes[id] = { ...node, scale: [1, 1, 1] };
-            }
-        }
+        // Apply backward compatibility migrations
+        const patchedNodes = migrateNodes(nodes);
         set({
             nodes: patchedNodes,
             rootNodeIds,
@@ -181,73 +216,18 @@ const useScene = create()(persist(temporal((set, get) => ({
         return { nodes, rootNodeIds, collections };
     },
     limit: 50, // Limit to last 50 actions
-}), {
-    name: 'editor-storage',
-    version: 1,
-    // Keep existing local scenes when the persist version changes.
-    migrate: (persistedState) => persistedState,
-    partialize: (state) => ({
-        nodes: Object.fromEntries(Object.entries(state.nodes).filter(([_, node]) => {
-            const meta = node.metadata;
-            const isTransient = isObject(meta) && 'isTransient' in meta && meta.isTransient === true;
-            return !isTransient;
-        })),
-        rootNodeIds: state.rootNodeIds,
-        collections: state.collections,
-    }),
-    merge: (persistedState, currentState) => {
-        const persisted = (persistedState ?? {});
-        // Backward compat: add default scale to item nodes saved before scale was added
-        if (persisted.nodes) {
-            for (const [id, node] of Object.entries(persisted.nodes)) {
-                if (node.type === 'item' && !('scale' in node)) {
-                    persisted.nodes[id] = {
-                        ...node,
-                        scale: [1, 1, 1],
-                    };
-                }
-            }
-        }
-        return { ...currentState, ...persisted };
-    },
-    onRehydrateStorage: (state) => {
-        console.log('hydrating...');
-        return (state, error) => {
-            if (error) {
-                console.log('an error happened during hydration', error);
-                return;
-            }
-            if (!state) {
-                console.log('hydration finished - no state');
-                return;
-            }
-            // Migration: Wrap old scenes (where root is not a SiteNode) in a SiteNode
-            const rootId = state.rootNodeIds?.[0];
-            const rootNode = rootId ? state.nodes[rootId] : null;
-            if (rootNode && rootNode.type !== 'site') {
-                console.log('Migrating old scene: wrapping in SiteNode');
-                // Collect existing root nodes (should be BuildingNode or ItemNode)
-                const existingRoots = (state.rootNodeIds || [])
-                    .map((id) => state.nodes[id])
-                    .filter((node) => node?.type === 'building' || node?.type === 'item');
-                // Create a new SiteNode with existing roots as children
-                const site = SiteNode.parse({
-                    children: existingRoots,
-                });
-                // Add site to nodes
-                state.nodes[site.id] = site;
-                // Update root to be the site
-                state.rootNodeIds = [site.id];
-                console.log('Migration complete: scene now has SiteNode as root');
-            }
-            console.log('hydration finished');
-        };
-    },
 }));
 export default useScene;
-// Track previous temporal state lengths
+// Track previous temporal state lengths and node snapshot for diffing
 let prevPastLength = 0;
 let prevFutureLength = 0;
+let prevNodesSnapshot = null;
+export function clearSceneHistory() {
+    useScene.temporal.getState().clear();
+    prevPastLength = 0;
+    prevFutureLength = 0;
+    prevNodesSnapshot = null;
+}
 // Subscribe to the temporal store (Undo/Redo events)
 useScene.temporal.subscribe((state) => {
     const currentPastLength = state.pastStates.length;
@@ -257,16 +237,40 @@ useScene.temporal.subscribe((state) => {
     const didUndo = currentFutureLength > prevFutureLength;
     const didRedo = currentPastLength > prevPastLength && currentFutureLength < prevFutureLength;
     if (didUndo || didRedo) {
+        // Capture the previous snapshot before RAF fires
+        const snapshotBefore = prevNodesSnapshot;
         // Use RAF to ensure all middleware and store updates are complete
         requestAnimationFrame(() => {
             const currentNodes = useScene.getState().nodes;
-            // Trigger a full scene re-validation after undo/redo
-            Object.values(currentNodes).forEach((node) => {
-                useScene.getState().markDirty(node.id);
-            });
+            const { markDirty } = useScene.getState();
+            if (snapshotBefore) {
+                // Diff: only mark nodes that actually changed
+                for (const [id, node] of Object.entries(currentNodes)) {
+                    if (snapshotBefore[id] !== node) {
+                        markDirty(id);
+                        // Also mark parent so merged geometries update
+                        if (node.parentId)
+                            markDirty(node.parentId);
+                    }
+                }
+                // Nodes that were deleted (exist in prev but not current)
+                for (const [id, node] of Object.entries(snapshotBefore)) {
+                    if (!currentNodes[id]) {
+                        if (node.parentId)
+                            markDirty(node.parentId);
+                    }
+                }
+            }
+            else {
+                // No snapshot to diff against — fall back to marking all
+                for (const node of Object.values(currentNodes)) {
+                    markDirty(node.id);
+                }
+            }
         });
     }
-    // Update tracked lengths
+    // Update tracked lengths and snapshot
     prevPastLength = currentPastLength;
     prevFutureLength = currentFutureLength;
+    prevNodesSnapshot = useScene.getState().nodes;
 });

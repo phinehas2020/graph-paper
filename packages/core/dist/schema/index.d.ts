@@ -9,6 +9,7 @@ export type { AnimationEffect, Asset, AssetInput, Control, Effect, Interactive, 
 export { getScaledDimensions, ItemNode } from './nodes/item';
 export { LevelNode } from './nodes/level';
 export { RoofNode } from './nodes/roof';
+export { RoofSegmentNode, RoofType } from './nodes/roof-segment';
 export { ScanNode } from './nodes/scan';
 export { SiteNode } from './nodes/site';
 export { SlabNode } from './nodes/slab';

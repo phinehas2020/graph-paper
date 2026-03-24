@@ -1,5 +1,5 @@
 import type { ThreeEvent } from '@react-three/fiber';
-import type { BuildingNode, CeilingNode, DoorNode, ItemNode, LevelNode, RoofNode, SiteNode, SlabNode, WallNode, WindowNode, ZoneNode } from '../schema';
+import type { BuildingNode, CeilingNode, DoorNode, ItemNode, LevelNode, RoofNode, RoofSegmentNode, SiteNode, SlabNode, WallNode, WindowNode, ZoneNode } from '../schema';
 import type { AnyNode } from '../schema/types';
 export interface GridEvent {
     position: [number, number, number];
@@ -22,6 +22,7 @@ export type ZoneEvent = NodeEvent<ZoneNode>;
 export type SlabEvent = NodeEvent<SlabNode>;
 export type CeilingEvent = NodeEvent<CeilingNode>;
 export type RoofEvent = NodeEvent<RoofNode>;
+export type RoofSegmentEvent = NodeEvent<RoofSegmentNode>;
 export type WindowEvent = NodeEvent<WindowNode>;
 export type DoorEvent = NodeEvent<DoorNode>;
 export declare const eventSuffixes: readonly ["click", "move", "enter", "leave", "pointerdown", "pointerup", "context-menu", "double-click"];
@@ -59,7 +60,7 @@ type PresetEvents = {
         thumbnailUrl: string;
     };
 };
-type EditorEvents = GridEvents & NodeEvents<'wall', WallEvent> & NodeEvents<'item', ItemEvent> & NodeEvents<'site', SiteEvent> & NodeEvents<'building', BuildingEvent> & NodeEvents<'level', LevelEvent> & NodeEvents<'zone', ZoneEvent> & NodeEvents<'slab', SlabEvent> & NodeEvents<'ceiling', CeilingEvent> & NodeEvents<'roof', RoofEvent> & NodeEvents<'window', WindowEvent> & NodeEvents<'door', DoorEvent> & CameraControlEvents & ToolEvents & PresetEvents;
+type EditorEvents = GridEvents & NodeEvents<'wall', WallEvent> & NodeEvents<'item', ItemEvent> & NodeEvents<'site', SiteEvent> & NodeEvents<'building', BuildingEvent> & NodeEvents<'level', LevelEvent> & NodeEvents<'zone', ZoneEvent> & NodeEvents<'slab', SlabEvent> & NodeEvents<'ceiling', CeilingEvent> & NodeEvents<'roof', RoofEvent> & NodeEvents<'roof-segment', RoofSegmentEvent> & NodeEvents<'window', WindowEvent> & NodeEvents<'door', DoorEvent> & CameraControlEvents & ToolEvents & PresetEvents;
 export declare const emitter: import("mitt").Emitter<EditorEvents>;
 export {};
 //# sourceMappingURL=bus.d.ts.map

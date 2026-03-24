@@ -95,6 +95,8 @@ const useViewer = create()(persist((set) => ({
     outliner: { selectedObjects: [], hoveredObjects: [] },
     exportScene: null,
     setExportScene: (fn) => set({ exportScene: fn }),
+    debugColors: false,
+    setDebugColors: (enabled) => set({ debugColors: enabled }),
     cameraDragging: false,
     setCameraDragging: (dragging) => set({ cameraDragging: dragging }),
 }), {

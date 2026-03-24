@@ -11,11 +11,14 @@ export declare const sceneRegistry: {
         slab: Set<string>;
         zone: Set<string>;
         roof: Set<string>;
+        'roof-segment': Set<string>;
         scan: Set<string>;
         guide: Set<string>;
         window: Set<string>;
         door: Set<string>;
     };
+    /** Remove all entries. Call when unloading a scene to prevent stale 3D refs. */
+    clear(): void;
 };
 export declare function useRegistry(id: string, type: keyof typeof sceneRegistry.byType, ref: React.RefObject<THREE.Object3D>): void;
 //# sourceMappingURL=scene-registry.d.ts.map

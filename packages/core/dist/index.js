@@ -13,7 +13,7 @@ export { detectSpacesForLevel, initSpaceDetectionSync, wallTouchesOthers, } from
 // Schema
 export * from './schema';
 export { useInteractive, } from './store/use-interactive';
-export { default as useScene } from './store/use-scene';
+export { clearSceneHistory, default as useScene } from './store/use-scene';
 // Systems
 export { CeilingSystem } from './systems/ceiling/ceiling-system';
 export { DoorSystem } from './systems/door/door-system';

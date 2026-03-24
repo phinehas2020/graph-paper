@@ -63,6 +63,9 @@ type ViewerState = {
   exportScene: (() => Promise<void>) | null
   setExportScene: (fn: (() => Promise<void>) | null) => void
 
+  debugColors: boolean
+  setDebugColors: (enabled: boolean) => void
+
   cameraDragging: boolean
   setCameraDragging: (dragging: boolean) => void
 }
@@ -176,6 +179,9 @@ const useViewer = create<ViewerState>()(
 
       exportScene: null,
       setExportScene: (fn) => set({ exportScene: fn }),
+
+      debugColors: false,
+      setDebugColors: (enabled) => set({ debugColors: enabled }),
 
       cameraDragging: false,
       setCameraDragging: (dragging) => set({ cameraDragging: dragging }),

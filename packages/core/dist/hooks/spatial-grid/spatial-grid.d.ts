@@ -2,9 +2,9 @@ interface SpatialGridConfig {
     cellSize: number;
 }
 export declare class SpatialGrid {
-    private config;
-    private cells;
-    private itemCells;
+    private readonly cells;
+    private readonly itemCells;
+    private readonly config;
     constructor(config: SpatialGridConfig);
     private posToCell;
     private cellKey;

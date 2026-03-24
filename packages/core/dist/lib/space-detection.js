@@ -23,7 +23,7 @@ editorStore) {
                 if (!currentWallsByLevel.has(levelId)) {
                     currentWallsByLevel.set(levelId, new Set());
                 }
-                currentWallsByLevel.get(levelId).add(node.id);
+                currentWallsByLevel.get(levelId)?.add(node.id);
             }
         }
         // Check each level for changes

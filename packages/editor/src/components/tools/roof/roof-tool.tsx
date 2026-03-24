@@ -4,6 +4,7 @@ import {
   type GridEvent,
   type LevelNode,
   RoofNode,
+  RoofSegmentNode,
   useScene,
 } from '@pascal-app/core'
 import { useViewer } from '@pascal-app/viewer'
@@ -32,7 +33,7 @@ const commitRoofPlacement = (
   corner1: [number, number, number],
   corner2: [number, number, number],
 ): RoofNode['id'] => {
-  const { createNode, nodes } = useScene.getState()
+  const { createNodes, nodes } = useScene.getState()
 
   // Calculate center position and dimensions from corners
   const centerX = (corner1[0] + corner2[0]) / 2
@@ -51,13 +52,20 @@ const commitRoofPlacement = (
   const roof = RoofNode.parse({
     name,
     position: [centerX, 0, centerZ], // Y is always 0
-    length: Math.max(length, 0.5),
-    height: DEFAULT_HEIGHT,
-    leftWidth: slopeWidth,
-    rightWidth: slopeWidth,
   })
 
-  createNode(roof, levelId)
+  const roofSegment = RoofSegmentNode.parse({
+    roofType: 'gable',
+    width: Math.max(length, 0.5),
+    depth: Math.max(slopeWidth * 2, 0.5),
+    wallHeight: 0,
+    roofHeight: DEFAULT_HEIGHT,
+  })
+
+  createNodes([
+    { node: roof, parentId: levelId },
+    { node: roofSegment, parentId: roof.id },
+  ])
   sfxEmitter.emit('sfx:structure-build')
   return roof.id
 }

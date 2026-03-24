@@ -1,4 +1,4 @@
-export type { BuildingEvent, CameraControlEvent, CeilingEvent, DoorEvent, EventSuffix, GridEvent, ItemEvent, LevelEvent, NodeEvent, RoofEvent, SiteEvent, SlabEvent, WallEvent, WindowEvent, ZoneEvent, } from './events/bus';
+export type { BuildingEvent, CameraControlEvent, CeilingEvent, DoorEvent, EventSuffix, GridEvent, ItemEvent, LevelEvent, NodeEvent, RoofEvent, RoofSegmentEvent, SiteEvent, SlabEvent, WallEvent, WindowEvent, ZoneEvent, } from './events/bus';
 export { emitter, eventSuffixes } from './events/bus';
 export { sceneRegistry, useRegistry, } from './hooks/scene-registry/scene-registry';
 export { pointInPolygon, spatialGridManager } from './hooks/spatial-grid/spatial-grid-manager';
@@ -8,7 +8,7 @@ export { loadAssetUrl, saveAsset } from './lib/asset-storage';
 export { detectSpacesForLevel, initSpaceDetectionSync, type Space, wallTouchesOthers, } from './lib/space-detection';
 export * from './schema';
 export { type ControlValue, type ItemInteractiveState, useInteractive, } from './store/use-interactive';
-export { default as useScene } from './store/use-scene';
+export { clearSceneHistory, default as useScene } from './store/use-scene';
 export { CeilingSystem } from './systems/ceiling/ceiling-system';
 export { DoorSystem } from './systems/door/door-system';
 export { ItemSystem } from './systems/item/item-system';

@@ -1,4 +1,4 @@
-import { type BuildingEvent, type BuildingNode, type CeilingEvent, type CeilingNode, type DoorEvent, type DoorNode, type ItemEvent, type ItemNode, type LevelEvent, type LevelNode, type RoofEvent, type RoofNode, type SiteEvent, type SiteNode, type SlabEvent, type SlabNode, type WallEvent, type WallNode, type WindowEvent, type WindowNode, type ZoneEvent, type ZoneNode } from '@pascal-app/core';
+import { type BuildingEvent, type BuildingNode, type CeilingEvent, type CeilingNode, type DoorEvent, type DoorNode, type ItemEvent, type ItemNode, type LevelEvent, type LevelNode, type RoofEvent, type RoofNode, type RoofSegmentEvent, type RoofSegmentNode, type SiteEvent, type SiteNode, type SlabEvent, type SlabNode, type WallEvent, type WallNode, type WindowEvent, type WindowNode, type ZoneEvent, type ZoneNode } from '@pascal-app/core';
 import type { ThreeEvent } from '@react-three/fiber';
 type NodeConfig = {
     site: {
@@ -36,6 +36,10 @@ type NodeConfig = {
     roof: {
         node: RoofNode;
         event: RoofEvent;
+    };
+    'roof-segment': {
+        node: RoofSegmentNode;
+        event: RoofSegmentEvent;
     };
     window: {
         node: WindowNode;

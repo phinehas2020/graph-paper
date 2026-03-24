@@ -1,11 +1,9 @@
 'use client'
 
-import { type AnyNode, type RoofNode, useScene } from '@pascal-app/core'
+import { type AnyNode, type RoofNode, type RoofSegmentNode, useScene } from '@pascal-app/core'
 import { useViewer } from '@pascal-app/viewer'
 import { useCallback } from 'react'
-import { formatLengthImperial } from '../../../lib/units'
 import { ActionButton } from '../controls/action-button'
-import { MetricControl } from '../controls/metric-control'
 import { PanelSection } from '../controls/panel-section'
 import { SliderControl } from '../controls/slider-control'
 import { PanelWrapper } from './panel-wrapper'
@@ -18,13 +16,25 @@ export function RoofPanel() {
 
   const selectedId = selectedIds[0]
   const node = selectedId ? (nodes[selectedId as AnyNode['id']] as RoofNode | undefined) : undefined
+  const segmentId = node?.children?.[0]
+  const segment = segmentId
+    ? (nodes[segmentId as AnyNode['id']] as RoofSegmentNode | undefined)
+    : undefined
 
-  const handleUpdate = useCallback(
+  const handleUpdateRoof = useCallback(
     (updates: Partial<RoofNode>) => {
       if (!selectedId) return
       updateNode(selectedId as AnyNode['id'], updates)
     },
     [selectedId, updateNode],
+  )
+
+  const handleUpdateSegment = useCallback(
+    (updates: Partial<RoofSegmentNode>) => {
+      if (!segmentId) return
+      updateNode(segmentId as AnyNode['id'], updates)
+    },
+    [segmentId, updateNode],
   )
 
   const handleClose = useCallback(() => {
@@ -33,8 +43,6 @@ export function RoofPanel() {
 
   if (!node || node.type !== 'roof' || selectedIds.length !== 1) return null
 
-  const totalWidth = node.leftWidth + node.rightWidth
-
   return (
     <PanelWrapper
       icon="/icons/roof.png"
@@ -42,55 +50,40 @@ export function RoofPanel() {
       title={node.name || 'Roof'}
       width={300}
     >
-      <PanelSection title="Dimensions">
-        <SliderControl
-          label="Length"
-          max={20}
-          min={0.5}
-          onChange={(v) => handleUpdate({ length: v })}
-          precision={2}
-          step={0.5}
-          unit="m"
-          value={Math.round(node.length * 100) / 100}
-        />
-        <SliderControl
-          label="Height"
-          max={10}
-          min={0.1}
-          onChange={(v) => handleUpdate({ height: v })}
-          precision={2}
-          step={0.1}
-          unit="m"
-          value={Math.round(node.height * 100) / 100}
-        />
-      </PanelSection>
-
-      <PanelSection title="Slope Widths">
-        <div className="flex items-center justify-between px-2 pb-2 font-medium text-[10px] text-muted-foreground/80 uppercase tracking-wider">
-          <span>Widths</span>
-          <span>Total: {formatLengthImperial(totalWidth)}</span>
-        </div>
-        <SliderControl
-          label="Left"
-          max={10}
-          min={0.1}
-          onChange={(v) => handleUpdate({ leftWidth: v })}
-          precision={2}
-          step={0.1}
-          unit="m"
-          value={Math.round(node.leftWidth * 100) / 100}
-        />
-        <SliderControl
-          label="Right"
-          max={10}
-          min={0.1}
-          onChange={(v) => handleUpdate({ rightWidth: v })}
-          precision={2}
-          step={0.1}
-          unit="m"
-          value={Math.round(node.rightWidth * 100) / 100}
-        />
-      </PanelSection>
+      {segment ? (
+        <PanelSection title="Dimensions">
+          <SliderControl
+            label="Length"
+            max={20}
+            min={0.5}
+            onChange={(v) => handleUpdateSegment({ width: v })}
+            precision={2}
+            step={0.5}
+            unit="m"
+            value={Math.round(segment.width * 100) / 100}
+          />
+          <SliderControl
+            label="Depth"
+            max={20}
+            min={0.5}
+            onChange={(v) => handleUpdateSegment({ depth: v })}
+            precision={2}
+            step={0.5}
+            unit="m"
+            value={Math.round(segment.depth * 100) / 100}
+          />
+          <SliderControl
+            label="Height"
+            max={10}
+            min={0.1}
+            onChange={(v) => handleUpdateSegment({ roofHeight: v })}
+            precision={2}
+            step={0.1}
+            unit="m"
+            value={Math.round(segment.roofHeight * 100) / 100}
+          />
+        </PanelSection>
+      ) : null}
 
       <PanelSection title="Rotation">
         <SliderControl
@@ -103,7 +96,7 @@ export function RoofPanel() {
           min={-180}
           onChange={(degrees) => {
             const radians = (degrees * Math.PI) / 180
-            handleUpdate({ rotation: radians })
+            handleUpdateRoof({ rotation: radians })
           }}
           precision={0}
           step={1}
@@ -113,11 +106,11 @@ export function RoofPanel() {
         <div className="flex gap-1.5 px-1 pt-2 pb-1">
           <ActionButton
             label="-90°"
-            onClick={() => handleUpdate({ rotation: node.rotation - Math.PI / 2 })}
+            onClick={() => handleUpdateRoof({ rotation: node.rotation - Math.PI / 2 })}
           />
           <ActionButton
             label="+90°"
-            onClick={() => handleUpdate({ rotation: node.rotation + Math.PI / 2 })}
+            onClick={() => handleUpdateRoof({ rotation: node.rotation + Math.PI / 2 })}
           />
         </div>
       </PanelSection>
@@ -134,7 +127,7 @@ export function RoofPanel() {
           onChange={(v) => {
             const pos = [...node.position] as [number, number, number]
             pos[0] = v
-            handleUpdate({ position: pos })
+            handleUpdateRoof({ position: pos })
           }}
           precision={2}
           step={0.1}
@@ -152,7 +145,7 @@ export function RoofPanel() {
           onChange={(v) => {
             const pos = [...node.position] as [number, number, number]
             pos[1] = v
-            handleUpdate({ position: pos })
+            handleUpdateRoof({ position: pos })
           }}
           precision={2}
           step={0.1}
@@ -170,7 +163,7 @@ export function RoofPanel() {
           onChange={(v) => {
             const pos = [...node.position] as [number, number, number]
             pos[2] = v
-            handleUpdate({ position: pos })
+            handleUpdateRoof({ position: pos })
           }}
           precision={2}
           step={0.1}

@@ -11,8 +11,8 @@ interface WallItemPlacement {
     side?: WallSide;
 }
 export declare class WallSpatialGrid {
-    private wallItems;
-    private itemToWall;
+    private readonly wallItems;
+    private readonly itemToWall;
     /**
      * Check if an item can be placed on a wall with auto-adjustment for vertical position
      * @param wallId - The wall to place on

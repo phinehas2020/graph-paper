@@ -189,7 +189,6 @@ export function wallOverlapsPolygon(start, end, polygon) {
     return false;
 }
 export class SpatialGridManager {
-    cellSize;
     floorGrids = new Map(); // levelId -> grid
     wallGrids = new Map(); // levelId -> wall grid
     walls = new Map(); // wallId -> wall data (for length calculations)
@@ -197,6 +196,7 @@ export class SpatialGridManager {
     ceilingGrids = new Map(); // ceilingId -> grid
     ceilings = new Map(); // ceilingId -> ceiling data
     itemCeilingMap = new Map(); // itemId -> ceilingId (reverse lookup)
+    cellSize;
     constructor(cellSize = 0.5) {
         this.cellSize = cellSize;
     }

@@ -85,11 +85,9 @@ export const WallCutout = () => {
                             hideWall = true;
                         }
                     }
-                    else {
+                    else if (wallNode.backSide === 'exterior' && wallNode.frontSide !== 'exterior') {
                         // Back side
-                        if (wallNode.backSide === 'exterior' && wallNode.frontSide !== 'exterior') {
-                            hideWall = true;
-                        }
+                        hideWall = true;
                     }
                 }
                 ;

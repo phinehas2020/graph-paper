@@ -9,6 +9,7 @@ export type SceneState = {
     collections: Record<CollectionId, Collection>;
     loadScene: () => void;
     clearScene: () => void;
+    unloadScene: () => void;
     setScene: (nodes: Record<AnyNodeId, AnyNode>, rootNodeIds: AnyNodeId[]) => void;
     markDirty: (id: AnyNodeId) => void;
     clearDirty: (id: AnyNodeId) => void;
@@ -35,4 +36,5 @@ type UseSceneStore = UseBoundStore<StoreApi<SceneState>> & {
 };
 declare const useScene: UseSceneStore;
 export default useScene;
+export declare function clearSceneHistory(): void;
 //# sourceMappingURL=use-scene.d.ts.map

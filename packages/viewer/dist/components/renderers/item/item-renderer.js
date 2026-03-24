@@ -10,6 +10,7 @@ import { positionLocal, smoothstep, time } from 'three/tsl';
 import { DoubleSide, MeshStandardNodeMaterial } from 'three/webgpu';
 import { useNodeEvents } from '../../../hooks/use-node-events';
 import { resolveCdnUrl } from '../../../lib/asset-url';
+import { useItemLightPool } from '../../../store/use-item-light-pool';
 import { NodeRenderer } from '../node-renderer';
 // Shared materials to avoid creating new instances for every mesh
 const defaultMaterial = new MeshStandardNodeMaterial({
@@ -99,7 +100,7 @@ const ModelRenderer = ({ node }) => {
     const interactive = interactiveRef.current;
     const animEffect = interactive?.effects.find((e) => e.kind === 'animation') ?? null;
     const lightEffects = interactive?.effects.filter((e) => e.kind === 'light') ?? [];
-    return (_jsxs(_Fragment, { children: [_jsx(Clone, { object: scene, position: node.asset.offset, ref: ref, rotation: node.asset.rotation, scale: multiplyScales(node.asset.scale || [1, 1, 1], node.scale || [1, 1, 1]), ...handlers }), animations.length > 0 && (_jsx(ItemAnimation, { actions: actions, animations: animations, animEffect: animEffect, interactive: interactive ?? null, nodeId: node.id })), lightEffects.map((effect, i) => (_jsx(ItemLight, { effect: effect, interactive: interactive, nodeId: node.id }, i)))] }));
+    return (_jsxs(_Fragment, { children: [_jsx(Clone, { object: scene, position: node.asset.offset, ref: ref, rotation: node.asset.rotation, scale: multiplyScales(node.asset.scale || [1, 1, 1], node.scale || [1, 1, 1]), ...handlers }), animations.length > 0 && (_jsx(ItemAnimation, { actions: actions, animations: animations, animEffect: animEffect, interactive: interactive ?? null, nodeId: node.id })), lightEffects.map((effect, i) => (_jsx(ItemLightRegistrar, { effect: effect, index: i, interactive: interactive, nodeId: node.id }, i)))] }));
 };
 const ItemAnimation = ({ nodeId, animEffect, interactive, actions, animations, }) => {
     const activeClipRef = useRef(null);
@@ -159,27 +160,11 @@ const ItemAnimation = ({ nodeId, animEffect, interactive, actions, animations, }
     });
     return null;
 };
-const ItemLight = ({ nodeId, effect, interactive, }) => {
-    const lightRef = useRef(null);
-    // Precompute stable indices — interactive is frozen at mount
-    const toggleIndex = interactive.controls.findIndex((c) => c.kind === 'toggle');
-    const sliderIndex = interactive.controls.findIndex((c) => c.kind === 'slider');
-    const sliderControl = sliderIndex >= 0 ? interactive.controls[sliderIndex] : null;
-    useFrame((_, delta) => {
-        if (!lightRef.current)
-            return;
-        const values = useInteractive.getState().items[nodeId]?.controlValues;
-        const isOn = toggleIndex >= 0 ? Boolean(values?.[toggleIndex]) : true;
-        // Normalize slider to 0-1 (default full intensity if no slider)
-        let t = 1;
-        if (sliderControl) {
-            const raw = values?.[sliderIndex] ?? sliderControl.min;
-            t = (raw - sliderControl.min) / (sliderControl.max - sliderControl.min);
-        }
-        const target = isOn
-            ? MathUtils.lerp(effect.intensityRange[0], effect.intensityRange[1], t)
-            : effect.intensityRange[0];
-        lightRef.current.intensity = MathUtils.lerp(lightRef.current.intensity, target, Math.min(delta * 12, 1));
-    });
-    return (_jsx("pointLight", { castShadow: false, color: effect.color, distance: effect.distance ?? 0, intensity: effect.intensityRange[0], position: effect.offset, ref: lightRef }));
+const ItemLightRegistrar = ({ nodeId, effect, interactive, index, }) => {
+    useEffect(() => {
+        const key = `${nodeId}:${index}`;
+        useItemLightPool.getState().register(key, nodeId, effect, interactive);
+        return () => useItemLightPool.getState().unregister(key);
+    }, [nodeId, index, effect, interactive]);
+    return null;
 };

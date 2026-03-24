@@ -2,11 +2,12 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { CeilingSystem, DoorSystem, ItemSystem, RoofSystem, SlabSystem, WallSystem, WindowSystem, } from '@pascal-app/core';
 import { Bvh } from '@react-three/drei';
-import { Canvas, extend, useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three/webgpu';
 import useViewer from '../../store/use-viewer';
 import { GuideSystem } from '../../systems/guide/guide-system';
+import { ItemLightSystem } from '../../systems/item-light/item-light-system';
 import { LevelSystem } from '../../systems/level/level-system';
 import { ScanSystem } from '../../systems/scan/scan-system';
 import { WallCutout } from '../../systems/wall/wall-cutout';
@@ -14,6 +15,7 @@ import { ZoneSystem } from '../../systems/zone/zone-system';
 import { SceneRenderer } from '../renderers/scene-renderer';
 import { GroundOccluder } from './ground-occluder';
 import { Lights } from './lights';
+import { PerfMonitor } from './perf-monitor';
 import PostProcessing from './post-processing';
 import { SelectionManager } from './selection-manager';
 import { ViewerCamera } from './viewer-camera';
@@ -39,17 +41,43 @@ function AnimatedBackground({ isDark }) {
     return null;
 }
 extend(THREE);
-const Viewer = ({ children, selectionManager = 'default' }) => {
+/**
+ * Monitors the WebGPU device for loss events and logs them.
+ * WebGPU device loss can happen when:
+ *  - Tab is backgrounded and OS reclaims GPU
+ *  - Driver crash or GPU reset
+ *  - Browser security policy kills the context
+ */
+function GPUDeviceWatcher() {
+    const gl = useThree((s) => s.gl);
+    useEffect(() => {
+        const backend = gl.backend;
+        const device = backend?.device;
+        if (!device)
+            return;
+        device.lost.then((info) => {
+            console.error(`[viewer] WebGPU device lost: reason="${info.reason}", message="${info.message}". ` +
+                'The page must be reloaded to recover the GPU context.');
+        });
+    }, [gl]);
+    return null;
+}
+const Viewer = ({ children, selectionManager = 'default', perf = false, }) => {
     const theme = useViewer((state) => state.theme);
-    return (_jsxs(Canvas, { camera: { position: [50, 50, 50], fov: 50 }, className: `transition-colors duration-700 ${theme === 'dark' ? 'bg-[#1f2433]' : 'bg-[#fafafa]'}`, dpr: [1, 1.5], gl: async (props) => {
+    return (_jsxs(Canvas, { camera: { position: [50, 50, 50], fov: 50 }, className: `transition-colors duration-700 ${theme === 'dark' ? 'bg-[#1f2433]' : 'bg-[#fafafa]'}`, dpr: [1, 1.5], gl: (props) => {
             const renderer = new THREE.WebGPURenderer(props);
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
             renderer.toneMappingExposure = 0.9;
-            await renderer.init();
             return renderer;
         }, shadows: {
             type: THREE.PCFShadowMap,
             enabled: true,
-        }, children: [_jsx(GroundOccluder, {}), _jsx(ViewerCamera, {}), _jsx(Lights, {}), _jsx(Bvh, { children: _jsx(SceneRenderer, {}) }), _jsx(LevelSystem, {}), _jsx(GuideSystem, {}), _jsx(ScanSystem, {}), _jsx(WallCutout, {}), _jsx(CeilingSystem, {}), _jsx(DoorSystem, {}), _jsx(ItemSystem, {}), _jsx(RoofSystem, {}), _jsx(SlabSystem, {}), _jsx(WallSystem, {}), _jsx(WindowSystem, {}), _jsx(ZoneSystem, {}), _jsx(PostProcessing, {}), selectionManager === 'default' && _jsx(SelectionManager, {}), children] }));
+        }, children: [_jsx(GroundOccluder, {}), _jsx(ViewerCamera, {}), _jsx(Lights, {}), _jsx(Bvh, { children: _jsx(SceneRenderer, {}) }), _jsx(LevelSystem, {}), _jsx(GuideSystem, {}), _jsx(ScanSystem, {}), _jsx(WallCutout, {}), _jsx(CeilingSystem, {}), _jsx(DoorSystem, {}), _jsx(ItemSystem, {}), _jsx(RoofSystem, {}), _jsx(SlabSystem, {}), _jsx(WallSystem, {}), _jsx(WindowSystem, {}), _jsx(ZoneSystem, {}), _jsx(PostProcessing, {}), _jsx(GPUDeviceWatcher, {}), _jsx(ItemLightSystem, {}), selectionManager === 'default' && _jsx(SelectionManager, {}), perf && _jsx(PerfMonitor, {}), children] }));
+};
+const DebugRenderer = () => {
+    useFrame(({ gl, scene, camera }) => {
+        gl.render(scene, camera);
+    });
+    return null;
 };
 export default Viewer;

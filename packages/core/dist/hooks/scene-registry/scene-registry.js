@@ -14,10 +14,18 @@ export const sceneRegistry = {
         slab: new Set(),
         zone: new Set(),
         roof: new Set(),
+        'roof-segment': new Set(),
         scan: new Set(),
         guide: new Set(),
         window: new Set(),
         door: new Set(),
+    },
+    /** Remove all entries. Call when unloading a scene to prevent stale 3D refs. */
+    clear() {
+        this.nodes.clear();
+        for (const set of Object.values(this.byType)) {
+            set.clear();
+        }
     },
 };
 export function useRegistry(id, type, ref) {

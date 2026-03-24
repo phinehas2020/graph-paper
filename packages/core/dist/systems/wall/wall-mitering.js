@@ -52,11 +52,11 @@ function findJunctions(walls) {
         if (!junctions.has(keyStart)) {
             junctions.set(keyStart, { meetingPoint: startPt, connectedWalls: [] });
         }
-        junctions.get(keyStart).connectedWalls.push({ wall, endType: 'start' });
+        junctions.get(keyStart)?.connectedWalls.push({ wall, endType: 'start' });
         if (!junctions.has(keyEnd)) {
             junctions.set(keyEnd, { meetingPoint: endPt, connectedWalls: [] });
         }
-        junctions.get(keyEnd).connectedWalls.push({ wall, endType: 'end' });
+        junctions.get(keyEnd)?.connectedWalls.push({ wall, endType: 'end' });
     }
     // Second pass: detect T-junctions (walls passing through junction points)
     for (const [_key, junction] of junctions.entries()) {

@@ -1,7 +1,7 @@
 export class SpatialGrid {
-    config;
     cells = new Map();
     itemCells = new Map(); // reverse lookup
+    config;
     constructor(config) {
         this.config = config;
     }
@@ -48,7 +48,7 @@ export class SpatialGrid {
             if (!this.cells.has(key)) {
                 this.cells.set(key, { itemIds: new Set() });
             }
-            this.cells.get(key).itemIds.add(itemId);
+            this.cells.get(key)?.itemIds.add(itemId);
         }
     }
     // Remove an item

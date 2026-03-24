@@ -20,14 +20,14 @@ export declare function itemOverlapsPolygon(position: [number, number, number], 
  */
 export declare function wallOverlapsPolygon(start: [number, number], end: [number, number], polygon: Array<[number, number]>): boolean;
 export declare class SpatialGridManager {
-    private cellSize;
-    private floorGrids;
-    private wallGrids;
-    private walls;
-    private slabsByLevel;
-    private ceilingGrids;
-    private ceilings;
-    private itemCeilingMap;
+    private readonly floorGrids;
+    private readonly wallGrids;
+    private readonly walls;
+    private readonly slabsByLevel;
+    private readonly ceilingGrids;
+    private readonly ceilings;
+    private readonly itemCeilingMap;
+    private readonly cellSize;
     constructor(cellSize?: number);
     private getFloorGrid;
     private getWallGrid;

@@ -99,7 +99,7 @@ export class WallSpatialGrid {
         if (!this.wallItems.has(wallId)) {
             this.wallItems.set(wallId, []);
         }
-        this.wallItems.get(wallId).push(placement);
+        this.wallItems.get(wallId)?.push(placement);
         this.itemToWall.set(itemId, wallId);
     }
     remove(wallId, itemId) {

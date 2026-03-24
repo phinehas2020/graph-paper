@@ -1,4 +1,4 @@
-import type { RoofNode } from '@pascal-app/core'
+import { type AnyNode, type RoofNode, type RoofSegmentNode, useScene } from '@pascal-app/core'
 import { useViewer } from '@pascal-app/viewer'
 import Image from 'next/image'
 import { useState } from 'react'
@@ -16,11 +16,16 @@ interface RoofTreeNodeProps {
 
 export function RoofTreeNode({ node, depth, isLast }: RoofTreeNodeProps) {
   const [isEditing, setIsEditing] = useState(false)
+  const nodes = useScene((state) => state.nodes)
   const selectedIds = useViewer((state) => state.selection.selectedIds)
   const isSelected = selectedIds.includes(node.id)
   const isHovered = useViewer((state) => state.hoveredId === node.id)
   const setSelection = useViewer((state) => state.setSelection)
   const setHoveredId = useViewer((state) => state.setHoveredId)
+  const segmentId = node.children?.[0]
+  const segment = segmentId
+    ? (nodes[segmentId as AnyNode['id']] as RoofSegmentNode | undefined)
+    : undefined
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -42,9 +47,9 @@ export function RoofTreeNode({ node, depth, isLast }: RoofTreeNodeProps) {
     setHoveredId(null)
   }
 
-  // Calculate dimensions: length × total width (leftWidth + rightWidth)
-  const totalWidth = node.leftWidth + node.rightWidth
-  const sizeLabel = formatDimensionTupleImperial([node.length, totalWidth])
+  const sizeLabel = segment
+    ? formatDimensionTupleImperial([segment.width, segment.depth])
+    : 'Roof group'
   const defaultName = `Roof (${sizeLabel})`
 
   return (

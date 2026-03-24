@@ -7,6 +7,7 @@ declare module '@react-three/fiber' {
 interface ViewerProps {
     children?: React.ReactNode;
     selectionManager?: 'default' | 'custom';
+    perf?: boolean;
 }
 declare const Viewer: React.FC<ViewerProps>;
 export default Viewer;

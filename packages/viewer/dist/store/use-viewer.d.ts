@@ -42,6 +42,8 @@ type ViewerState = {
     outliner: Outliner;
     exportScene: (() => Promise<void>) | null;
     setExportScene: (fn: (() => Promise<void>) | null) => void;
+    debugColors: boolean;
+    setDebugColors: (enabled: boolean) => void;
     cameraDragging: boolean;
     setCameraDragging: (dragging: boolean) => void;
 };
