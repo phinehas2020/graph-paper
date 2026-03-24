@@ -20,6 +20,7 @@ export const CustomCameraControls = () => {
   const selection = useViewer((s) => s.selection)
   const currentLevelId = selection.levelId
   const firstLoad = useRef(true)
+  const last3DPolarAngle = useRef(Math.PI / 4)
 
   const camera = useThree((state) => state.camera)
   const raycaster = useThree((state) => state.raycaster)
@@ -54,6 +55,32 @@ export const CustomCameraControls = () => {
   // Configure mouse buttons based on control mode and camera mode
   const cameraMode = useViewer((state) => state.cameraMode)
   const cameraInteractionMode = useViewer((state) => state.cameraInteractionMode)
+  const is2DMode = useViewer((state) => state.is2DMode)
+
+  useEffect(() => {
+    if (isPreviewMode) return
+
+    const frameId = window.requestAnimationFrame(() => {
+      if (!controls.current) return
+
+      if (is2DMode) {
+        last3DPolarAngle.current = Math.max(controls.current.polarAngle, 0.2)
+        controls.current.rotateTo(controls.current.azimuthAngle, 0.0001, true)
+        return
+      }
+
+      if (cameraMode === 'perspective') {
+        controls.current.rotateTo(
+          controls.current.azimuthAngle,
+          last3DPolarAngle.current,
+          true,
+        )
+      }
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [cameraMode, is2DMode, isPreviewMode])
+
   const mouseButtons = useMemo(() => {
     // Use ZOOM for orthographic camera, DOLLY for perspective camera
     const wheelAction =
@@ -283,6 +310,11 @@ export const CustomCameraControls = () => {
       if (!controls.current) return
 
       const currentPolarAngle = controls.current.polarAngle
+
+      if (useViewer.getState().is2DMode) {
+        controls.current.rotatePolarTo(0.0001, true)
+        return
+      }
 
       // Toggle: if already near top view (< 0.1 radians ≈ 5.7°), go back to 45°
       // Otherwise, go to top view (0°)

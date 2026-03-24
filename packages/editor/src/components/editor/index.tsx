@@ -21,6 +21,7 @@ import { ZoneSystem } from '../systems/zone/zone-system'
 import { ToolManager } from '../tools/tool-manager'
 import { ActionMenu } from '../ui/action-menu'
 import { HelperManager } from '../ui/helpers/helper-manager'
+import { CameraControlsHelper } from '../ui/helpers/camera-controls-helper'
 import { PanelManager } from '../ui/panels/panel-manager'
 import { ErrorBoundary } from '../ui/primitives/error-boundary'
 import { SidebarProvider } from '../ui/primitives/sidebar'
@@ -212,6 +213,7 @@ export default function Editor({
             <ActionMenu />
             <PanelManager />
             <HelperManager />
+            <CameraControlsHelper />
 
             <SidebarProvider className="fixed z-20">
               <AppSidebar

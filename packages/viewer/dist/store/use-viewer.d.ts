@@ -18,6 +18,10 @@ type ViewerState = {
     setCameraMode: (mode: 'perspective' | 'orthographic') => void;
     cameraInteractionMode: 'orbit' | 'pan';
     setCameraInteractionMode: (mode: 'orbit' | 'pan') => void;
+    is2DMode: boolean;
+    setIs2DMode: (enabled: boolean) => void;
+    showCameraControlsHelper: boolean;
+    setShowCameraControlsHelper: (show: boolean) => void;
     theme: 'light' | 'dark';
     setTheme: (theme: 'light' | 'dark') => void;
     levelMode: 'stacked' | 'exploded' | 'solo' | 'manual';
@@ -61,6 +65,7 @@ declare const useViewer: import("zustand").UseBoundStore<Omit<import("zustand").
                 showGuides?: boolean;
                 showGrid?: boolean;
             }>;
+            showCameraControlsHelper: boolean;
         }, unknown>>) => void;
         clearStorage: () => void;
         rehydrate: () => Promise<void> | void;
@@ -77,6 +82,7 @@ declare const useViewer: import("zustand").UseBoundStore<Omit<import("zustand").
                 showGuides?: boolean;
                 showGrid?: boolean;
             }>;
+            showCameraControlsHelper: boolean;
         }, unknown>>;
     };
 }>;

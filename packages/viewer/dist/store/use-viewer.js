@@ -9,6 +9,10 @@ const useViewer = create()(persist((set) => ({
     setCameraMode: (mode) => set({ cameraMode: mode }),
     cameraInteractionMode: 'orbit',
     setCameraInteractionMode: (mode) => set({ cameraInteractionMode: mode }),
+    is2DMode: false,
+    setIs2DMode: (enabled) => set({ is2DMode: enabled }),
+    showCameraControlsHelper: true,
+    setShowCameraControlsHelper: (show) => set({ showCameraControlsHelper: show }),
     theme: 'light',
     setTheme: (theme) => set({ theme }),
     levelMode: 'stacked',
@@ -107,6 +111,7 @@ const useViewer = create()(persist((set) => ({
         levelMode: state.levelMode,
         wallMode: state.wallMode,
         projectPreferences: state.projectPreferences,
+        showCameraControlsHelper: state.showCameraControlsHelper,
     }),
 }));
 export default useViewer;

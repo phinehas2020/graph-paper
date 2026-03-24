@@ -178,6 +178,9 @@ export function CommandPalette() {
   const setCameraMode = useViewer((s) => s.setCameraMode)
   const cameraInteractionMode = useViewer((s) => s.cameraInteractionMode)
   const setCameraInteractionMode = useViewer((s) => s.setCameraInteractionMode)
+  const is2DMode = useViewer((s) => s.is2DMode)
+  const setIs2DMode = useViewer((s) => s.setIs2DMode)
+  const setShowCameraControlsHelper = useViewer((s) => s.setShowCameraControlsHelper)
   const levelMode = useViewer((s) => s.levelMode)
   const setLevelMode = useViewer((s) => s.setLevelMode)
   const wallMode = useViewer((s) => s.wallMode)
@@ -563,11 +566,31 @@ export function CommandPalette() {
                     keywords={['camera', 'ortho', 'perspective', '2d', '3d', 'view']}
                     label={`Camera: Switch to ${cameraMode === 'perspective' ? 'Orthographic' : 'Perspective'}`}
                     onSelect={() =>
-                      run(() =>
-                        setCameraMode(
-                          cameraMode === 'perspective' ? 'orthographic' : 'perspective',
-                        ),
-                      )
+                      run(() => {
+                        const nextMode =
+                          cameraMode === 'perspective' ? 'orthographic' : 'perspective'
+                        setCameraMode(nextMode)
+                        if (nextMode === 'perspective') {
+                          setIs2DMode(false)
+                        }
+                        setShowCameraControlsHelper(true)
+                      })
+                    }
+                  />
+                  <Item
+                    icon={<Grid3X3 className="h-4 w-4" />}
+                    keywords={['camera', '2d', 'plan', 'drawing', 'orthographic', 'top']}
+                    label={is2DMode ? 'Camera: Exit 2D Drawing' : 'Camera: Enter 2D Drawing'}
+                    onSelect={() =>
+                      run(() => {
+                        const nextMode = !is2DMode
+                        setIs2DMode(nextMode)
+                        setCameraMode(nextMode ? 'orthographic' : 'perspective')
+                        if (nextMode && cameraInteractionMode === 'pan') {
+                          setCameraInteractionMode('orbit')
+                        }
+                        setShowCameraControlsHelper(true)
+                      })
                     }
                   />
                   <Item
@@ -575,11 +598,10 @@ export function CommandPalette() {
                     keywords={['camera', 'pan', 'move', 'drag', 'hand']}
                     label={cameraInteractionMode === 'pan' ? 'Camera: Exit Pan Mode' : 'Camera: Enter Pan Mode'}
                     onSelect={() =>
-                      run(() =>
-                        setCameraInteractionMode(
-                          cameraInteractionMode === 'pan' ? 'orbit' : 'pan',
-                        ),
-                      )
+                      run(() => {
+                        setCameraInteractionMode(cameraInteractionMode === 'pan' ? 'orbit' : 'pan')
+                        setShowCameraControlsHelper(true)
+                      })
                     }
                   />
                   <Item

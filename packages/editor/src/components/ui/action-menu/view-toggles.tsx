@@ -42,6 +42,8 @@ const wallModeOrder: WallMode[] = ['cutaway', 'up', 'down']
 export function ViewToggles() {
   const cameraMode = useViewer((state) => state.cameraMode)
   const setCameraMode = useViewer((state) => state.setCameraMode)
+  const setIs2DMode = useViewer((state) => state.setIs2DMode)
+  const setShowCameraControlsHelper = useViewer((state) => state.setShowCameraControlsHelper)
   const levelMode = useViewer((state) => state.levelMode)
   const setLevelMode = useViewer((state) => state.setLevelMode)
   const wallMode = useViewer((state) => state.wallMode)
@@ -52,7 +54,12 @@ export function ViewToggles() {
   const setShowGuides = useViewer((state) => state.setShowGuides)
 
   const toggleCameraMode = () => {
-    setCameraMode(cameraMode === 'perspective' ? 'orthographic' : 'perspective')
+    const nextMode = cameraMode === 'perspective' ? 'orthographic' : 'perspective'
+    setCameraMode(nextMode)
+    if (nextMode === 'perspective') {
+      setIs2DMode(false)
+    }
+    setShowCameraControlsHelper(true)
   }
 
   const cycleLevelMode = () => {

@@ -44,8 +44,10 @@ export const useKeyboard = () => {
         useEditor.getState().setStructureLayer('zones')
       } else if (e.key === 'h' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()
-        const { cameraInteractionMode, setCameraInteractionMode } = useViewer.getState()
+        const { cameraInteractionMode, setCameraInteractionMode, setShowCameraControlsHelper } =
+          useViewer.getState()
         setCameraInteractionMode(cameraInteractionMode === 'pan' ? 'orbit' : 'pan')
+        setShowCameraControlsHelper(true)
       }
       if (e.key === 'v' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()

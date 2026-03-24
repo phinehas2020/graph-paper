@@ -27,6 +27,10 @@ type ViewerState = {
   setCameraMode: (mode: 'perspective' | 'orthographic') => void
   cameraInteractionMode: 'orbit' | 'pan'
   setCameraInteractionMode: (mode: 'orbit' | 'pan') => void
+  is2DMode: boolean
+  setIs2DMode: (enabled: boolean) => void
+  showCameraControlsHelper: boolean
+  setShowCameraControlsHelper: (show: boolean) => void
 
   theme: 'light' | 'dark'
   setTheme: (theme: 'light' | 'dark') => void
@@ -81,6 +85,10 @@ const useViewer = create<ViewerState>()(
       setCameraMode: (mode) => set({ cameraMode: mode }),
       cameraInteractionMode: 'orbit',
       setCameraInteractionMode: (mode) => set({ cameraInteractionMode: mode }),
+      is2DMode: false,
+      setIs2DMode: (enabled) => set({ is2DMode: enabled }),
+      showCameraControlsHelper: true,
+      setShowCameraControlsHelper: (show) => set({ showCameraControlsHelper: show }),
 
       theme: 'light',
       setTheme: (theme) => set({ theme }),
@@ -194,6 +202,7 @@ const useViewer = create<ViewerState>()(
         levelMode: state.levelMode,
         wallMode: state.wallMode,
         projectPreferences: state.projectPreferences,
+        showCameraControlsHelper: state.showCameraControlsHelper,
       }),
     },
   ),
