@@ -1,5 +1,11 @@
-import { type AssetInput, ItemNode } from '@pascal-app/core'
-export const CATALOG_ITEMS: AssetInput[] = [
+import type { AssetInput } from '@pascal-app/core'
+import type { CatalogCategory } from '../../../store/use-editor'
+
+export type CatalogItem = AssetInput & {
+  catalogCategories?: CatalogCategory[]
+}
+
+export const CATALOG_ITEMS: CatalogItem[] = [
   {
     id: 'tesla',
     category: 'outdoor',
@@ -468,6 +474,7 @@ export const CATALOG_ITEMS: AssetInput[] = [
   {
     id: 'kitchen-cabinet',
     category: 'kitchen',
+    catalogCategories: ['furniture'],
     tags: ['floor', 'large', 'storage'],
     name: 'Kitchen Cabinet',
     thumbnail: '/items/kitchen-cabinet/thumbnail.webp',
@@ -478,6 +485,40 @@ export const CATALOG_ITEMS: AssetInput[] = [
     dimensions: [2, 1.1, 1],
     surface: {
       height: 1.1,
+    },
+  },
+
+  {
+    id: 'small-kitchen-cabinet',
+    category: 'kitchen',
+    catalogCategories: ['furniture'],
+    tags: ['floor', 'storage'],
+    name: 'Small Kitchen Cabinet',
+    thumbnail: '/items/small-kitchen-cabinet/thumbnail.webp',
+    src: '/items/small-kitchen-cabinet/model.glb',
+    scale: [1, 1, 1],
+    offset: [0, 0, 0],
+    rotation: [0, 0, 0],
+    dimensions: [1.1, 1.1, 0.8],
+    surface: {
+      height: 1.1,
+    },
+  },
+
+  {
+    id: 'sink-cabinet',
+    category: 'kitchen',
+    catalogCategories: ['furniture'],
+    tags: ['floor', 'storage'],
+    name: 'Sink Cabinet',
+    thumbnail: '/items/sink-cabinet/thumbnail.webp',
+    src: '/items/sink-cabinet/model.glb',
+    scale: [1, 1, 1],
+    offset: [0, 0.55, 0.02],
+    rotation: [0, 0, 0],
+    dimensions: [1, 1.3, 0.7],
+    surface: {
+      height: 0.8,
     },
   },
 

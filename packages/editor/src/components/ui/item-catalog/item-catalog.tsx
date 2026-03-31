@@ -21,7 +21,9 @@ export function ItemCatalog({ category }: { category: CatalogCategory }) {
   const [activePlacementTag, setActivePlacementTag] = useState<string | null>(null)
   const [activeFunctionalTag, setActiveFunctionalTag] = useState<string | null>(null)
 
-  const categoryItems = CATALOG_ITEMS.filter((item) => item.category === category)
+  const categoryItems = CATALOG_ITEMS.filter(
+    (item) => item.category === category || item.catalogCategories?.includes(category),
+  )
 
   // Collect tags available in this category
   const allTags = Array.from(new Set(categoryItems.flatMap((item) => item.tags ?? [])))
