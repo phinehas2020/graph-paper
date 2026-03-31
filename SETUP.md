@@ -1,6 +1,6 @@
-# Pascal Editor - Setup Guide
+# graph paper editor - Setup Guide
 
-This guide will help you set up the Pascal Editor with authentication and database integration.
+This guide will help you set up the graph paper editor with authentication and database integration.
 
 ## Prerequisites
 

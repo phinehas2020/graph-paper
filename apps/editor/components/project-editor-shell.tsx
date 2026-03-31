@@ -21,7 +21,7 @@ function EditorLoadingState({ message }: { message: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0f172a] px-6 text-white">
       <div className="max-w-md rounded-[1.75rem] border border-white/10 bg-white/5 p-8 text-center shadow-2xl backdrop-blur">
-        <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Pascal Editor</p>
+        <p className="text-xs uppercase tracking-[0.32em] text-slate-400">graph paper editor</p>
         <p className="mt-4 font-medium text-lg">{message}</p>
       </div>
     </div>

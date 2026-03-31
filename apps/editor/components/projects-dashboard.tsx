@@ -265,7 +265,7 @@ export function ProjectsDashboard() {
         <div className="relative flex flex-1 flex-col gap-8">
           <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Pascal Editor</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">graph paper editor</p>
               <p className="mt-2 max-w-2xl text-sm text-slate-600">
                 Supabase-backed auth and project persistence for the current editor structure.
               </p>

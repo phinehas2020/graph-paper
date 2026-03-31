@@ -1,4 +1,4 @@
-# Pascal Editor V2 — Architecture
+# graph paper editor V2 — Architecture
 
 ## Project Structure
 
