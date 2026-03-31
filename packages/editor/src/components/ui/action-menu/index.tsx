@@ -17,6 +17,7 @@ export function ActionMenu({ className }: { className?: string }) {
   const mode = useEditor((state) => state.mode)
   const tool = useEditor((state) => state.tool)
   const catalogCategory = useEditor((state) => state.catalogCategory)
+  const showInlineTools = mode === 'build' && (phase === 'structure' || phase === 'furnish')
   const reducedMotion = useReducedMotion()
   const transition = reducedMotion
     ? { duration: 0 }
@@ -67,79 +68,22 @@ export function ActionMenu({ className }: { className?: string }) {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {phase === 'furnish' && mode === 'build' && (
-            <motion.div
-              animate={{
-                opacity: 1,
-                maxHeight: 80,
-                paddingTop: 8,
-                paddingBottom: 8,
-                borderBottomWidth: 1,
-              }}
-              className={cn(
-                'overflow-hidden border-border',
-                'max-h-20 border-b px-2 py-2 opacity-100',
-              )}
-              exit={{
-                opacity: 0,
-                maxHeight: 0,
-                paddingTop: 0,
-                paddingBottom: 0,
-                borderBottomWidth: 0,
-              }}
-              initial={{
-                opacity: 0,
-                maxHeight: 0,
-                paddingTop: 0,
-                paddingBottom: 0,
-                borderBottomWidth: 0,
-              }}
-              transition={transition}
-            >
-              <div className="mx-auto w-max">
-                <FurnishTools />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Structure Tools Row - Animated */}
-        <AnimatePresence>
-          {phase === 'structure' && mode === 'build' && (
-            <motion.div
-              animate={{
-                opacity: 1,
-                maxHeight: 80,
-                paddingTop: 8,
-                paddingBottom: 8,
-                borderBottomWidth: 1,
-              }}
-              className={cn('max-h-20 overflow-hidden border-border border-b px-2 py-2')}
-              exit={{
-                opacity: 0,
-                maxHeight: 0,
-                paddingTop: 0,
-                paddingBottom: 0,
-                borderBottomWidth: 0,
-              }}
-              initial={{
-                opacity: 0,
-                maxHeight: 0,
-                paddingTop: 0,
-                paddingBottom: 0,
-                borderBottomWidth: 0,
-              }}
-              transition={transition}
-            >
-              <div className="w-max">
-                <StructureTools />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
         {/* Control Mode Row - Always visible, centered */}
         <div className="flex items-center justify-center gap-1 px-2 py-1.5">
+          <AnimatePresence initial={false}>
+            {showInlineTools && (
+              <motion.div
+                animate={{ opacity: 1, width: 'auto', marginRight: 0 }}
+                className="flex items-center overflow-hidden"
+                exit={{ opacity: 0, width: 0, marginRight: -4 }}
+                initial={{ opacity: 0, width: 0, marginRight: -4 }}
+                transition={transition}
+              >
+                {phase === 'structure' ? <StructureTools /> : <FurnishTools />}
+                <div className="mx-1 h-5 w-px bg-border" />
+              </motion.div>
+            )}
+          </AnimatePresence>
           <ControlModes />
           <div className="mx-1 h-5 w-px bg-border" />
           <ViewToggles />
