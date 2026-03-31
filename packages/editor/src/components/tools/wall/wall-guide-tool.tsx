@@ -20,7 +20,7 @@ import { sfxEmitter } from '../../../lib/sfx-bus'
 import { DrawingLengthBadge } from '../shared/drawing-length-badge'
 import { DrawingLengthOverlay } from '../shared/drawing-length-overlay'
 import { formatLength } from '../shared/drawing-length-utils'
-import { getSideFromNormal, isValidWallSideFace } from '../item/placement-math'
+import { WALL_SNAP_STEP, getSideFromNormal, isValidWallSideFace } from '../item/placement-math'
 
 const GUIDE_COLOR_VALID = '#22d3ee'
 const GUIDE_COLOR_INVALID = '#ef4444'
@@ -35,7 +35,8 @@ type PreviewContext = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
-const snapGuideOffset = (value: number) => Math.round(value / METERS_PER_INCH) * METERS_PER_INCH
+const snapGuideOffset = (value: number) =>
+  Math.round(value / WALL_SNAP_STEP) * WALL_SNAP_STEP
 
 const buildGuideBadge = (reference: WallGuideReference, offset: number) =>
   `${reference === 'bottom' ? 'Bottom' : 'Top'} ${formatLength(offset)}`
