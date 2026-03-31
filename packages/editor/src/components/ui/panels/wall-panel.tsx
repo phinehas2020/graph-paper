@@ -1,6 +1,6 @@
 'use client'
 
-import { type AnyNode, type AnyNodeId, useScene, type WallNode } from '@pascal-app/core'
+import { type AnyNode, useScene, type WallNode } from '@pascal-app/core'
 import { useViewer } from '@pascal-app/viewer'
 import { useCallback } from 'react'
 import { formatLengthImperial } from '../../../lib/units'
@@ -13,29 +13,40 @@ export function WallPanel() {
   const selectedIds = useViewer((s) => s.selection.selectedIds)
   const setSelection = useViewer((s) => s.setSelection)
   const nodes = useScene((s) => s.nodes)
-  const updateNode = useScene((s) => s.updateNode)
+  const updateNodes = useScene((s) => s.updateNodes)
 
-  const selectedId = selectedIds[0]
-  const node = selectedId ? (nodes[selectedId as AnyNode['id']] as WallNode | undefined) : undefined
+  const selectedWalls = selectedIds
+    .map((id) => nodes[id as AnyNode['id']])
+    .filter((node): node is WallNode => !!node && node.type === 'wall')
+  const node = selectedWalls[0]
+  const isMultiSelection = selectedWalls.length > 1
+  const allSelectedAreWalls = selectedWalls.length > 0 && selectedWalls.length === selectedIds.length
 
   const handleUpdate = useCallback(
     (updates: Partial<WallNode>) => {
-      if (!selectedId) return
-      updateNode(selectedId as AnyNode['id'], updates)
-      useScene.getState().dirtyNodes.add(selectedId as AnyNodeId)
+      const wallUpdates = selectedIds.flatMap((id) => {
+        const selectedNode = nodes[id as AnyNode['id']]
+        if (!selectedNode || selectedNode.type !== 'wall') return []
+        return [{ id: selectedNode.id, data: updates }]
+      })
+      if (wallUpdates.length === 0) return
+      updateNodes(wallUpdates)
     },
-    [selectedId, updateNode],
+    [nodes, selectedIds, updateNodes],
   )
 
   const handleClose = useCallback(() => {
     setSelection({ selectedIds: [] })
   }, [setSelection])
 
-  if (!node || node.type !== 'wall' || selectedIds.length !== 1) return null
+  if (!node || !allSelectedAreWalls) return null
 
-  const dx = node.end[0] - node.start[0]
-  const dz = node.end[1] - node.start[1]
-  const length = Math.sqrt(dx * dx + dz * dz)
+  const lengths = selectedWalls.map((wall) => {
+    const dx = wall.end[0] - wall.start[0]
+    const dz = wall.end[1] - wall.start[1]
+    return Math.sqrt(dx * dx + dz * dz)
+  })
+  const totalLength = lengths.reduce((sum, length) => sum + length, 0)
 
   const height = node.height ?? 2.5
   const thickness = node.thickness ?? 0.1
@@ -45,10 +56,15 @@ export function WallPanel() {
     <PanelWrapper
       icon="/icons/wall.png"
       onClose={handleClose}
-      title={node.name || 'Wall'}
+      title={isMultiSelection ? `${selectedWalls.length} Walls` : node.name || 'Wall'}
       width={280}
     >
       <PanelSection title="Dimensions">
+        {isMultiSelection && (
+          <p className="px-1 pb-2 text-muted-foreground text-xs">
+            Height, thickness, and color changes apply to every selected wall.
+          </p>
+        )}
         <SliderControl
           label="Height"
           max={6}
@@ -76,9 +92,15 @@ export function WallPanel() {
       </PanelSection>
 
       <PanelSection title="Info">
+        {isMultiSelection && (
+          <div className="flex items-center justify-between px-2 py-1 text-muted-foreground text-sm">
+            <span>Selected</span>
+            <span className="font-mono text-white">{selectedWalls.length}</span>
+          </div>
+        )}
         <div className="flex items-center justify-between px-2 py-1 text-muted-foreground text-sm">
-          <span>Length</span>
-          <span className="font-mono text-white">{formatLengthImperial(length)}</span>
+          <span>{isMultiSelection ? 'Total length' : 'Length'}</span>
+          <span className="font-mono text-white">{formatLengthImperial(totalLength)}</span>
         </div>
       </PanelSection>
     </PanelWrapper>

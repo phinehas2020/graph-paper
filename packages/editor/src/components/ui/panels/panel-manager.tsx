@@ -16,10 +16,16 @@ export function PanelManager() {
   const selectedIds = useViewer((s) => s.selection.selectedIds)
   const selectedReferenceId = useEditor((s) => s.selectedReferenceId)
   const nodes = useScene((s) => s.nodes)
+  const allSelectedAreWalls =
+    selectedIds.length > 1 && selectedIds.every((id) => nodes[id as AnyNodeId]?.type === 'wall')
 
   // Show reference panel if a reference is selected
   if (selectedReferenceId) {
     return <ReferencePanel />
+  }
+
+  if (allSelectedAreWalls) {
+    return <WallPanel />
   }
 
   // Show appropriate panel based on selected node type
