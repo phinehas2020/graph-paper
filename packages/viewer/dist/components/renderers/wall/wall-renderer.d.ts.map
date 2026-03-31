@@ -1,1 +1,1 @@
-{"version":3,"file":"wall-renderer.d.ts","sourceRoot":"","sources":["../../../../src/components/renderers/wall/wall-renderer.tsx"],"names":[],"mappings":"AAAA,OAAO,EAAe,KAAK,QAAQ,EAAE,MAAM,kBAAkB,CAAA;AAM7D,eAAO,MAAM,YAAY,GAAI,UAAU;IAAE,IAAI,EAAE,QAAQ,CAAA;CAAE,4CAuBxD,CAAA"}
+{"version":3,"file":"wall-renderer.d.ts","sourceRoot":"","sources":["../../../../src/components/renderers/wall/wall-renderer.tsx"],"names":[],"mappings":"AAAA,OAAO,EAAkD,KAAK,QAAQ,EAAE,MAAM,kBAAkB,CAAA;AAYhG,eAAO,MAAM,YAAY,GAAI,UAAU;IAAE,IAAI,EAAE,QAAQ,CAAA;CAAE,4CA+DxD,CAAA"}

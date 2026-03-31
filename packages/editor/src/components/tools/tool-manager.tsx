@@ -13,6 +13,7 @@ import { SiteBoundaryEditor } from './site/site-boundary-editor'
 import { SlabBoundaryEditor } from './slab/slab-boundary-editor'
 import { SlabHoleEditor } from './slab/slab-hole-editor'
 import { SlabTool } from './slab/slab-tool'
+import { WallGuideTool } from './wall/wall-guide-tool'
 import { WallTool } from './wall/wall-tool'
 import { WindowTool } from './window/window-tool'
 import { ZoneBoundaryEditor } from './zone/zone-boundary-editor'
@@ -24,6 +25,7 @@ const tools: Record<Phase, Partial<Record<Tool, React.FC>>> = {
   },
   structure: {
     wall: WallTool,
+    'wall-guide': WallGuideTool,
     measure: MeasureTool,
     slab: SlabTool,
     ceiling: CeilingTool,

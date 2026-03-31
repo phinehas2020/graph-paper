@@ -18,6 +18,10 @@ function migrateNodes(nodes: Record<string, any>): Record<string, AnyNode> {
     if (node.type === 'item' && !('scale' in node)) {
       patchedNodes[id] = { ...node, scale: [1, 1, 1] }
     }
+    // 1b. Wall guide migration
+    if (node.type === 'wall' && !('guides' in node)) {
+      patchedNodes[id] = { ...node, guides: [] }
+    }
     // 2. Old roof to new roof + segment migration
     if (node.type === 'roof' && !('children' in node)) {
       const oldRoof = node

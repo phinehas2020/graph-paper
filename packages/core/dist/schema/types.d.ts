@@ -216,6 +216,15 @@ export declare const AnyNode: z.ZodDiscriminatedUnion<[z.ZodObject<{
         interior: "interior";
         exterior: "exterior";
     }>>;
+    guides: z.ZodDefault<z.ZodArray<z.ZodObject<{
+        id: z.ZodDefault<z.ZodString>;
+        offset: z.ZodNumber;
+        reference: z.ZodDefault<z.ZodEnum<{
+            bottom: "bottom";
+            top: "top";
+        }>>;
+        color: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>>;
 }, z.core.$strip>, z.ZodObject<{
     object: z.ZodDefault<z.ZodLiteral<"node">>;
     name: z.ZodOptional<z.ZodString>;
@@ -419,13 +428,13 @@ export declare const AnyNode: z.ZodDiscriminatedUnion<[z.ZodObject<{
     position: z.ZodDefault<z.ZodTuple<[z.ZodNumber, z.ZodNumber, z.ZodNumber], null>>;
     rotation: z.ZodDefault<z.ZodNumber>;
     roofType: z.ZodDefault<z.ZodEnum<{
-        flat: "flat";
         hip: "hip";
         gable: "gable";
         shed: "shed";
         gambrel: "gambrel";
         dutch: "dutch";
         mansard: "mansard";
+        flat: "flat";
     }>>;
     width: z.ZodDefault<z.ZodNumber>;
     depth: z.ZodDefault<z.ZodNumber>;

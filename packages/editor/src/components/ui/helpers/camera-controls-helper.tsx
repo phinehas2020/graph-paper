@@ -4,7 +4,16 @@ import { useViewer } from '@pascal-app/viewer'
 import { MousePointer2, MoveHorizontal, Search, X } from 'lucide-react'
 import useEditor from '../../../store/use-editor'
 
-const hiddenHelperTools = new Set(['wall', 'measure', 'item', 'slab', 'ceiling', 'roof', 'zone'])
+const hiddenHelperTools = new Set([
+  'wall',
+  'wall-guide',
+  'measure',
+  'item',
+  'slab',
+  'ceiling',
+  'roof',
+  'zone',
+])
 
 const hintCardClassName =
   'pointer-events-auto flex min-w-[260px] items-center gap-4 rounded-2xl border border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur-md'

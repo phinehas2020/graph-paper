@@ -28,7 +28,15 @@ export { ScanNode } from './nodes/scan'
 // Nodes
 export { SiteNode } from './nodes/site'
 export { SlabNode } from './nodes/slab'
-export { WallNode } from './nodes/wall'
+export {
+  DEFAULT_WALL_HEIGHT,
+  getWallGuideLocalY,
+  getWallHeight,
+  getWallLength,
+  WallGuide,
+  WallGuideReference,
+  WallNode,
+} from './nodes/wall'
 export { WindowNode } from './nodes/window'
 export { ZoneNode } from './nodes/zone'
 export type { AnyNodeId, AnyNodeType } from './types'

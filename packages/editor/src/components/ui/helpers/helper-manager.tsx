@@ -6,6 +6,7 @@ import { ItemHelper } from './item-helper'
 import { MeasureHelper } from './measure-helper'
 import { RoofHelper } from './roof-helper'
 import { SlabHelper } from './slab-helper'
+import { WallGuideHelper } from './wall-guide-helper'
 import { WallHelper } from './wall-helper'
 
 export function HelperManager() {
@@ -20,6 +21,8 @@ export function HelperManager() {
   switch (tool) {
     case 'wall':
       return <WallHelper />
+    case 'wall-guide':
+      return <WallGuideHelper />
     case 'measure':
       return <MeasureHelper />
     case 'item':

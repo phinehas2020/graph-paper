@@ -462,6 +462,12 @@ export function CommandPalette() {
                   />
                   <Item
                     icon={<Ruler className="h-4 w-4" />}
+                    keywords={['guide', 'window', 'opening', 'sill', 'header', 'wall']}
+                    label="Wall Guide Tool"
+                    onSelect={() => activateTool('wall-guide')}
+                  />
+                  <Item
+                    icon={<Ruler className="h-4 w-4" />}
                     keywords={['measure', 'dimension', 'distance', 'length']}
                     label="Measure Tool"
                     onSelect={() => activateTool('measure')}
