@@ -8,11 +8,12 @@ import { usePresetsAdapter } from '../../../contexts/presets-context'
 import { sfxEmitter } from '../../../lib/sfx-bus'
 import useEditor from '../../../store/use-editor'
 import { ActionButton, ActionGroup } from '../controls/action-button'
-import { MetricControl } from '../controls/metric-control'
+import { ColorControl } from '../controls/color-control'
 import { PanelSection } from '../controls/panel-section'
 import { SegmentedControl } from '../controls/segmented-control'
 import { SliderControl } from '../controls/slider-control'
 import { ToggleControl } from '../controls/toggle-control'
+import { DOOR_STYLE_PRESETS } from './opening-style-presets'
 import { PanelWrapper } from './panel-wrapper'
 import { PresetsPopover } from './presets/presets-popover'
 
@@ -122,6 +123,7 @@ export function DoorPanel() {
     return {
       width: node.width,
       height: node.height,
+      leafCount: node.leafCount,
       frameThickness: node.frameThickness,
       frameDepth: node.frameDepth,
       contentPadding: node.contentPadding,
@@ -135,6 +137,7 @@ export function DoorPanel() {
       doorCloser: node.doorCloser,
       panicBar: node.panicBar,
       panicBarHeight: node.panicBarHeight,
+      color: node.color,
       segments: node.segments,
     }
   }, [node])
@@ -198,6 +201,23 @@ export function DoorPanel() {
           </button>
         </PresetsPopover>
       </div>
+
+      <PanelSection title="Styles">
+        <div className="grid grid-cols-2 gap-1.5">
+          {DOOR_STYLE_PRESETS.map((preset) => (
+            <button
+              className="flex min-h-14 w-full flex-col items-start justify-center rounded-lg border border-border/50 bg-[#2C2C2E] px-3 py-2 text-left transition-colors hover:bg-[#3e3e3e]"
+              key={preset.key}
+              onClick={() => handleUpdate(preset.getUpdates(node))}
+              title={preset.description}
+              type="button"
+            >
+              <span className="font-medium text-foreground text-xs">{preset.label}</span>
+              <span className="mt-0.5 text-[10px] text-muted-foreground">{preset.description}</span>
+            </button>
+          ))}
+        </div>
+      </PanelSection>
 
       <PanelSection title="Position">
         <SliderControl
@@ -269,6 +289,13 @@ export function DoorPanel() {
           step={0.01}
           unit="m"
           value={Math.round(node.frameDepth * 1000) / 1000}
+        />
+      </PanelSection>
+
+      <PanelSection title="Appearance">
+        <ColorControl
+          color={node.color ?? '#f2f0ed'}
+          onChange={(value) => handleUpdate({ color: value })}
         />
       </PanelSection>
 

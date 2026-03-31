@@ -7,6 +7,7 @@ import { useCallback, useEffect } from 'react'
 import useEditor from '../../../store/use-editor'
 import { formatAreaImperial, formatLengthImperial } from '../../../lib/units'
 import { ActionButton, ActionGroup } from '../controls/action-button'
+import { ColorControl } from '../controls/color-control'
 import { PanelSection } from '../controls/panel-section'
 import { SliderControl } from '../controls/slider-control'
 import { PanelWrapper } from './panel-wrapper'
@@ -146,6 +147,13 @@ export function SlabPanel() {
             onClick={() => handleUpdate({ elevation: 0.15 })}
           />
         </div>
+      </PanelSection>
+
+      <PanelSection title="Appearance">
+        <ColorControl
+          color={node.color ?? '#e5e5e5'}
+          onChange={(value) => handleUpdate({ color: value })}
+        />
       </PanelSection>
 
       <PanelSection title="Info">

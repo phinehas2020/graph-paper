@@ -3,10 +3,14 @@
 import { type AnyNode, type RoofNode, type RoofSegmentNode, useScene } from '@pascal-app/core'
 import { useViewer } from '@pascal-app/viewer'
 import { useCallback } from 'react'
+import { METERS_PER_INCH } from '../../../lib/units'
 import { ActionButton } from '../controls/action-button'
 import { PanelSection } from '../controls/panel-section'
 import { SliderControl } from '../controls/slider-control'
 import { PanelWrapper } from './panel-wrapper'
+
+const ROOF_IMPERIAL_STEP = METERS_PER_INCH
+const ROOF_LENGTH_PRECISION = 4
 
 export function RoofPanel() {
   const selectedIds = useViewer((s) => s.selection.selectedIds)
@@ -57,30 +61,30 @@ export function RoofPanel() {
             max={20}
             min={0.5}
             onChange={(v) => handleUpdateSegment({ width: v })}
-            precision={2}
-            step={0.5}
+            precision={ROOF_LENGTH_PRECISION}
+            step={ROOF_IMPERIAL_STEP}
             unit="m"
-            value={Math.round(segment.width * 100) / 100}
+            value={segment.width}
           />
           <SliderControl
             label="Depth"
             max={20}
             min={0.5}
             onChange={(v) => handleUpdateSegment({ depth: v })}
-            precision={2}
-            step={0.5}
+            precision={ROOF_LENGTH_PRECISION}
+            step={ROOF_IMPERIAL_STEP}
             unit="m"
-            value={Math.round(segment.depth * 100) / 100}
+            value={segment.depth}
           />
           <SliderControl
             label="Height"
             max={10}
             min={0.1}
             onChange={(v) => handleUpdateSegment({ roofHeight: v })}
-            precision={2}
-            step={0.1}
+            precision={ROOF_LENGTH_PRECISION}
+            step={ROOF_IMPERIAL_STEP}
             unit="m"
-            value={Math.round(segment.roofHeight * 100) / 100}
+            value={segment.roofHeight}
           />
         </PanelSection>
       ) : null}
@@ -129,10 +133,10 @@ export function RoofPanel() {
             pos[0] = v
             handleUpdateRoof({ position: pos })
           }}
-          precision={2}
-          step={0.1}
+          precision={ROOF_LENGTH_PRECISION}
+          step={ROOF_IMPERIAL_STEP}
           unit="m"
-          value={Math.round(node.position[0] * 100) / 100}
+          value={node.position[0]}
         />
         <SliderControl
           label={
@@ -147,10 +151,10 @@ export function RoofPanel() {
             pos[1] = v
             handleUpdateRoof({ position: pos })
           }}
-          precision={2}
-          step={0.1}
+          precision={ROOF_LENGTH_PRECISION}
+          step={ROOF_IMPERIAL_STEP}
           unit="m"
-          value={Math.round(node.position[1] * 100) / 100}
+          value={node.position[1]}
         />
         <SliderControl
           label={
@@ -165,10 +169,10 @@ export function RoofPanel() {
             pos[2] = v
             handleUpdateRoof({ position: pos })
           }}
-          precision={2}
-          step={0.1}
+          precision={ROOF_LENGTH_PRECISION}
+          step={ROOF_IMPERIAL_STEP}
           unit="m"
-          value={Math.round(node.position[2] * 100) / 100}
+          value={node.position[2]}
         />
       </PanelSection>
     </PanelWrapper>

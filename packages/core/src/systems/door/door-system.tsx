@@ -5,24 +5,6 @@ import { sceneRegistry } from '../../hooks/scene-registry/scene-registry'
 import type { AnyNodeId, DoorNode } from '../../schema'
 import useScene from '../../store/use-scene'
 
-const baseMaterial = new MeshStandardNodeMaterial({
-  name: 'door-base',
-  color: '#f2f0ed',
-  roughness: 0.5,
-  metalness: 0,
-})
-
-const glassMaterial = new MeshStandardNodeMaterial({
-  name: 'door-glass',
-  color: 'lightblue',
-  roughness: 0.05,
-  metalness: 0.1,
-  transparent: true,
-  opacity: 0.35,
-  side: DoubleSide,
-  depthWrite: false,
-})
-
 // Invisible material for root mesh — used as selection hitbox only
 const hitboxMaterial = new THREE.MeshBasicMaterial({ visible: false })
 
@@ -70,6 +52,35 @@ function addBox(
   parent.add(m)
 }
 
+function disposeMaterial(material: THREE.Material | THREE.Material[]) {
+  const materials = Array.isArray(material) ? material : [material]
+  for (const entry of new Set(materials)) {
+    entry.dispose()
+  }
+}
+
+function createDoorBaseMaterial(color: string) {
+  return new MeshStandardNodeMaterial({
+    name: 'door-base',
+    color,
+    roughness: 0.5,
+    metalness: 0,
+  })
+}
+
+function createDoorGlassMaterial() {
+  return new MeshStandardNodeMaterial({
+    name: 'door-glass',
+    color: 'lightblue',
+    roughness: 0.05,
+    metalness: 0.1,
+    transparent: true,
+    opacity: 0.35,
+    side: DoubleSide,
+    depthWrite: false,
+  })
+}
+
 function updateDoorMesh(node: DoorNode, mesh: THREE.Mesh) {
   // Root mesh is an invisible hitbox; all visuals live in child meshes
   mesh.geometry.dispose()
@@ -83,13 +94,17 @@ function updateDoorMesh(node: DoorNode, mesh: THREE.Mesh) {
   // Dispose and remove all old visual children; preserve 'cutout'
   for (const child of [...mesh.children]) {
     if (child.name === 'cutout') continue
-    if (child instanceof THREE.Mesh) child.geometry.dispose()
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose()
+      disposeMaterial(child.material)
+    }
     mesh.remove(child)
   }
 
   const {
     width,
     height,
+    leafCount,
     frameThickness,
     frameDepth,
     threshold,
@@ -104,11 +119,21 @@ function updateDoorMesh(node: DoorNode, mesh: THREE.Mesh) {
     contentPadding,
     hingesSide,
   } = node
+  const baseMaterial = createDoorBaseMaterial(node.color ?? '#f2f0ed')
+  const glassMaterial = createDoorGlassMaterial()
 
   // Leaf occupies the full opening (no bottom frame bar — door opens to floor)
   const leafW = width - 2 * frameThickness
   const leafH = height - frameThickness // only top frame
   const leafDepth = 0.04
+  const resolvedLeafCount = Math.max(1, Math.min(2, leafCount ?? 1))
+  const leafGap = resolvedLeafCount > 1 ? Math.min(0.02, leafW * 0.03) : 0
+  const singleLeafW = (leafW - leafGap * (resolvedLeafCount - 1)) / resolvedLeafCount
+  const leafCenters = Array.from({ length: resolvedLeafCount }, (_, index) => {
+    const span = singleLeafW * resolvedLeafCount + leafGap * (resolvedLeafCount - 1)
+    const startX = -span / 2 + singleLeafW / 2
+    return startX + index * (singleLeafW + leafGap)
+  })
   // Leaf center is shifted down from door center by half the top frame
   const leafCenterY = -frameThickness / 2
 
@@ -164,91 +189,135 @@ function updateDoorMesh(node: DoorNode, mesh: THREE.Mesh) {
   // ── Leaf — contentPadding border strips (no full backing; glass areas are open) ──
   const cpX = contentPadding[0]
   const cpY = contentPadding[1]
-  if (cpY > 0) {
-    // Top strip
-    addBox(mesh, baseMaterial, leafW, cpY, leafDepth, 0, leafCenterY + leafH / 2 - cpY / 2, 0)
-    // Bottom strip
-    addBox(mesh, baseMaterial, leafW, cpY, leafDepth, 0, leafCenterY - leafH / 2 + cpY / 2, 0)
-  }
-  if (cpX > 0) {
-    const innerH = leafH - 2 * cpY
-    // Left strip
-    addBox(mesh, baseMaterial, cpX, innerH, leafDepth, -leafW / 2 + cpX / 2, leafCenterY, 0)
-    // Right strip
-    addBox(mesh, baseMaterial, cpX, innerH, leafDepth, leafW / 2 - cpX / 2, leafCenterY, 0)
-  }
-
-  // Content area inside padding
-  const contentW = leafW - 2 * cpX
-  const contentH = leafH - 2 * cpY
-
-  // ── Segments (stacked top to bottom within content area) ──
   const totalRatio = segments.reduce((sum, s) => sum + s.heightRatio, 0)
-  const contentTop = leafCenterY + contentH / 2
 
-  let segY = contentTop
-  for (const seg of segments) {
-    const segH = (seg.heightRatio / totalRatio) * contentH
-    const segCenterY = segY - segH / 2
-
-    const numCols = seg.columnRatios.length
-    const colSum = seg.columnRatios.reduce((a, b) => a + b, 0)
-    const usableW = contentW - (numCols - 1) * seg.dividerThickness
-    const colWidths = seg.columnRatios.map((r) => (r / colSum) * usableW)
-
-    // Column x-centers (relative to mesh center)
-    const colXCenters: number[] = []
-    let cx = -contentW / 2
-    for (let c = 0; c < numCols; c++) {
-      colXCenters.push(cx + colWidths[c]! / 2)
-      cx += colWidths[c]!
-      if (c < numCols - 1) cx += seg.dividerThickness
-    }
-
-    // Column dividers within this segment
-    cx = -contentW / 2
-    for (let c = 0; c < numCols - 1; c++) {
-      cx += colWidths[c]!
+  const renderLeaf = (leafCenterX: number) => {
+    if (cpY > 0) {
+      // Top strip
       addBox(
         mesh,
         baseMaterial,
-        seg.dividerThickness,
-        segH,
-        leafDepth + 0.001,
-        cx + seg.dividerThickness / 2,
-        segCenterY,
+        singleLeafW,
+        cpY,
+        leafDepth,
+        leafCenterX,
+        leafCenterY + leafH / 2 - cpY / 2,
         0,
       )
-      cx += seg.dividerThickness
+      // Bottom strip
+      addBox(
+        mesh,
+        baseMaterial,
+        singleLeafW,
+        cpY,
+        leafDepth,
+        leafCenterX,
+        leafCenterY - leafH / 2 + cpY / 2,
+        0,
+      )
     }
 
-    // Segment content per column
-    for (let c = 0; c < numCols; c++) {
-      const colW = colWidths[c]!
-      const colX = colXCenters[c]!
+    if (cpX > 0) {
+      const innerH = leafH - 2 * cpY
+      // Left strip
+      addBox(
+        mesh,
+        baseMaterial,
+        cpX,
+        innerH,
+        leafDepth,
+        leafCenterX - singleLeafW / 2 + cpX / 2,
+        leafCenterY,
+        0,
+      )
+      // Right strip
+      addBox(
+        mesh,
+        baseMaterial,
+        cpX,
+        innerH,
+        leafDepth,
+        leafCenterX + singleLeafW / 2 - cpX / 2,
+        leafCenterY,
+        0,
+      )
+    }
 
-      if (seg.type === 'glass') {
-        // Glass only — no opaque backing so it's truly transparent
-        const glassDepth = Math.max(0.004, leafDepth * 0.15)
-        addBox(mesh, glassMaterial, colW, segH, glassDepth, colX, segCenterY, 0)
-      } else if (seg.type === 'panel') {
-        // Opaque leaf backing for this column
-        addBox(mesh, baseMaterial, colW, segH, leafDepth, colX, segCenterY, 0)
-        // Raised panel detail
-        const panelW = colW - 2 * seg.panelInset
-        const panelH = segH - 2 * seg.panelInset
-        if (panelW > 0.01 && panelH > 0.01) {
-          const effectiveDepth = Math.abs(seg.panelDepth) < 0.002 ? 0.005 : Math.abs(seg.panelDepth)
-          const panelZ = leafDepth / 2 + effectiveDepth / 2
-          addBox(mesh, baseMaterial, panelW, panelH, effectiveDepth, colX, segCenterY, panelZ)
-        }
-      } else {
-        // 'empty' — opaque backing, no detail
-        addBox(mesh, baseMaterial, colW, segH, leafDepth, colX, segCenterY, 0)
+    // Content area inside padding
+    const contentW = singleLeafW - 2 * cpX
+    const contentH = leafH - 2 * cpY
+    const contentTop = leafCenterY + contentH / 2
+
+    // ── Segments (stacked top to bottom within each leaf) ──
+    let segY = contentTop
+    for (const seg of segments) {
+      const segH = (seg.heightRatio / totalRatio) * contentH
+      const segCenterY = segY - segH / 2
+
+      const numCols = seg.columnRatios.length
+      const colSum = seg.columnRatios.reduce((a, b) => a + b, 0)
+      const usableW = contentW - (numCols - 1) * seg.dividerThickness
+      const colWidths = seg.columnRatios.map((r) => (r / colSum) * usableW)
+
+      // Column x-centers (relative to the current leaf)
+      const colXCenters: number[] = []
+      let cx = -contentW / 2
+      for (let c = 0; c < numCols; c++) {
+        colXCenters.push(leafCenterX + cx + colWidths[c]! / 2)
+        cx += colWidths[c]!
+        if (c < numCols - 1) cx += seg.dividerThickness
       }
-    }
 
-    segY -= segH
+      // Column dividers within this segment
+      cx = -contentW / 2
+      for (let c = 0; c < numCols - 1; c++) {
+        cx += colWidths[c]!
+        addBox(
+          mesh,
+          baseMaterial,
+          seg.dividerThickness,
+          segH,
+          leafDepth + 0.001,
+          leafCenterX + cx + seg.dividerThickness / 2,
+          segCenterY,
+          0,
+        )
+        cx += seg.dividerThickness
+      }
+
+      // Segment content per column
+      for (let c = 0; c < numCols; c++) {
+        const colW = colWidths[c]!
+        const colX = colXCenters[c]!
+
+        if (seg.type === 'glass') {
+          // Glass only — no opaque backing so it's truly transparent
+          const glassDepth = Math.max(0.004, leafDepth * 0.15)
+          addBox(mesh, glassMaterial, colW, segH, glassDepth, colX, segCenterY, 0)
+        } else if (seg.type === 'panel') {
+          // Opaque leaf backing for this column
+          addBox(mesh, baseMaterial, colW, segH, leafDepth, colX, segCenterY, 0)
+          // Raised panel detail
+          const panelW = colW - 2 * seg.panelInset
+          const panelH = segH - 2 * seg.panelInset
+          if (panelW > 0.01 && panelH > 0.01) {
+            const effectiveDepth =
+              Math.abs(seg.panelDepth) < 0.002 ? 0.005 : Math.abs(seg.panelDepth)
+            const panelZ = leafDepth / 2 + effectiveDepth / 2
+            addBox(mesh, baseMaterial, panelW, panelH, effectiveDepth, colX, segCenterY, panelZ)
+          }
+        } else {
+          // 'empty' — opaque backing, no detail
+          addBox(mesh, baseMaterial, colW, segH, leafDepth, colX, segCenterY, 0)
+        }
+      }
+
+      segY -= segH
+    }
+  }
+
+  for (const leafCenterX of leafCenters) {
+    renderLeaf(leafCenterX)
   }
 
   // ── Handle ──
@@ -258,13 +327,25 @@ function updateDoorMesh(node: DoorNode, mesh: THREE.Mesh) {
     // Handle grip sits on the front face (+Z) of the leaf
     const faceZ = leafDepth / 2
 
-    // X position: handleSide refers to which side the grip is on
-    const handleX = handleSide === 'right' ? leafW / 2 - 0.045 : -leafW / 2 + 0.045
+    if (resolvedLeafCount === 1) {
+      // X position: handleSide refers to which side the grip is on
+      const handleX = handleSide === 'right' ? singleLeafW / 2 - 0.045 : -singleLeafW / 2 + 0.045
 
-    // Backplate
-    addBox(mesh, baseMaterial, 0.028, 0.14, 0.01, handleX, handleY, faceZ + 0.005)
-    // Grip lever
-    addBox(mesh, baseMaterial, 0.022, 0.1, 0.035, handleX, handleY, faceZ + 0.025)
+      // Backplate
+      addBox(mesh, baseMaterial, 0.028, 0.14, 0.01, handleX, handleY, faceZ + 0.005)
+      // Grip lever
+      addBox(mesh, baseMaterial, 0.022, 0.1, 0.035, handleX, handleY, faceZ + 0.025)
+    } else {
+      for (const [index, leafCenterX] of leafCenters.entries()) {
+        const handleX =
+          index === 0
+            ? leafCenterX + singleLeafW / 2 - 0.045
+            : leafCenterX - singleLeafW / 2 + 0.045
+
+        addBox(mesh, baseMaterial, 0.028, 0.14, 0.01, handleX, handleY, faceZ + 0.005)
+        addBox(mesh, baseMaterial, 0.022, 0.1, 0.035, handleX, handleY, faceZ + 0.025)
+      }
+    }
   }
 
   // ── Door closer (commercial hardware at top) ──
@@ -288,12 +369,26 @@ function updateDoorMesh(node: DoorNode, mesh: THREE.Mesh) {
   // ── Panic bar ──
   if (panicBar) {
     const barY = panicBarHeight - height / 2
-    addBox(mesh, baseMaterial, leafW * 0.72, 0.04, 0.055, 0, barY, leafDepth / 2 + 0.03)
+    if (resolvedLeafCount === 1) {
+      addBox(mesh, baseMaterial, singleLeafW * 0.72, 0.04, 0.055, 0, barY, leafDepth / 2 + 0.03)
+    } else {
+      for (const leafCenterX of leafCenters) {
+        addBox(
+          mesh,
+          baseMaterial,
+          singleLeafW * 0.72,
+          0.04,
+          0.055,
+          leafCenterX,
+          barY,
+          leafDepth / 2 + 0.03,
+        )
+      }
+    }
   }
 
   // ── Hinges (3 knuckle-style hinges on the hinge side) ──
   {
-    const hingeX = hingesSide === 'right' ? leafW / 2 - 0.012 : -leafW / 2 + 0.012
     const hingeZ = 0 // centered in leaf depth
     const hingeH = 0.1
     const hingeW = 0.024
@@ -301,9 +396,16 @@ function updateDoorMesh(node: DoorNode, mesh: THREE.Mesh) {
     // Bottom hinge ~0.25m from floor, middle hinge, top hinge ~0.25m from top
     const leafBottom = leafCenterY - leafH / 2
     const leafTop = leafCenterY + leafH / 2
-    addBox(mesh, baseMaterial, hingeW, hingeH, hingeD, hingeX, leafBottom + 0.25, hingeZ)
-    addBox(mesh, baseMaterial, hingeW, hingeH, hingeD, hingeX, (leafBottom + leafTop) / 2, hingeZ)
-    addBox(mesh, baseMaterial, hingeW, hingeH, hingeD, hingeX, leafTop - 0.25, hingeZ)
+    const hingeXs =
+      resolvedLeafCount === 1
+        ? [hingesSide === 'right' ? singleLeafW / 2 - 0.012 : -singleLeafW / 2 + 0.012]
+        : [leafCenters[0]! - singleLeafW / 2 + 0.012, leafCenters[1]! + singleLeafW / 2 - 0.012]
+
+    for (const hingeX of hingeXs) {
+      addBox(mesh, baseMaterial, hingeW, hingeH, hingeD, hingeX, leafBottom + 0.25, hingeZ)
+      addBox(mesh, baseMaterial, hingeW, hingeH, hingeD, hingeX, (leafBottom + leafTop) / 2, hingeZ)
+      addBox(mesh, baseMaterial, hingeW, hingeH, hingeD, hingeX, leafTop - 0.25, hingeZ)
+    }
   }
 
   // ── Cutout (for wall CSG) — always full door dimensions, 1m deep ──

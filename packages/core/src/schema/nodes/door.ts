@@ -29,6 +29,7 @@ export const DoorNode = BaseNode.extend({
   // Overall dimensions
   width: z.number().default(0.9),
   height: z.number().default(2.1),
+  leafCount: z.number().int().min(1).max(2).default(1),
 
   // Frame
   frameThickness: z.number().default(0.05),
@@ -74,6 +75,7 @@ export const DoorNode = BaseNode.extend({
   panicBarHeight: z.number().default(1.0),
 }).describe(dedent`Door node - a parametric door placed on a wall
   - position: center of the door in wall-local coordinate system (Y = height/2, always at floor)
+  - leafCount: number of door leaves (single or double/French)
   - segments: rows stacked top to bottom, each defining its own columnRatios
   - type 'empty' = flush flat fill, 'panel' = raised/recessed panel, 'glass' = glazed
   - hingesSide/swingDirection: which way the door opens

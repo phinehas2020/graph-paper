@@ -22,29 +22,30 @@ import { resolveCdnUrl } from '../../../lib/asset-url'
 import { useItemLightPool } from '../../../store/use-item-light-pool'
 import { NodeRenderer } from '../node-renderer'
 
-// Shared materials to avoid creating new instances for every mesh
-const defaultMaterial = new MeshStandardNodeMaterial({
-  color: 0xff_ff_ff,
-  roughness: 1,
-  metalness: 0,
-})
+const createItemMaterial = (color: string) =>
+  new MeshStandardNodeMaterial({
+    color,
+    roughness: 1,
+    metalness: 0,
+  })
 
-const glassMaterial = new MeshStandardNodeMaterial({
-  name: 'glass',
-  color: 'lightgray',
-  roughness: 0.8,
-  metalness: 0,
-  transparent: true,
-  opacity: 0.35,
-  side: DoubleSide,
-  depthWrite: false,
-})
+const createGlassMaterial = () =>
+  new MeshStandardNodeMaterial({
+    name: 'glass',
+    color: 'lightgray',
+    roughness: 0.8,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.35,
+    side: DoubleSide,
+    depthWrite: false,
+  })
 
-const getMaterialForOriginal = (original: Material): MeshStandardNodeMaterial => {
-  if (original.name.toLowerCase() === 'glass') {
-    return glassMaterial
+const disposeMaterials = (material: Material | Material[]) => {
+  const materials = Array.isArray(material) ? material : [material]
+  for (const entry of new Set(materials)) {
+    entry.dispose()
   }
-  return defaultMaterial
 }
 
 export const ItemRenderer = ({ node }: { node: ItemNode }) => {
@@ -64,19 +65,25 @@ export const ItemRenderer = ({ node }: { node: ItemNode }) => {
   )
 }
 
-const previewMaterial = new MeshStandardNodeMaterial({
-  color: '#cccccc',
-  roughness: 1,
-  metalness: 0,
-  depthTest: false,
-})
-
 const previewOpacity = smoothstep(0.42, 0.55, positionLocal.y.add(time.mul(-0.2)).mul(10).fract())
 
-previewMaterial.opacityNode = previewOpacity
-previewMaterial.transparent = true
-
 const PreviewModel = ({ node }: { node: ItemNode }) => {
+  const previewMaterial = useMemo(() => {
+    const material = new MeshStandardNodeMaterial({
+      color: node.color ?? '#cccccc',
+      roughness: 1,
+      metalness: 0,
+      depthTest: false,
+    })
+    material.opacityNode = previewOpacity
+    material.transparent = true
+    return material
+  }, [node.color])
+
+  useEffect(() => {
+    return () => previewMaterial.dispose()
+  }, [previewMaterial])
+
   return (
     <mesh material={previewMaterial} position-y={node.asset.dimensions[1] / 2}>
       <boxGeometry
@@ -116,30 +123,46 @@ const ModelRenderer = ({ node }: { node: ItemNode }) => {
     return () => useInteractive.getState().removeItem(node.id)
   }, [node.id])
 
-  useMemo(() => {
-    scene.traverse((child) => {
-      if ((child as Mesh).isMesh) {
-        const mesh = child as Mesh
-        if (mesh.name === 'cutout') {
-          child.visible = false
-          return
-        }
+  useEffect(() => {
+    const root = ref.current
+    if (!root) return
 
-        let hasGlass = false
+    const nextColor = node.color ?? '#ffffff'
+    const createdMaterials: Material[] = []
 
-        // Handle both single material and material array cases
-        if (Array.isArray(mesh.material)) {
-          mesh.material = mesh.material.map((mat) => getMaterialForOriginal(mat))
-          hasGlass = mesh.material.some((mat) => mat.name === 'glass')
-        } else {
-          mesh.material = getMaterialForOriginal(mesh.material)
-          hasGlass = mesh.material.name === 'glass'
-        }
-        mesh.castShadow = !hasGlass
-        mesh.receiveShadow = !hasGlass
+    root.traverse((child) => {
+      if (!(child as Mesh).isMesh) return
+
+      const mesh = child as Mesh
+      if (mesh.name === 'cutout') {
+        mesh.visible = false
+        return
       }
+
+      const originalMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      const tintedMaterials = originalMaterials.map((material) => {
+        const nextMaterial =
+          material.name.toLowerCase() === 'glass'
+            ? createGlassMaterial()
+            : createItemMaterial(nextColor)
+        createdMaterials.push(nextMaterial)
+        return nextMaterial
+      })
+
+      disposeMaterials(mesh.material)
+      mesh.material = Array.isArray(mesh.material) ? tintedMaterials : tintedMaterials[0]!
+
+      const hasGlass = tintedMaterials.some((material) => material.name === 'glass')
+      mesh.castShadow = !hasGlass
+      mesh.receiveShadow = !hasGlass
     })
-  }, [scene])
+
+    return () => {
+      for (const material of new Set(createdMaterials)) {
+        material.dispose()
+      }
+    }
+  }, [node.color])
 
   const interactive = interactiveRef.current
   const animEffect =
@@ -150,6 +173,7 @@ const ModelRenderer = ({ node }: { node: ItemNode }) => {
   return (
     <>
       <Clone
+        deep="materialsOnly"
         object={scene}
         position={node.asset.offset}
         ref={ref}

@@ -6,6 +6,7 @@ import { NodeRenderer } from '../node-renderer'
 
 export const WallRenderer = ({ node }: { node: WallNode }) => {
   const ref = useRef<Mesh>(null!)
+  const color = node.color ?? '#e7e5e4'
 
   useRegistry(node.id, 'wall', ref)
 
@@ -15,6 +16,7 @@ export const WallRenderer = ({ node }: { node: WallNode }) => {
     <mesh castShadow receiveShadow ref={ref} visible={node.visible}>
       {/* WallSystem will replace this geometry in the next frame */}
       <boxGeometry args={[0, 0, 0]} />
+      <meshStandardMaterial color={color} />
       {/* Collision mesh: full-wall geometry (no cutouts) for pointer events */}
       <mesh name="collision-mesh" visible={false} {...handlers}>
         <boxGeometry args={[0, 0, 0]} />

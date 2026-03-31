@@ -9,6 +9,7 @@ import { formatDimensionTupleImperial } from '../../../lib/units'
 import { cn } from '../../../lib/utils'
 import useEditor from '../../../store/use-editor'
 import { ActionButton, ActionGroup } from '../controls/action-button'
+import { ColorControl } from '../controls/color-control'
 import { PanelSection } from '../controls/panel-section'
 import { SliderControl } from '../controls/slider-control'
 import { CollectionsPopover } from './collections/collections-popover'
@@ -60,6 +61,7 @@ export function ItemPanel() {
       position: [...node.position] as [number, number, number],
       rotation: [...node.rotation] as [number, number, number],
       name: node.name,
+      color: node.color,
       asset: node.asset,
       parentId: node.parentId,
       side: node.side,
@@ -259,6 +261,13 @@ export function ItemPanel() {
             />
           </>
         )}
+      </PanelSection>
+
+      <PanelSection title="Appearance">
+        <ColorControl
+          color={node.color ?? '#ffffff'}
+          onChange={(value) => handleUpdate({ color: value })}
+        />
       </PanelSection>
 
       <PanelSection title="Info">

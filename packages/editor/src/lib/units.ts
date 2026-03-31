@@ -1,5 +1,5 @@
-const METERS_PER_INCH = 0.0254
-const METERS_PER_FOOT = 0.3048
+export const METERS_PER_INCH = 0.0254
+export const METERS_PER_FOOT = 0.3048
 const SQUARE_FEET_PER_SQUARE_METER = 10.763910416709722
 
 const areaFormatterCache = new Map<number, Intl.NumberFormat>()

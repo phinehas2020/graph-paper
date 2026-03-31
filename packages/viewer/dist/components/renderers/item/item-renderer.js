@@ -12,13 +12,12 @@ import { useNodeEvents } from '../../../hooks/use-node-events';
 import { resolveCdnUrl } from '../../../lib/asset-url';
 import { useItemLightPool } from '../../../store/use-item-light-pool';
 import { NodeRenderer } from '../node-renderer';
-// Shared materials to avoid creating new instances for every mesh
-const defaultMaterial = new MeshStandardNodeMaterial({
-    color: 0xff_ff_ff,
+const createItemMaterial = (color) => new MeshStandardNodeMaterial({
+    color,
     roughness: 1,
     metalness: 0,
 });
-const glassMaterial = new MeshStandardNodeMaterial({
+const createGlassMaterial = () => new MeshStandardNodeMaterial({
     name: 'glass',
     color: 'lightgray',
     roughness: 0.8,
@@ -28,27 +27,33 @@ const glassMaterial = new MeshStandardNodeMaterial({
     side: DoubleSide,
     depthWrite: false,
 });
-const getMaterialForOriginal = (original) => {
-    if (original.name.toLowerCase() === 'glass') {
-        return glassMaterial;
+const disposeMaterials = (material) => {
+    const materials = Array.isArray(material) ? material : [material];
+    for (const entry of new Set(materials)) {
+        entry.dispose();
     }
-    return defaultMaterial;
 };
 export const ItemRenderer = ({ node }) => {
     const ref = useRef(null);
     useRegistry(node.id, node.type, ref);
     return (_jsxs("group", { position: node.position, ref: ref, rotation: node.rotation, visible: node.visible, children: [_jsx(Suspense, { fallback: _jsx(PreviewModel, { node: node }), children: _jsx(ModelRenderer, { node: node }) }), node.children?.map((childId) => (_jsx(NodeRenderer, { nodeId: childId }, childId)))] }));
 };
-const previewMaterial = new MeshStandardNodeMaterial({
-    color: '#cccccc',
-    roughness: 1,
-    metalness: 0,
-    depthTest: false,
-});
 const previewOpacity = smoothstep(0.42, 0.55, positionLocal.y.add(time.mul(-0.2)).mul(10).fract());
-previewMaterial.opacityNode = previewOpacity;
-previewMaterial.transparent = true;
 const PreviewModel = ({ node }) => {
+    const previewMaterial = useMemo(() => {
+        const material = new MeshStandardNodeMaterial({
+            color: node.color ?? '#cccccc',
+            roughness: 1,
+            metalness: 0,
+            depthTest: false,
+        });
+        material.opacityNode = previewOpacity;
+        material.transparent = true;
+        return material;
+    }, [node.color]);
+    useEffect(() => {
+        return () => previewMaterial.dispose();
+    }, [previewMaterial]);
     return (_jsx("mesh", { material: previewMaterial, "position-y": node.asset.dimensions[1] / 2, children: _jsx("boxGeometry", { args: [node.asset.dimensions[0], node.asset.dimensions[1], node.asset.dimensions[2]] }) }));
 };
 const multiplyScales = (a, b) => [a[0] * b[0], a[1] * b[1], a[2] * b[2]];
@@ -74,33 +79,44 @@ const ModelRenderer = ({ node }) => {
         useInteractive.getState().initItem(node.id, interactive);
         return () => useInteractive.getState().removeItem(node.id);
     }, [node.id]);
-    useMemo(() => {
-        scene.traverse((child) => {
-            if (child.isMesh) {
-                const mesh = child;
-                if (mesh.name === 'cutout') {
-                    child.visible = false;
-                    return;
-                }
-                let hasGlass = false;
-                // Handle both single material and material array cases
-                if (Array.isArray(mesh.material)) {
-                    mesh.material = mesh.material.map((mat) => getMaterialForOriginal(mat));
-                    hasGlass = mesh.material.some((mat) => mat.name === 'glass');
-                }
-                else {
-                    mesh.material = getMaterialForOriginal(mesh.material);
-                    hasGlass = mesh.material.name === 'glass';
-                }
-                mesh.castShadow = !hasGlass;
-                mesh.receiveShadow = !hasGlass;
+    useEffect(() => {
+        const root = ref.current;
+        if (!root)
+            return;
+        const nextColor = node.color ?? '#ffffff';
+        const createdMaterials = [];
+        root.traverse((child) => {
+            if (!child.isMesh)
+                return;
+            const mesh = child;
+            if (mesh.name === 'cutout') {
+                mesh.visible = false;
+                return;
             }
+            const originalMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            const tintedMaterials = originalMaterials.map((material) => {
+                const nextMaterial = material.name.toLowerCase() === 'glass'
+                    ? createGlassMaterial()
+                    : createItemMaterial(nextColor);
+                createdMaterials.push(nextMaterial);
+                return nextMaterial;
+            });
+            disposeMaterials(mesh.material);
+            mesh.material = Array.isArray(mesh.material) ? tintedMaterials : tintedMaterials[0];
+            const hasGlass = tintedMaterials.some((material) => material.name === 'glass');
+            mesh.castShadow = !hasGlass;
+            mesh.receiveShadow = !hasGlass;
         });
-    }, [scene]);
+        return () => {
+            for (const material of new Set(createdMaterials)) {
+                material.dispose();
+            }
+        };
+    }, [node.color]);
     const interactive = interactiveRef.current;
     const animEffect = interactive?.effects.find((e) => e.kind === 'animation') ?? null;
     const lightEffects = interactive?.effects.filter((e) => e.kind === 'light') ?? [];
-    return (_jsxs(_Fragment, { children: [_jsx(Clone, { object: scene, position: node.asset.offset, ref: ref, rotation: node.asset.rotation, scale: multiplyScales(node.asset.scale || [1, 1, 1], node.scale || [1, 1, 1]), ...handlers }), animations.length > 0 && (_jsx(ItemAnimation, { actions: actions, animations: animations, animEffect: animEffect, interactive: interactive ?? null, nodeId: node.id })), lightEffects.map((effect, i) => (_jsx(ItemLightRegistrar, { effect: effect, index: i, interactive: interactive, nodeId: node.id }, i)))] }));
+    return (_jsxs(_Fragment, { children: [_jsx(Clone, { deep: "materialsOnly", object: scene, position: node.asset.offset, ref: ref, rotation: node.asset.rotation, scale: multiplyScales(node.asset.scale || [1, 1, 1], node.scale || [1, 1, 1]), ...handlers }), animations.length > 0 && (_jsx(ItemAnimation, { actions: actions, animations: animations, animEffect: animEffect, interactive: interactive ?? null, nodeId: node.id })), lightEffects.map((effect, i) => (_jsx(ItemLightRegistrar, { effect: effect, index: i, interactive: interactive, nodeId: node.id }, i)))] }));
 };
 const ItemAnimation = ({ nodeId, animEffect, interactive, actions, animations, }) => {
     const activeClipRef = useRef(null);

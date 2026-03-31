@@ -3,22 +3,6 @@ import * as THREE from 'three';
 import { DoubleSide, MeshStandardNodeMaterial } from 'three/webgpu';
 import { sceneRegistry } from '../../hooks/scene-registry/scene-registry';
 import useScene from '../../store/use-scene';
-const glassMaterial = new MeshStandardNodeMaterial({
-    name: 'glass',
-    color: 'lightblue',
-    roughness: 0.05,
-    metalness: 0.1,
-    transparent: true,
-    opacity: 0.3,
-    side: DoubleSide,
-    depthWrite: false,
-});
-const frameMaterial = new MeshStandardNodeMaterial({
-    name: 'window-frame',
-    color: '#e8e8e8',
-    roughness: 0.6,
-    metalness: 0,
-});
 // Invisible material for root mesh — used as selection hitbox only
 const hitboxMaterial = new THREE.MeshBasicMaterial({ visible: false });
 export const WindowSystem = () => {
@@ -50,6 +34,32 @@ function addBox(parent, material, w, h, d, x, y, z) {
     m.position.set(x, y, z);
     parent.add(m);
 }
+function disposeMaterial(material) {
+    const materials = Array.isArray(material) ? material : [material];
+    for (const entry of new Set(materials)) {
+        entry.dispose();
+    }
+}
+function createWindowGlassMaterial() {
+    return new MeshStandardNodeMaterial({
+        name: 'glass',
+        color: 'lightblue',
+        roughness: 0.05,
+        metalness: 0.1,
+        transparent: true,
+        opacity: 0.3,
+        side: DoubleSide,
+        depthWrite: false,
+    });
+}
+function createWindowFrameMaterial(color) {
+    return new MeshStandardNodeMaterial({
+        name: 'window-frame',
+        color,
+        roughness: 0.6,
+        metalness: 0,
+    });
+}
 function updateWindowMesh(node, mesh) {
     // Root mesh is an invisible hitbox; all visuals live in child meshes
     mesh.geometry.dispose();
@@ -62,11 +72,15 @@ function updateWindowMesh(node, mesh) {
     for (const child of [...mesh.children]) {
         if (child.name === 'cutout')
             continue;
-        if (child instanceof THREE.Mesh)
+        if (child instanceof THREE.Mesh) {
             child.geometry.dispose();
+            disposeMaterial(child.material);
+        }
         mesh.remove(child);
     }
     const { width, height, frameDepth, frameThickness, columnRatios, rowRatios, columnDividerThickness, rowDividerThickness, sill, sillDepth, sillThickness, } = node;
+    const glassMaterial = createWindowGlassMaterial();
+    const frameMaterial = createWindowFrameMaterial(node.color ?? '#e8e8e8');
     const innerW = width - 2 * frameThickness;
     const innerH = height - 2 * frameThickness;
     // ── Frame members ──

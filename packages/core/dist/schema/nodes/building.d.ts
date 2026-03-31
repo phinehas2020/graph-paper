@@ -4,6 +4,7 @@ export declare const BuildingNode: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     parentId: z.ZodDefault<z.ZodNullable<z.ZodString>>;
     visible: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+    color: z.ZodOptional<z.ZodString>;
     camera: z.ZodOptional<z.ZodObject<{
         position: z.ZodTuple<[z.ZodNumber, z.ZodNumber, z.ZodNumber], null>;
         target: z.ZodTuple<[z.ZodNumber, z.ZodNumber, z.ZodNumber], null>;

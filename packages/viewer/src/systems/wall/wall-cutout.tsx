@@ -40,11 +40,20 @@ const invsibleWallMaterial = new MeshStandardNodeMaterial({
   depthWrite: false,
   emissive: 'white',
 })
-const wallMaterial = new MeshStandardNodeMaterial({
-  color: 'white',
-  roughness: 1,
-  metalness: 0,
-})
+const wallMaterials = new Map<string, MeshStandardNodeMaterial>()
+
+const getWallMaterial = (color: string) => {
+  const cached = wallMaterials.get(color)
+  if (cached) return cached
+
+  const material = new MeshStandardNodeMaterial({
+    color,
+    roughness: 1,
+    metalness: 0,
+  })
+  wallMaterials.set(color, material)
+  return material
+}
 
 export const WallCutout = () => {
   const lastCameraPosition = useRef(new Vector3())
@@ -103,7 +112,9 @@ export const WallCutout = () => {
             hideWall = true
           }
         }
-        ;(wallMesh as Mesh).material = hideWall ? invsibleWallMaterial : wallMaterial
+        ;(wallMesh as Mesh).material = hideWall
+          ? invsibleWallMaterial
+          : getWallMaterial(wallNode.color ?? '#e7e5e4')
       })
       lastWallMode.current = wallMode
       lastNumberOfWalls.current = sceneRegistry.byType.wall.size

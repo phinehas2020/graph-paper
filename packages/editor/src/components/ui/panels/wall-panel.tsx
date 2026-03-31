@@ -4,6 +4,7 @@ import { type AnyNode, type AnyNodeId, useScene, type WallNode } from '@pascal-a
 import { useViewer } from '@pascal-app/viewer'
 import { useCallback } from 'react'
 import { formatLengthImperial } from '../../../lib/units'
+import { ColorControl } from '../controls/color-control'
 import { PanelSection } from '../controls/panel-section'
 import { SliderControl } from '../controls/slider-control'
 import { PanelWrapper } from './panel-wrapper'
@@ -38,6 +39,7 @@ export function WallPanel() {
 
   const height = node.height ?? 2.5
   const thickness = node.thickness ?? 0.1
+  const color = node.color ?? '#e7e5e4'
 
   return (
     <PanelWrapper
@@ -67,6 +69,10 @@ export function WallPanel() {
           unit="m"
           value={Math.round(thickness * 1000) / 1000}
         />
+      </PanelSection>
+
+      <PanelSection title="Appearance">
+        <ColorControl color={color} onChange={(value) => handleUpdate({ color: value })} />
       </PanelSection>
 
       <PanelSection title="Info">

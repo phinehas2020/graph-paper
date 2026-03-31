@@ -5,6 +5,7 @@ import { useNodeEvents } from '../../../hooks/use-node-events'
 
 export const SlabRenderer = ({ node }: { node: SlabNode }) => {
   const ref = useRef<Mesh>(null!)
+  const color = node.color ?? '#e5e5e5'
 
   useRegistry(node.id, 'slab', ref)
 
@@ -14,7 +15,7 @@ export const SlabRenderer = ({ node }: { node: SlabNode }) => {
     <mesh castShadow receiveShadow ref={ref} {...handlers} visible={node.visible}>
       {/* SlabSystem will replace this geometry in the next frame */}
       <boxGeometry args={[0, 0, 0]} />
-      <meshStandardMaterial color="#e5e5e5" />
+      <meshStandardMaterial color={color} />
     </mesh>
   )
 }

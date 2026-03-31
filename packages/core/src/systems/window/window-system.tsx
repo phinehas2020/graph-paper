@@ -5,24 +5,6 @@ import { sceneRegistry } from '../../hooks/scene-registry/scene-registry'
 import type { AnyNodeId, WindowNode } from '../../schema'
 import useScene from '../../store/use-scene'
 
-const glassMaterial = new MeshStandardNodeMaterial({
-  name: 'glass',
-  color: 'lightblue',
-  roughness: 0.05,
-  metalness: 0.1,
-  transparent: true,
-  opacity: 0.3,
-  side: DoubleSide,
-  depthWrite: false,
-})
-
-const frameMaterial = new MeshStandardNodeMaterial({
-  name: 'window-frame',
-  color: '#e8e8e8',
-  roughness: 0.6,
-  metalness: 0,
-})
-
 // Invisible material for root mesh — used as selection hitbox only
 const hitboxMaterial = new THREE.MeshBasicMaterial({ visible: false })
 
@@ -70,6 +52,35 @@ function addBox(
   parent.add(m)
 }
 
+function disposeMaterial(material: THREE.Material | THREE.Material[]) {
+  const materials = Array.isArray(material) ? material : [material]
+  for (const entry of new Set(materials)) {
+    entry.dispose()
+  }
+}
+
+function createWindowGlassMaterial() {
+  return new MeshStandardNodeMaterial({
+    name: 'glass',
+    color: 'lightblue',
+    roughness: 0.05,
+    metalness: 0.1,
+    transparent: true,
+    opacity: 0.3,
+    side: DoubleSide,
+    depthWrite: false,
+  })
+}
+
+function createWindowFrameMaterial(color: string) {
+  return new MeshStandardNodeMaterial({
+    name: 'window-frame',
+    color,
+    roughness: 0.6,
+    metalness: 0,
+  })
+}
+
 function updateWindowMesh(node: WindowNode, mesh: THREE.Mesh) {
   // Root mesh is an invisible hitbox; all visuals live in child meshes
   mesh.geometry.dispose()
@@ -83,7 +94,10 @@ function updateWindowMesh(node: WindowNode, mesh: THREE.Mesh) {
   // Dispose and remove all old visual children; preserve 'cutout'
   for (const child of [...mesh.children]) {
     if (child.name === 'cutout') continue
-    if (child instanceof THREE.Mesh) child.geometry.dispose()
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose()
+      disposeMaterial(child.material)
+    }
     mesh.remove(child)
   }
 
@@ -100,6 +114,8 @@ function updateWindowMesh(node: WindowNode, mesh: THREE.Mesh) {
     sillDepth,
     sillThickness,
   } = node
+  const glassMaterial = createWindowGlassMaterial()
+  const frameMaterial = createWindowFrameMaterial(node.color ?? '#e8e8e8')
 
   const innerW = width - 2 * frameThickness
   const innerH = height - 2 * frameThickness

@@ -1,12 +1,12 @@
 import { z } from 'zod';
 export declare const RoofType: z.ZodEnum<{
+    flat: "flat";
     hip: "hip";
     gable: "gable";
     shed: "shed";
     gambrel: "gambrel";
     dutch: "dutch";
     mansard: "mansard";
-    flat: "flat";
 }>;
 export type RoofType = z.infer<typeof RoofType>;
 export declare const RoofSegmentNode: z.ZodObject<{
@@ -14,6 +14,7 @@ export declare const RoofSegmentNode: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     parentId: z.ZodDefault<z.ZodNullable<z.ZodString>>;
     visible: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+    color: z.ZodOptional<z.ZodString>;
     camera: z.ZodOptional<z.ZodObject<{
         position: z.ZodTuple<[z.ZodNumber, z.ZodNumber, z.ZodNumber], null>;
         target: z.ZodTuple<[z.ZodNumber, z.ZodNumber, z.ZodNumber], null>;
@@ -30,13 +31,13 @@ export declare const RoofSegmentNode: z.ZodObject<{
     position: z.ZodDefault<z.ZodTuple<[z.ZodNumber, z.ZodNumber, z.ZodNumber], null>>;
     rotation: z.ZodDefault<z.ZodNumber>;
     roofType: z.ZodDefault<z.ZodEnum<{
+        flat: "flat";
         hip: "hip";
         gable: "gable";
         shed: "shed";
         gambrel: "gambrel";
         dutch: "dutch";
         mansard: "mansard";
-        flat: "flat";
     }>>;
     width: z.ZodDefault<z.ZodNumber>;
     depth: z.ZodDefault<z.ZodNumber>;

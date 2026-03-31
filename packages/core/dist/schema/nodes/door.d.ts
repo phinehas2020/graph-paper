@@ -17,6 +17,7 @@ export declare const DoorNode: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     parentId: z.ZodDefault<z.ZodNullable<z.ZodString>>;
     visible: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+    color: z.ZodOptional<z.ZodString>;
     camera: z.ZodOptional<z.ZodObject<{
         position: z.ZodTuple<[z.ZodNumber, z.ZodNumber, z.ZodNumber], null>;
         target: z.ZodTuple<[z.ZodNumber, z.ZodNumber, z.ZodNumber], null>;
@@ -39,6 +40,7 @@ export declare const DoorNode: z.ZodObject<{
     wallId: z.ZodOptional<z.ZodString>;
     width: z.ZodDefault<z.ZodNumber>;
     height: z.ZodDefault<z.ZodNumber>;
+    leafCount: z.ZodDefault<z.ZodNumber>;
     frameThickness: z.ZodDefault<z.ZodNumber>;
     frameDepth: z.ZodDefault<z.ZodNumber>;
     threshold: z.ZodDefault<z.ZodBoolean>;
