@@ -1,4 +1,5 @@
 import { isObject } from '@pascal-app/core'
+import { METERS_PER_INCH } from '../../../lib/units'
 
 /**
  * Snaps a position to 0.5 grid, with an offset to align item edges to grid lines.
@@ -17,6 +18,13 @@ export function snapToGrid(position: number, dimension: number): number {
  */
 export function snapToHalf(value: number): number {
   return Math.round(value * 2) / 2
+}
+
+/**
+ * Snap a value to 1-inch increments.
+ */
+export function snapToInch(value: number): number {
+  return Math.round(value / METERS_PER_INCH) * METERS_PER_INCH
 }
 
 /**

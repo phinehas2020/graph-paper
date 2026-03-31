@@ -18,9 +18,14 @@ import {
   calculateItemRotation,
   getSideFromNormal,
   isValidWallSideFace,
-  snapToHalf,
+  snapToInch,
 } from '../item/placement-math'
-import { clampToWall, hasWallChildOverlap, wallLocalToWorld } from './window-math'
+import {
+  clampToWall,
+  hasWallChildOverlap,
+  snapWindowCenterYToGuide,
+  wallLocalToWorld,
+} from './window-math'
 
 // Shared edge material — reuse across renders, just toggle color
 const edgeMaterial = new LineBasicNodeMaterial({
@@ -97,13 +102,19 @@ export const WindowTool: React.FC = () => {
       const itemRotation = calculateItemRotation(event.normal)
       const cursorRotation = calculateCursorRotation(event.normal, event.node.start, event.node.end)
 
-      const localX = snapToHalf(event.localPosition[0])
-      const localY = snapToHalf(event.localPosition[1])
-
       const width = 1.5
       const height = 1.5
+      const localX = snapToInch(event.localPosition[0])
+      const localY = snapWindowCenterYToGuide(event.node, event.localPosition[1], height)
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
 
-      const { clampedX, clampedY } = clampToWall(event.node, localX, localY, width, height)
+      const { clampedX, clampedY } = clampToWall(
+        event.node,
+        localX,
+        resolvedLocalY,
+        width,
+        height,
+      )
 
       const node = WindowNode.parse({
         position: [clampedX, clampedY, 0],
@@ -142,13 +153,19 @@ export const WindowTool: React.FC = () => {
       const itemRotation = calculateItemRotation(event.normal)
       const cursorRotation = calculateCursorRotation(event.normal, event.node.start, event.node.end)
 
-      const localX = snapToHalf(event.localPosition[0])
-      const localY = snapToHalf(event.localPosition[1])
-
       const width = draftRef.current?.width ?? 1.5
       const height = draftRef.current?.height ?? 1.5
+      const localX = snapToInch(event.localPosition[0])
+      const localY = snapWindowCenterYToGuide(event.node, event.localPosition[1], height)
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
 
-      const { clampedX, clampedY } = clampToWall(event.node, localX, localY, width, height)
+      const { clampedX, clampedY } = clampToWall(
+        event.node,
+        localX,
+        resolvedLocalY,
+        width,
+        height,
+      )
 
       if (draftRef.current) {
         useScene.getState().updateNode(draftRef.current.id, {
@@ -192,12 +209,17 @@ export const WindowTool: React.FC = () => {
       const side = getSideFromNormal(event.normal)
       const itemRotation = calculateItemRotation(event.normal)
 
-      const localX = snapToHalf(event.localPosition[0])
-      const localY = snapToHalf(event.localPosition[1])
+      const localX = snapToInch(event.localPosition[0])
+      const localY = snapWindowCenterYToGuide(
+        event.node,
+        event.localPosition[1],
+        draftRef.current.height,
+      )
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
       const { clampedX, clampedY } = clampToWall(
         event.node,
         localX,
-        localY,
+        resolvedLocalY,
         draftRef.current.width,
         draftRef.current.height,
       )

@@ -1,12 +1,17 @@
 import {
   type AnyNodeId,
   type DoorNode,
+  getWallGuideLocalY,
+  getWallHeight,
   getScaledDimensions,
   type ItemNode,
   useScene,
   type WallNode,
   type WindowNode,
 } from '@pascal-app/core'
+import { METERS_PER_INCH } from '../../../lib/units'
+
+const WINDOW_GUIDE_SNAP_THRESHOLD = METERS_PER_INCH * 6
 
 /**
  * Converts wall-local (X along wall, Y = height above wall base) to world XYZ.
@@ -51,6 +56,40 @@ export function clampToWall(
   const clampedX = Math.max(width / 2, Math.min(wallLength - width / 2, localX))
   const clampedY = Math.max(height / 2, Math.min(wallHeight - height / 2, localY))
   return { clampedX, clampedY }
+}
+
+/**
+ * If the cursor is close to a wall guide, snap the window center so either its
+ * bottom edge (sill) or top edge (header) lands exactly on that guide.
+ */
+export function snapWindowCenterYToGuide(
+  wallNode: WallNode,
+  localY: number,
+  height: number,
+): number | null {
+  const wallHeight = getWallHeight(wallNode)
+  const minCenterY = height / 2
+  const maxCenterY = wallHeight - height / 2
+
+  let closestCenterY: number | null = null
+  let closestDistance = Number.POSITIVE_INFINITY
+
+  for (const guide of wallNode.guides ?? []) {
+    const guideY = getWallGuideLocalY(wallNode, guide)
+    const candidates = [guideY + height / 2, guideY - height / 2]
+
+    for (const candidateCenterY of candidates) {
+      if (candidateCenterY < minCenterY || candidateCenterY > maxCenterY) continue
+
+      const distance = Math.abs(localY - candidateCenterY)
+      if (distance > WINDOW_GUIDE_SNAP_THRESHOLD || distance >= closestDistance) continue
+
+      closestCenterY = candidateCenterY
+      closestDistance = distance
+    }
+  }
+
+  return closestCenterY
 }
 
 /**

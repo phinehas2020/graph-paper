@@ -19,9 +19,14 @@ import {
   calculateItemRotation,
   getSideFromNormal,
   isValidWallSideFace,
-  snapToHalf,
+  snapToInch,
 } from '../item/placement-math'
-import { clampToWall, hasWallChildOverlap, wallLocalToWorld } from './window-math'
+import {
+  clampToWall,
+  hasWallChildOverlap,
+  snapWindowCenterYToGuide,
+  wallLocalToWorld,
+} from './window-math'
 
 const edgeMaterial = new LineBasicNodeMaterial({
   color: 0xef_44_44,
@@ -119,12 +124,17 @@ export const MoveWindowTool: React.FC<{ node: WindowNode }> = ({ node: movingWin
       const itemRotation = calculateItemRotation(event.normal)
       const cursorRotation = calculateCursorRotation(event.normal, event.node.start, event.node.end)
 
-      const localX = snapToHalf(event.localPosition[0])
-      const localY = snapToHalf(event.localPosition[1])
+      const localX = snapToInch(event.localPosition[0])
+      const localY = snapWindowCenterYToGuide(
+        event.node,
+        event.localPosition[1],
+        movingWindowNode.height,
+      )
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
       const { clampedX, clampedY } = clampToWall(
         event.node,
         localX,
-        localY,
+        resolvedLocalY,
         movingWindowNode.width,
         movingWindowNode.height,
       )
@@ -175,12 +185,17 @@ export const MoveWindowTool: React.FC<{ node: WindowNode }> = ({ node: movingWin
       const itemRotation = calculateItemRotation(event.normal)
       const cursorRotation = calculateCursorRotation(event.normal, event.node.start, event.node.end)
 
-      const localX = snapToHalf(event.localPosition[0])
-      const localY = snapToHalf(event.localPosition[1])
+      const localX = snapToInch(event.localPosition[0])
+      const localY = snapWindowCenterYToGuide(
+        event.node,
+        event.localPosition[1],
+        movingWindowNode.height,
+      )
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
       const { clampedX, clampedY } = clampToWall(
         event.node,
         localX,
-        localY,
+        resolvedLocalY,
         movingWindowNode.width,
         movingWindowNode.height,
       )
@@ -230,12 +245,17 @@ export const MoveWindowTool: React.FC<{ node: WindowNode }> = ({ node: movingWin
       const side = getSideFromNormal(event.normal)
       const itemRotation = calculateItemRotation(event.normal)
 
-      const localX = snapToHalf(event.localPosition[0])
-      const localY = snapToHalf(event.localPosition[1])
+      const localX = snapToInch(event.localPosition[0])
+      const localY = snapWindowCenterYToGuide(
+        event.node,
+        event.localPosition[1],
+        movingWindowNode.height,
+      )
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
       const { clampedX, clampedY } = clampToWall(
         event.node,
         localX,
-        localY,
+        resolvedLocalY,
         movingWindowNode.width,
         movingWindowNode.height,
       )

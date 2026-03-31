@@ -6,6 +6,7 @@ import { BookMarked, Copy, FlipHorizontal2, Move, Trash2 } from 'lucide-react'
 import { useCallback } from 'react'
 import { usePresetsAdapter } from '../../../contexts/presets-context'
 import { sfxEmitter } from '../../../lib/sfx-bus'
+import { METERS_PER_INCH } from '../../../lib/units'
 import useEditor from '../../../store/use-editor'
 import { ActionButton, ActionGroup } from '../controls/action-button'
 import { ColorControl } from '../controls/color-control'
@@ -232,10 +233,10 @@ export function WindowPanel() {
           max={10}
           min={-10}
           onChange={(v) => handleUpdate({ position: [v, node.position[1], node.position[2]] })}
-          precision={2}
-          step={0.1}
+          precision={3}
+          step={METERS_PER_INCH}
           unit="m"
-          value={Math.round(node.position[0] * 100) / 100}
+          value={Math.round(node.position[0] * 1000) / 1000}
         />
         <SliderControl
           label={
@@ -246,10 +247,10 @@ export function WindowPanel() {
           max={10}
           min={-10}
           onChange={(v) => handleUpdate({ position: [node.position[0], v, node.position[2]] })}
-          precision={2}
-          step={0.1}
+          precision={3}
+          step={METERS_PER_INCH}
           unit="m"
-          value={Math.round(node.position[1] * 100) / 100}
+          value={Math.round(node.position[1] * 1000) / 1000}
         />
         <div className="px-1 pt-2 pb-1">
           <ActionButton
@@ -267,20 +268,20 @@ export function WindowPanel() {
           max={5}
           min={0.2}
           onChange={(v) => handleUpdate({ width: v })}
-          precision={2}
-          step={0.1}
+          precision={3}
+          step={METERS_PER_INCH}
           unit="m"
-          value={Math.round(node.width * 100) / 100}
+          value={Math.round(node.width * 1000) / 1000}
         />
         <SliderControl
           label="Height"
           max={5}
           min={0.2}
           onChange={(v) => handleUpdate({ height: v })}
-          precision={2}
-          step={0.1}
+          precision={3}
+          step={METERS_PER_INCH}
           unit="m"
-          value={Math.round(node.height * 100) / 100}
+          value={Math.round(node.height * 1000) / 1000}
         />
       </PanelSection>
 
