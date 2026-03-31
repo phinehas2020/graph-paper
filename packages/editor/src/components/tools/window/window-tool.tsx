@@ -104,9 +104,9 @@ export const WindowTool: React.FC = () => {
 
       const width = 1.5
       const height = 1.5
-      const localX = snapToInch(event.localPosition[0])
+      const localX = snapToInch(event.localPosition[0], event)
       const localY = snapWindowCenterYToGuide(event.node, event.localPosition[1], height)
-      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1], event)
 
       const { clampedX, clampedY } = clampToWall(
         event.node,
@@ -155,9 +155,9 @@ export const WindowTool: React.FC = () => {
 
       const width = draftRef.current?.width ?? 1.5
       const height = draftRef.current?.height ?? 1.5
-      const localX = snapToInch(event.localPosition[0])
+      const localX = snapToInch(event.localPosition[0], event)
       const localY = snapWindowCenterYToGuide(event.node, event.localPosition[1], height)
-      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1], event)
 
       const { clampedX, clampedY } = clampToWall(
         event.node,
@@ -209,13 +209,13 @@ export const WindowTool: React.FC = () => {
       const side = getSideFromNormal(event.normal)
       const itemRotation = calculateItemRotation(event.normal)
 
-      const localX = snapToInch(event.localPosition[0])
+      const localX = snapToInch(event.localPosition[0], event)
       const localY = snapWindowCenterYToGuide(
         event.node,
         event.localPosition[1],
         draftRef.current.height,
       )
-      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1], event)
       const { clampedX, clampedY } = clampToWall(
         event.node,
         localX,

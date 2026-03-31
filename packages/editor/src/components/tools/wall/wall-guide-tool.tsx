@@ -31,12 +31,13 @@ type PreviewContext = {
   wallId: WallNode['id']
   localY: number
   side: 'front' | 'back'
+  shouldSnap: boolean
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
-const snapGuideOffset = (value: number) =>
-  Math.round(value / WALL_SNAP_STEP) * WALL_SNAP_STEP
+const snapGuideOffset = (value: number, shouldSnap: boolean) =>
+  shouldSnap ? Math.round(value / WALL_SNAP_STEP) * WALL_SNAP_STEP : value
 
 const buildGuideBadge = (reference: WallGuideReference, offset: number) =>
   `${reference === 'bottom' ? 'Bottom' : 'Top'} ${formatLength(offset)}`
@@ -150,7 +151,7 @@ export const WallGuideTool: React.FC = () => {
     const wallHeight = getWallHeight(wall)
     const rawOffset =
       referenceRef.current === 'bottom' ? context.localY : wallHeight - context.localY
-    const offset = clamp(snapGuideOffset(rawOffset), 0, wallHeight)
+    const offset = clamp(snapGuideOffset(rawOffset, context.shouldSnap), 0, wallHeight)
     const candidateGuide = { offset, reference: referenceRef.current }
     const valid = !hasGuideAtSameHeight(wall, candidateGuide)
 
@@ -225,7 +226,11 @@ export const WallGuideTool: React.FC = () => {
     if (!wall || wall.type !== 'wall') return
 
     const wallHeight = getWallHeight(wall)
-    const offset = clamp(snapGuideOffset(parsedLength), 0, wallHeight)
+    const offset = clamp(
+      snapGuideOffset(parsedLength, previewContextRef.current?.shouldSnap ?? true),
+      0,
+      wallHeight,
+    )
     const nextGuide = { offset, reference: referenceRef.current }
     if (!commitGuide(wall, nextGuide)) return
 
@@ -247,6 +252,7 @@ export const WallGuideTool: React.FC = () => {
         wallId: event.node.id,
         localY: event.localPosition[1],
         side: getSideFromNormal(event.normal),
+        shouldSnap: !event.nativeEvent.altKey,
       }
 
       refreshPreview()
@@ -261,6 +267,7 @@ export const WallGuideTool: React.FC = () => {
         wallId: event.node.id,
         localY: event.localPosition[1],
         side: getSideFromNormal(event.normal),
+        shouldSnap: !event.nativeEvent.altKey,
       }
 
       refreshPreview()
@@ -276,6 +283,7 @@ export const WallGuideTool: React.FC = () => {
         wallId: event.node.id,
         localY: event.localPosition[1],
         side: getSideFromNormal(event.normal),
+        shouldSnap: !event.nativeEvent.altKey,
       }
 
       const preview = refreshPreview()

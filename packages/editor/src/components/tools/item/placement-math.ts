@@ -20,12 +20,13 @@ export function snapToHalf(value: number): number {
   return Math.round(value * 2) / 2
 }
 
-export const WALL_SNAP_STEP = METERS_PER_INCH * 6
+export const WALL_SNAP_STEP = METERS_PER_INCH
 
 /**
- * Snap a value to 6-inch increments.
+ * Snap a value to the configured inch increment.
  */
-export function snapToInch(value: number): number {
+export function snapToInch(value: number, event?: { nativeEvent?: { altKey?: boolean } }): number {
+  if (event?.nativeEvent?.altKey) return value
   return Math.round(value / WALL_SNAP_STEP) * WALL_SNAP_STEP
 }
 

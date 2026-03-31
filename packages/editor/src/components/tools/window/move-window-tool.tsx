@@ -124,13 +124,13 @@ export const MoveWindowTool: React.FC<{ node: WindowNode }> = ({ node: movingWin
       const itemRotation = calculateItemRotation(event.normal)
       const cursorRotation = calculateCursorRotation(event.normal, event.node.start, event.node.end)
 
-      const localX = snapToInch(event.localPosition[0])
+      const localX = snapToInch(event.localPosition[0], event)
       const localY = snapWindowCenterYToGuide(
         event.node,
         event.localPosition[1],
         movingWindowNode.height,
       )
-      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1], event)
       const { clampedX, clampedY } = clampToWall(
         event.node,
         localX,
@@ -185,13 +185,13 @@ export const MoveWindowTool: React.FC<{ node: WindowNode }> = ({ node: movingWin
       const itemRotation = calculateItemRotation(event.normal)
       const cursorRotation = calculateCursorRotation(event.normal, event.node.start, event.node.end)
 
-      const localX = snapToInch(event.localPosition[0])
+      const localX = snapToInch(event.localPosition[0], event)
       const localY = snapWindowCenterYToGuide(
         event.node,
         event.localPosition[1],
         movingWindowNode.height,
       )
-      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1], event)
       const { clampedX, clampedY } = clampToWall(
         event.node,
         localX,
@@ -245,13 +245,13 @@ export const MoveWindowTool: React.FC<{ node: WindowNode }> = ({ node: movingWin
       const side = getSideFromNormal(event.normal)
       const itemRotation = calculateItemRotation(event.normal)
 
-      const localX = snapToInch(event.localPosition[0])
+      const localX = snapToInch(event.localPosition[0], event)
       const localY = snapWindowCenterYToGuide(
         event.node,
         event.localPosition[1],
         movingWindowNode.height,
       )
-      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1])
+      const resolvedLocalY = localY ?? snapToInch(event.localPosition[1], event)
       const { clampedX, clampedY } = clampToWall(
         event.node,
         localX,
