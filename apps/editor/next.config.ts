@@ -1,3 +1,4 @@
+import path from 'node:path'
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
@@ -6,6 +7,7 @@ const nextConfig: NextConfig = {
   },
   transpilePackages: ['three', '@pascal-app/viewer', '@pascal-app/core', '@pascal-app/editor'],
   turbopack: {
+    root: path.join(__dirname, '../..'),
     resolveAlias: {
       react: './node_modules/react',
       three: './node_modules/three',

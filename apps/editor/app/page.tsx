@@ -1,11 +1,5 @@
-'use client'
-
-import { Editor } from '@pascal-app/editor'
+import { ProjectsDashboard } from '@/components/projects-dashboard'
 
 export default function Home() {
-  return (
-    <div className="h-screen w-screen">
-      <Editor />
-    </div>
-  )
+  return <ProjectsDashboard />
 }
