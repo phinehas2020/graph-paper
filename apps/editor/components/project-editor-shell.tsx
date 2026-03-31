@@ -4,7 +4,7 @@ import { Editor, type SaveStatus, type SceneGraph } from '@pascal-app/editor'
 import { useViewer } from '@pascal-app/viewer'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createBlankSceneGraph, isSceneGraph, type ProjectRecord } from '@/lib/projects'
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 
@@ -79,6 +79,7 @@ function ProjectSidebarHeader({
 export function ProjectEditorShell({ projectId }: { projectId: string }) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), [])
   const router = useRouter()
+  const latestSceneGraphRef = useRef<SceneGraph | null>(null)
 
   const [project, setProject] = useState<ProjectRecord | null>(null)
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'missing'>('loading')
@@ -94,6 +95,8 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     let isMounted = true
+    latestSceneGraphRef.current = null
+    setLoadState('loading')
 
     async function loadProject() {
       const {
@@ -123,6 +126,10 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
       }
 
       const nextProject = data as ProjectRecord
+      latestSceneGraphRef.current =
+        nextProject.scene_data && isSceneGraph(nextProject.scene_data)
+          ? nextProject.scene_data
+          : createBlankSceneGraph()
       setProject(nextProject)
       setLoadState('ready')
 
@@ -147,12 +154,8 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
   }, [projectId, router, supabase])
 
   const handleLoadScene = useCallback(async () => {
-    if (project?.scene_data && isSceneGraph(project.scene_data)) {
-      return project.scene_data
-    }
-
-    return createBlankSceneGraph()
-  }, [project])
+    return latestSceneGraphRef.current ?? createBlankSceneGraph()
+  }, [])
 
   const handleSaveScene = useCallback(
     async (scene: SceneGraph) => {
@@ -169,6 +172,7 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
         throw error
       }
 
+      latestSceneGraphRef.current = scene
       setProject((current) =>
         current
           ? {
@@ -235,6 +239,7 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
     <div className="h-screen w-screen">
       <Editor
         isLoading={false}
+        key={projectId}
         onLoad={handleLoadScene}
         onSave={handleSaveScene}
         onSaveStatusChange={setSaveStatus}
