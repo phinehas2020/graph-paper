@@ -1,4 +1,3 @@
-import { BuildingNode, LevelNode, SiteNode } from '@pascal-app/core'
 import type { SceneGraph } from '@pascal-app/editor'
 
 export type ProjectRecord = {
@@ -13,27 +12,64 @@ export type ProjectRecord = {
   last_opened_at: string | null
 }
 
+function makeNodeId(prefix: 'site' | 'building' | 'level') {
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`
+}
+
 export function createBlankSceneGraph(): SceneGraph {
-  const level = LevelNode.parse({
-    level: 0,
+  const levelId = makeNodeId('level')
+  const buildingId = makeNodeId('building')
+  const siteId = makeNodeId('site')
+
+  const level = {
+    object: 'node',
+    id: levelId,
+    type: 'level',
+    parentId: buildingId,
+    visible: true,
+    metadata: {},
     children: [],
-  })
+    level: 0,
+  }
 
-  const building = BuildingNode.parse({
-    children: [level.id],
-  })
+  const building = {
+    object: 'node',
+    id: buildingId,
+    type: 'building',
+    parentId: siteId,
+    visible: true,
+    metadata: {},
+    children: [levelId],
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+  }
 
-  const site = SiteNode.parse({
+  const site = {
+    object: 'node',
+    id: siteId,
+    type: 'site',
+    parentId: null,
+    visible: true,
+    metadata: {},
+    polygon: {
+      type: 'polygon',
+      points: [
+        [-15, -15],
+        [15, -15],
+        [15, 15],
+        [-15, 15],
+      ],
+    },
     children: [building],
-  })
+  }
 
   return {
     nodes: {
-      [site.id]: site,
-      [building.id]: building,
-      [level.id]: level,
+      [siteId]: site,
+      [buildingId]: building,
+      [levelId]: level,
     },
-    rootNodeIds: [site.id],
+    rootNodeIds: [siteId],
   }
 }
 

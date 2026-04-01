@@ -1,12 +1,11 @@
 'use client'
 
 import { Editor, type SaveStatus, type SceneGraph } from '@pascal-app/editor'
-import { useViewer } from '@pascal-app/viewer'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createBlankSceneGraph, isSceneGraph, type ProjectRecord } from '@/lib/projects'
-import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient, hasSupabaseBrowserConfig } from '@/lib/supabase/client'
 
 const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
   idle: 'Ready',
@@ -17,12 +16,21 @@ const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
   error: 'Save failed',
 }
 
-function EditorLoadingState({ message }: { message: string }) {
+function EditorLoadingState({ message, detail }: { message: string; detail?: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0f172a] px-6 text-white">
       <div className="max-w-md rounded-[1.75rem] border border-white/10 bg-white/5 p-8 text-center shadow-2xl backdrop-blur">
         <p className="text-xs uppercase tracking-[0.32em] text-slate-400">graph paper editor</p>
         <p className="mt-4 font-medium text-lg">{message}</p>
+        {detail ? <p className="mt-3 text-sm text-slate-300">{detail}</p> : null}
+        <div className="mt-6">
+          <Link
+            className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs uppercase tracking-[0.24em] text-slate-300 transition hover:bg-white/10"
+            href="/"
+          >
+            Back to projects
+          </Link>
+        </div>
       </div>
     </div>
   )
@@ -76,24 +84,28 @@ function ProjectSidebarHeader({
   )
 }
 
+type LoadState = 'loading' | 'ready' | 'missing' | 'unconfigured'
+
 export function ProjectEditorShell({ projectId }: { projectId: string }) {
-  const supabase = useMemo(() => getSupabaseBrowserClient(), [])
+  const supabase = useMemo(
+    () => (hasSupabaseBrowserConfig() ? getSupabaseBrowserClient() : null),
+    [],
+  )
   const router = useRouter()
   const latestSceneGraphRef = useRef<SceneGraph | null>(null)
 
   const [project, setProject] = useState<ProjectRecord | null>(null)
-  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'missing'>('loading')
+  const [loadState, setLoadState] = useState<LoadState>(supabase ? 'loading' : 'unconfigured')
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [renamePending, startRenameTransition] = useTransition()
 
   useEffect(() => {
-    useViewer.getState().setProjectId(projectId)
-    return () => {
-      useViewer.getState().setProjectId(null)
+    if (!supabase) {
+      setLoadState('unconfigured')
+      return
     }
-  }, [projectId])
+    const client = supabase
 
-  useEffect(() => {
     let isMounted = true
     latestSceneGraphRef.current = null
     setLoadState('loading')
@@ -101,14 +113,14 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
     async function loadProject() {
       const {
         data: { session },
-      } = await supabase.auth.getSession()
+      } = await client.auth.getSession()
 
       if (!session?.user) {
         router.replace('/')
         return
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('projects')
         .select(
           'id, owner_id, name, description, scene_data, thumbnail_url, created_at, updated_at, last_opened_at',
@@ -133,7 +145,7 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
       setProject(nextProject)
       setLoadState('ready')
 
-      void supabase
+      void client
         .from('projects')
         .update({ last_opened_at: new Date().toISOString() })
         .eq('id', projectId)
@@ -141,7 +153,7 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
 
     loadProject()
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = client.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
         router.replace('/')
       }
@@ -159,8 +171,13 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
 
   const handleSaveScene = useCallback(
     async (scene: SceneGraph) => {
+      if (!supabase) {
+        throw new Error('Supabase is not configured.')
+      }
+      const client = supabase
+
       const timestamp = new Date().toISOString()
-      const { error } = await supabase
+      const { error } = await client
         .from('projects')
         .update({
           scene_data: scene,
@@ -189,9 +206,10 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
   const handleRename = useCallback(
     (nextName: string) => {
       const trimmedName = nextName.trim()
-      if (!project) {
+      if (!(project && supabase)) {
         return
       }
+      const client = supabase
 
       if (!trimmedName || trimmedName === project.name) {
         return
@@ -200,7 +218,7 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
       startRenameTransition(() => {
         void (async () => {
           const timestamp = new Date().toISOString()
-          const { error } = await supabase
+          const { error } = await client
             .from('projects')
             .update({
               name: trimmedName,
@@ -227,6 +245,15 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
     [project, projectId, supabase],
   )
 
+  if (loadState === 'unconfigured') {
+    return (
+      <EditorLoadingState
+        detail="Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable cloud-backed project loading."
+        message="Supabase is not configured for this editor."
+      />
+    )
+  }
+
   if (loadState === 'loading') {
     return <EditorLoadingState message="Loading project..." />
   }
@@ -243,6 +270,7 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
         onLoad={handleLoadScene}
         onSave={handleSaveScene}
         onSaveStatusChange={setSaveStatus}
+        projectId={projectId}
         sidebarTop={
           <ProjectSidebarHeader
             name={project.name}

@@ -10,7 +10,7 @@ import {
   makeDefaultProjectName,
   type ProjectRecord,
 } from '@/lib/projects'
-import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { getSupabaseBrowserClient, hasSupabaseBrowserConfig } from '@/lib/supabase/client'
 
 type DashboardState =
   | {
@@ -80,8 +80,39 @@ function AuthCard({
   )
 }
 
+function SupabaseConfigCard() {
+  return (
+    <div className="relative overflow-hidden rounded-[2rem] border border-amber-200 bg-white/92 p-8 shadow-[0_30px_100px_-40px_rgba(15,23,42,0.45)] backdrop-blur">
+      <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+      <p className="text-xs uppercase tracking-[0.32em] text-amber-700">Supabase Required</p>
+      <h1 className="mt-4 max-w-2xl font-semibold text-4xl tracking-tight text-slate-950">
+        The project dashboard is ready, but this app still needs the browser Supabase keys.
+      </h1>
+      <p className="mt-4 max-w-2xl text-base text-slate-600">
+        Add <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to
+        the editor app environment so project listing, sign-in, and autosave can talk to your
+        existing Supabase project.
+      </p>
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <Link
+          className="rounded-2xl bg-slate-950 px-5 py-3 font-medium text-sm text-white transition hover:bg-slate-800"
+          href="/privacy"
+        >
+          View data policy
+        </Link>
+        <span className="text-sm text-slate-500">
+          Cloud project routes stay disabled until then.
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export function ProjectsDashboard() {
-  const supabase = useMemo(() => getSupabaseBrowserClient(), [])
+  const supabase = useMemo(
+    () => (hasSupabaseBrowserConfig() ? getSupabaseBrowserClient() : null),
+    [],
+  )
   const router = useRouter()
 
   const [dashboardState, setDashboardState] = useState<DashboardState>({
@@ -95,13 +126,19 @@ export function ProjectsDashboard() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!supabase) {
+      setDashboardState({ status: 'signed-out', user: null })
+      return
+    }
+    const client = supabase
+
     let isMounted = true
 
     async function syncSession() {
       const {
         data: { session },
         error,
-      } = await supabase.auth.getSession()
+      } = await client.auth.getSession()
 
       if (!isMounted) {
         return
@@ -123,7 +160,7 @@ export function ProjectsDashboard() {
 
     syncSession()
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = client.auth.onAuthStateChange((_event, session) => {
       if (!isMounted) {
         return
       }
@@ -145,14 +182,15 @@ export function ProjectsDashboard() {
   }, [supabase])
 
   useEffect(() => {
-    if (dashboardState.status !== 'signed-in') {
+    if (!(supabase && dashboardState.status === 'signed-in')) {
       return
     }
+    const client = supabase
 
     let isMounted = true
 
     async function loadProjects() {
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('projects')
         .select(
           'id, owner_id, name, description, scene_data, thumbnail_url, created_at, updated_at, last_opened_at',
@@ -180,12 +218,17 @@ export function ProjectsDashboard() {
 
   async function handleMagicLink(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!supabase) {
+      return
+    }
+    const client = supabase
+
     setBusyAction('login')
     setInfoMessage(null)
     setErrorMessage(null)
 
     const redirectTo = typeof window === 'undefined' ? undefined : `${window.location.origin}/`
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await client.auth.signInWithOtp({
       email: email.trim(),
       options: {
         emailRedirectTo: redirectTo,
@@ -202,14 +245,15 @@ export function ProjectsDashboard() {
   }
 
   async function handleCreateProject() {
-    if (dashboardState.status !== 'signed-in') {
+    if (!(supabase && dashboardState.status === 'signed-in')) {
       return
     }
+    const client = supabase
 
     setBusyAction('create')
     setErrorMessage(null)
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('projects')
       .insert({
         name: makeDefaultProjectName(),
@@ -232,6 +276,11 @@ export function ProjectsDashboard() {
   }
 
   async function handleDeleteProject(projectId: string) {
+    if (!supabase) {
+      return
+    }
+    const client = supabase
+
     const shouldDelete = window.confirm('Delete this project? This cannot be undone.')
     if (!shouldDelete) {
       return
@@ -240,7 +289,7 @@ export function ProjectsDashboard() {
     setBusyAction(`delete:${projectId}`)
     setErrorMessage(null)
 
-    const { error } = await supabase.from('projects').delete().eq('id', projectId)
+    const { error } = await client.from('projects').delete().eq('id', projectId)
 
     setBusyAction(null)
 
@@ -253,8 +302,13 @@ export function ProjectsDashboard() {
   }
 
   async function handleSignOut() {
+    if (!supabase) {
+      return
+    }
+    const client = supabase
+
     setErrorMessage(null)
-    await supabase.auth.signOut()
+    await client.auth.signOut()
   }
 
   return (
@@ -265,7 +319,9 @@ export function ProjectsDashboard() {
         <div className="relative flex flex-1 flex-col gap-8">
           <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">graph paper editor</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+                graph paper editor
+              </p>
               <p className="mt-2 max-w-2xl text-sm text-slate-600">
                 Supabase-backed auth and project persistence for the current editor structure.
               </p>
@@ -287,7 +343,9 @@ export function ProjectsDashboard() {
             ) : null}
           </header>
 
-          {dashboardState.status !== 'signed-in' ? (
+          {!supabase ? (
+            <SupabaseConfigCard />
+          ) : dashboardState.status !== 'signed-in' ? (
             <AuthCard
               busy={busyAction === 'login'}
               email={email}
@@ -381,7 +439,7 @@ export function ProjectsDashboard() {
                     The editor’s existing autosave hook writes scene data straight into Supabase.
                   </p>
                   <p>
-                    The database is rebuilt around owner-scoped projects with row-level security.
+                    The database is structured around owner-scoped projects with row-level security.
                   </p>
                 </div>
               </aside>
