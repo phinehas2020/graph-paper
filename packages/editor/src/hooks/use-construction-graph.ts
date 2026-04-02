@@ -1,7 +1,8 @@
 'use client'
 
 import { compileConstructionGraph } from '@pascal-app/construction'
-import { createSceneGraphSnapshot, useScene } from '@pascal-app/core'
+import { useScene } from '@pascal-app/core'
+import { createSceneGraphSnapshot } from '@pascal-app/core/scene-graph'
 import { useMemo } from 'react'
 
 export function useConstructionGraph() {
