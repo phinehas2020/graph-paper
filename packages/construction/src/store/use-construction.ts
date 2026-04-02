@@ -5,7 +5,7 @@ import { DEFAULT_RULE_PACK } from '../rulepacks/default-rulepack'
 import type { AssemblyCatalog } from '../schema/assemblies'
 import type { ConstructionCompileResult } from '../schema/construction-graph'
 import type { RulePack } from '../schema/rulepacks'
-import type { SceneGraph } from '@pascal-app/core'
+import type { SceneGraph } from '@pascal-app/core/scene-graph'
 
 export type ConstructionWorkspace = {
   sceneGraph: SceneGraph | null

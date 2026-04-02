@@ -2,18 +2,18 @@ import {
   type AnyNode,
   DEFAULT_WALL_HEIGHT,
   DEFAULT_WALL_THICKNESS,
-  getScaledDimensions,
-  migrateSceneGraph,
   type DoorNode,
+  getScaledDimensions,
   type ItemNode,
   type LevelNode,
-  type RoofSegmentNode,
+  migrateSceneGraph,
   resolveLevelId,
+  type RoofSegmentNode,
   type SceneGraph,
   type WallNode,
   type WindowNode,
   type ZoneNode,
-} from '@pascal-app/core'
+} from '@pascal-app/core/construction-interop'
 import type { AssemblyDefinition } from '../../schema/assemblies'
 import type { ConstructionDiagnostic } from '../../schema/diagnostics'
 import type {

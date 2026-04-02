@@ -1,7 +1,8 @@
 'use client'
 
 import { compileConstructionGraph } from '@pascal-app/construction'
-import { Editor, type SaveStatus, type SceneGraph } from '@pascal-app/editor'
+import { Editor, type SaveStatus } from '@pascal-app/editor'
+import type { SceneGraph } from '@pascal-app/core/scene-graph'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'

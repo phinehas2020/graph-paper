@@ -10,6 +10,16 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./scene-graph": {
+      "types": "./dist/scene-graph.d.ts",
+      "import": "./dist/scene-graph.js",
+      "default": "./dist/scene-graph.js"
+    },
+    "./construction-interop": {
+      "types": "./dist/construction-interop.d.ts",
+      "import": "./dist/construction-interop.js",
+      "default": "./dist/construction-interop.js"
     }
   },
   "files": [

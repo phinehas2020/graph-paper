@@ -1,4 +1,4 @@
-import type { SceneGraph } from '@pascal-app/core'
+import type { SceneGraph } from '@pascal-app/core/scene-graph'
 import { DEFAULT_ASSEMBLIES, DEFAULT_ASSEMBLY_CATALOG } from '../assemblies/defaults'
 import { sortDiagnostics } from '../diagnostics'
 import { buildEstimate } from '../estimate/build-estimate'

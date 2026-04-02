@@ -1,0 +1,2 @@
+export { DEFAULT_ASSEMBLIES as DEFAULT_RESIDENTIAL_ASSEMBLIES, DEFAULT_ASSEMBLY_CATALOG as DEFAULT_RESIDENTIAL_ASSEMBLY_CATALOG, } from './defaults';
+//# sourceMappingURL=default-residential.d.ts.map

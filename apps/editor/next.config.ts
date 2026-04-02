@@ -1,13 +1,23 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { NextConfig } from 'next'
+
+const configDir = path.dirname(fileURLToPath(import.meta.url))
+const workspaceRoot = path.join(configDir, '..', '..')
 
 const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  transpilePackages: ['three', '@pascal-app/viewer', '@pascal-app/core', '@pascal-app/editor'],
+  transpilePackages: [
+    'three',
+    '@pascal-app/viewer',
+    '@pascal-app/core',
+    '@pascal-app/editor',
+    '@pascal-app/construction',
+  ],
   turbopack: {
-    root: path.join(__dirname, '../..'),
+    root: workspaceRoot,
     resolveAlias: {
       react: './node_modules/react',
       three: './node_modules/three',

@@ -3,7 +3,7 @@ import {
   createDefaultSceneGraph as createDefaultCoreSceneGraph,
   isSceneGraph as isPersistedSceneGraph,
   type SceneGraph,
-} from '@pascal-app/core'
+} from '@pascal-app/core/scene-graph'
 
 export type ProjectRecord = {
   id: string
