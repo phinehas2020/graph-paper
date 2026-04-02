@@ -5,10 +5,10 @@ import {
   migrateSceneGraph,
   resolveLevelId,
   sceneRegistry,
-  type SceneGraph,
   useScene,
-} from '@pascal-app/core'
-import { useViewer } from '@pascal-app/viewer'
+} from '@pascal-app/core/editor-interop'
+import type { SceneGraph } from '@pascal-app/core/scene-graph'
+import { useViewer } from '@pascal-app/viewer/viewer-store'
 import useEditor, {
   hasCustomPersistedEditorUiState,
   normalizePersistedEditorUiState,

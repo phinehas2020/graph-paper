@@ -1,16 +1,16 @@
 'use client'
 
 import type { AssetInput } from '@pascal-app/core'
-import {
-  type BuildingNode,
-  type DoorNode,
-  type ItemNode,
-  type LevelNode,
+import type {
+  BuildingNode,
+  DoorNode,
+  ItemNode,
+  LevelNode,
   type Space,
-  useScene,
-  type WindowNode,
+  WindowNode,
 } from '@pascal-app/core'
-import { useViewer } from '@pascal-app/viewer'
+import { useScene } from '@pascal-app/core/editor-interop'
+import { useViewer } from '@pascal-app/viewer/viewer-store'
 import { create } from 'zustand'
 
 export type Phase = 'site' | 'structure' | 'furnish'

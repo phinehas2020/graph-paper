@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./viewer-store": {
+      "types": "./dist/viewer-store.d.ts",
+      "import": "./dist/viewer-store.js",
+      "default": "./dist/viewer-store.js"
     }
   },
   "files": [

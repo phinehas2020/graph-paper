@@ -1,0 +1,1 @@
+{"version":3,"file":"editor-interop.d.ts","sourceRoot":"","sources":["../src/editor-interop.ts"],"names":[],"mappings":"AAAA,OAAO,EACL,oBAAoB,EACpB,iBAAiB,EACjB,KAAK,UAAU,GAChB,MAAM,eAAe,CAAA;AACtB,OAAO,EAAE,aAAa,EAAE,MAAM,uCAAuC,CAAA;AACrE,OAAO,EAAE,cAAc,EAAE,MAAM,wCAAwC,CAAA;AACvE,OAAO,EAAE,OAAO,IAAI,QAAQ,EAAE,MAAM,mBAAmB,CAAA"}

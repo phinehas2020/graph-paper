@@ -16,6 +16,11 @@
       "import": "./dist/scene-graph.js",
       "default": "./dist/scene-graph.js"
     },
+    "./editor-interop": {
+      "types": "./dist/editor-interop.d.ts",
+      "import": "./dist/editor-interop.js",
+      "default": "./dist/editor-interop.js"
+    },
     "./construction-interop": {
       "types": "./dist/construction-interop.d.ts",
       "import": "./dist/construction-interop.js",
