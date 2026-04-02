@@ -1,13 +1,15 @@
 'use client'
 
 import { compileConstructionGraph } from '@pascal-app/construction'
-import { Editor, type SaveStatus } from '@pascal-app/editor'
 import type { SceneGraph } from '@pascal-app/core/scene-graph'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createBlankSceneGraph, isSceneGraph, type ProjectRecord } from '@/lib/projects'
 import { getSupabaseBrowserClient, hasSupabaseBrowserConfig } from '@/lib/supabase/client'
+
+type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'paused' | 'error'
 
 const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
   idle: 'Ready',
@@ -37,6 +39,14 @@ function EditorLoadingState({ message, detail }: { message: string; detail?: str
     </div>
   )
 }
+
+const PascalEditor = dynamic(
+  () => import('@pascal-app/editor').then((module) => module.Editor),
+  {
+    ssr: false,
+    loading: () => <EditorLoadingState message="Loading editor..." />,
+  },
+)
 
 function ProjectSidebarHeader({
   name,
@@ -282,7 +292,7 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
 
   return (
     <div className="h-screen w-screen">
-      <Editor
+      <PascalEditor
         isLoading={false}
         key={projectId}
         onLoad={handleLoadScene}
