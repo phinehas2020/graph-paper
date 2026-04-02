@@ -1,7 +1,11 @@
 'use client'
 
 import { compileConstructionGraph } from '@pascal-app/construction'
-import type { SceneGraph } from '@pascal-app/core/scene-graph'
+import {
+  createSceneGraphSnapshot,
+  migrateSceneGraph,
+  type SceneGraph,
+} from '@pascal-app/core/scene-graph'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -10,6 +14,9 @@ import { createBlankSceneGraph, isSceneGraph, type ProjectRecord } from '@/lib/p
 import { getSupabaseBrowserClient, hasSupabaseBrowserConfig } from '@/lib/supabase/client'
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'paused' | 'error'
+
+const PROJECT_SELECT_BASE =
+  'id, owner_id, name, description, scene_data, thumbnail_url, created_at, updated_at, last_opened_at'
 
 const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
   idle: 'Ready',
@@ -38,6 +45,36 @@ function EditorLoadingState({ message, detail }: { message: string; detail?: str
       </div>
     </div>
   )
+}
+
+function withLegacyProjectFields<T extends { scene_data?: SceneGraph | null }>(
+  project: T,
+): T &
+  Pick<ProjectRecord, 'rule_pack' | 'compiler_version' | 'construction_snapshot' | 'estimate_snapshot'> {
+  return {
+    ...project,
+    rule_pack: null,
+    compiler_version: null,
+    construction_snapshot: null,
+    estimate_snapshot: null,
+  }
+}
+
+function normalizeProjectSceneGraph(sceneGraph: SceneGraph | null | undefined): SceneGraph {
+  if (!(sceneGraph && isSceneGraph(sceneGraph))) {
+    return createBlankSceneGraph()
+  }
+
+  try {
+    const migratedScene = migrateSceneGraph(sceneGraph)
+    return createSceneGraphSnapshot(
+      migratedScene.nodes,
+      migratedScene.rootNodeIds,
+      migratedScene.sceneSchemaVersion,
+    )
+  } catch {
+    return createBlankSceneGraph()
+  }
 }
 
 const PascalEditor = dynamic(
@@ -134,9 +171,7 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
 
       const { data, error } = await client
         .from('projects')
-        .select(
-          'id, owner_id, name, description, scene_data, rule_pack, compiler_version, construction_snapshot, estimate_snapshot, thumbnail_url, created_at, updated_at, last_opened_at',
-        )
+        .select(PROJECT_SELECT_BASE)
         .eq('id', projectId)
         .single()
 
@@ -149,12 +184,13 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
         return
       }
 
-      const nextProject = data as ProjectRecord
-      latestSceneGraphRef.current =
-        nextProject.scene_data && isSceneGraph(nextProject.scene_data)
-          ? nextProject.scene_data
-          : createBlankSceneGraph()
-      setProject(nextProject)
+      const nextProject = withLegacyProjectFields(data as ProjectRecord)
+      const normalizedSceneGraph = normalizeProjectSceneGraph(nextProject.scene_data)
+      latestSceneGraphRef.current = normalizedSceneGraph
+      setProject({
+        ...nextProject,
+        scene_data: normalizedSceneGraph,
+      })
       setLoadState('ready')
 
       void client
@@ -200,10 +236,6 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
       const { error } = await client
         .from('projects')
         .update({
-          compiler_version: constructionSnapshot?.compilerVersion ?? null,
-          construction_snapshot: constructionSnapshot,
-          estimate_snapshot: constructionSnapshot?.estimate ?? null,
-          rule_pack: constructionSnapshot?.rulePackId ?? null,
           scene_data: scene,
           updated_at: timestamp,
         })
