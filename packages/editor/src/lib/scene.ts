@@ -366,16 +366,20 @@ function hasUsableSceneGraph(sceneGraph?: SceneGraph | null): sceneGraph is Scen
 }
 
 export function applySceneGraphToEditor(sceneGraph?: SceneGraph | null) {
-  if (hasUsableSceneGraph(sceneGraph)) {
-    const migratedScene = migrateSceneGraph(sceneGraph)
-    useScene
-      .getState()
-      .setScene(
-        migratedScene.nodes,
-        migratedScene.rootNodeIds,
-        migratedScene.sceneSchemaVersion,
-      )
-  } else {
+  try {
+    if (hasUsableSceneGraph(sceneGraph)) {
+      const migratedScene = migrateSceneGraph(sceneGraph)
+      useScene
+        .getState()
+        .setScene(
+          migratedScene.nodes,
+          migratedScene.rootNodeIds,
+          migratedScene.sceneSchemaVersion,
+        )
+    } else {
+      useScene.getState().clearScene()
+    }
+  } catch {
     useScene.getState().clearScene()
   }
 
