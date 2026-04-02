@@ -11,6 +11,10 @@ import { getSupabaseBrowserClient, hasSupabaseBrowserConfig } from '@/lib/supaba
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'paused' | 'error'
 
+const PROJECT_SELECT_BASE =
+  'id, owner_id, name, description, scene_data, thumbnail_url, created_at, updated_at, last_opened_at'
+const PROJECT_SELECT_WITH_SNAPSHOTS = `${PROJECT_SELECT_BASE}, rule_pack, compiler_version, construction_snapshot, estimate_snapshot`
+
 const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
   idle: 'Ready',
   pending: 'Waiting to save...',
@@ -38,6 +42,24 @@ function EditorLoadingState({ message, detail }: { message: string; detail?: str
       </div>
     </div>
   )
+}
+
+function isMissingProjectSnapshotColumns(error: { code?: string | null; message?: string | null }) {
+  const message = error.message?.toLowerCase() ?? ''
+  return error.code === '42703' || (message.includes('column') && message.includes('projects'))
+}
+
+function withLegacyProjectFields<T extends { scene_data?: SceneGraph | null }>(
+  project: T,
+): T &
+  Pick<ProjectRecord, 'rule_pack' | 'compiler_version' | 'construction_snapshot' | 'estimate_snapshot'> {
+  return {
+    ...project,
+    rule_pack: null,
+    compiler_version: null,
+    construction_snapshot: null,
+    estimate_snapshot: null,
+  }
 }
 
 const PascalEditor = dynamic(
@@ -132,13 +154,22 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
         return
       }
 
-      const { data, error } = await client
+      let { data, error } = await client
         .from('projects')
-        .select(
-          'id, owner_id, name, description, scene_data, rule_pack, compiler_version, construction_snapshot, estimate_snapshot, thumbnail_url, created_at, updated_at, last_opened_at',
-        )
+        .select(PROJECT_SELECT_WITH_SNAPSHOTS)
         .eq('id', projectId)
         .single()
+
+      if (error && isMissingProjectSnapshotColumns(error)) {
+        const legacyResponse = await client
+          .from('projects')
+          .select(PROJECT_SELECT_BASE)
+          .eq('id', projectId)
+          .single()
+
+        data = legacyResponse.data ? withLegacyProjectFields(legacyResponse.data) : null
+        error = legacyResponse.error
+      }
 
       if (!isMounted) {
         return
@@ -197,7 +228,7 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
         constructionSnapshot = null
       }
 
-      const { error } = await client
+      let { error } = await client
         .from('projects')
         .update({
           compiler_version: constructionSnapshot?.compilerVersion ?? null,
@@ -208,6 +239,18 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
           updated_at: timestamp,
         })
         .eq('id', projectId)
+
+      if (error && isMissingProjectSnapshotColumns(error)) {
+        const legacyResponse = await client
+          .from('projects')
+          .update({
+            scene_data: scene,
+            updated_at: timestamp,
+          })
+          .eq('id', projectId)
+
+        error = legacyResponse.error
+      }
 
       if (error) {
         throw error
