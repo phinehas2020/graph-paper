@@ -21,6 +21,11 @@
       "import": "./dist/editor-interop.js",
       "default": "./dist/editor-interop.js"
     },
+    "./editor-types": {
+      "types": "./dist/editor-types.d.ts",
+      "import": "./dist/editor-types.js",
+      "default": "./dist/editor-types.js"
+    },
     "./construction-interop": {
       "types": "./dist/construction-interop.d.ts",
       "import": "./dist/construction-interop.js",

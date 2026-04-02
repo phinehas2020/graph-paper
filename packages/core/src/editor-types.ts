@@ -1,0 +1,8 @@
+export type { Space } from './lib/space-detection'
+export type { BuildingNode } from './schema/nodes/building'
+export type { DoorNode } from './schema/nodes/door'
+export type { AssetInput, ItemNode } from './schema/nodes/item'
+export type { LevelNode } from './schema/nodes/level'
+export type { RoofNode } from './schema/nodes/roof'
+export type { RoofSegmentNode } from './schema/nodes/roof-segment'
+export type { WindowNode } from './schema/nodes/window'

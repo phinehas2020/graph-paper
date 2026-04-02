@@ -1,14 +1,14 @@
 'use client'
 
-import type { AssetInput } from '@pascal-app/core'
 import type {
+  AssetInput,
   BuildingNode,
   DoorNode,
   ItemNode,
   LevelNode,
-  type Space,
+  Space,
   WindowNode,
-} from '@pascal-app/core'
+} from '@pascal-app/core/editor-types'
 import { useScene } from '@pascal-app/core/editor-interop'
 import { useViewer } from '@pascal-app/viewer/viewer-store'
 import { create } from 'zustand'
