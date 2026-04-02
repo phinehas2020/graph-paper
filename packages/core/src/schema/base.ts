@@ -16,6 +16,14 @@ export const objectId = <T extends string>(prefix: T) => {
 
   return schema.default(() => generateId(prefix) as z.infer<typeof schema>)
 }
+export const childRef = <T extends string>(idSchema: z.ZodType<`${T}_${string}`>) =>
+  z.preprocess((value) => {
+    if (typeof value === 'object' && value !== null && 'id' in value) {
+      return (value as { id?: unknown }).id
+    }
+
+    return value
+  }, idSchema)
 export const nodeType = <T extends string>(type: T) => z.literal(type).default(type)
 
 export const BaseNode = z.object({

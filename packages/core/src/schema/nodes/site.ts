@@ -2,7 +2,7 @@
 
 import dedent from 'dedent'
 import { z } from 'zod'
-import { BaseNode, nodeType, objectId } from '../base'
+import { BaseNode, childRef, nodeType, objectId } from '../base'
 import { BuildingNode } from './building'
 import { ItemNode } from './item'
 
@@ -34,7 +34,7 @@ export const SiteNode = BaseNode.extend({
   }),
   // terrain: TerrainData,
   children: z
-    .array(z.union([BuildingNode.shape.id, ItemNode.shape.id]))
+    .array(z.union([childRef(BuildingNode.shape.id), childRef(ItemNode.shape.id)]))
     .default([]),
 }).describe(
   dedent`

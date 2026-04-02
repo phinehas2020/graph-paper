@@ -12,6 +12,12 @@ export const objectId = (prefix) => {
     const schema = z.templateLiteral([`${prefix}_`, z.string()]);
     return schema.default(() => generateId(prefix));
 };
+export const childRef = (idSchema) => z.preprocess((value) => {
+    if (typeof value === 'object' && value !== null && 'id' in value) {
+        return value.id;
+    }
+    return value;
+}, idSchema);
 export const nodeType = (type) => z.literal(type).default(type);
 export const BaseNode = z.object({
     object: z.literal('node').default('node'),
