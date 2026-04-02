@@ -1,0 +1,158 @@
+import type { AssemblyCatalog, AssemblyDefinition } from '../schema/assemblies'
+
+const TWO_BY_FOUR = {
+  nominal: '2x4',
+  actualThickness: 0.0381,
+  actualDepth: 0.0889,
+  materialCode: 'lumber.spf.2x4',
+} as const
+
+const TWO_BY_SIX = {
+  nominal: '2x6',
+  actualThickness: 0.0381,
+  actualDepth: 0.1397,
+  materialCode: 'lumber.spf.2x6',
+} as const
+
+const TWO_BY_EIGHT = {
+  nominal: '2x8',
+  actualThickness: 0.0381,
+  actualDepth: 0.18415,
+  materialCode: 'lumber.spf.2x8',
+} as const
+
+const TWO_BY_TEN = {
+  nominal: '2x10',
+  actualThickness: 0.0381,
+  actualDepth: 0.23495,
+  materialCode: 'lumber.spf.2x10',
+} as const
+
+export const DEFAULT_ASSEMBLIES: AssemblyDefinition[] = [
+  {
+    id: 'wall-2x4-interior',
+    kind: 'wall',
+    name: 'Interior 2x4 Stud Wall',
+    description: 'Interior stud wall with drywall and casing on both faces.',
+    isExterior: false,
+    studSpacing: 0.4064,
+    topPlateCount: 2,
+    bottomPlateCount: 1,
+    stud: TWO_BY_FOUR,
+    plate: TWO_BY_FOUR,
+    header: TWO_BY_EIGHT,
+    blocking: TWO_BY_FOUR,
+    defaultThickness: 0.1143,
+    sheathing: {
+      materialCode: 'panel.osb.7-16.4x8',
+      thickness: 0.0111125,
+      sheetWidth: 1.2192,
+      sheetHeight: 2.4384,
+      faces: 0,
+    },
+    drywall: {
+      materialCode: 'panel.gwb.1-2.4x8',
+      thickness: 0.0127,
+      sheetWidth: 1.2192,
+      sheetHeight: 2.4384,
+      faces: 2,
+    },
+    trim: {
+      enabled: true,
+      faces: 2,
+      casingWidth: 0.05715,
+      thickness: 0.015875,
+      materialCode: 'trim.casing.2-1-4',
+    },
+    openingFraming: {
+      kingStudsPerSide: 1,
+      jackStudsPerSide: 1,
+      headerBearingLength: 0.0762,
+      crippleSpacing: 0.4064,
+      sillMemberCount: 1,
+    },
+    uniformatCode: 'B2010',
+    masterformatCode: '09 22 16',
+  },
+  {
+    id: 'wall-2x6-exterior',
+    kind: 'wall',
+    name: 'Exterior 2x6 Stud Wall',
+    description: 'Exterior stud wall with sheathing outside and drywall inside.',
+    isExterior: true,
+    studSpacing: 0.4064,
+    topPlateCount: 2,
+    bottomPlateCount: 1,
+    stud: TWO_BY_SIX,
+    plate: TWO_BY_SIX,
+    header: TWO_BY_TEN,
+    blocking: TWO_BY_SIX,
+    defaultThickness: 0.1651,
+    sheathing: {
+      materialCode: 'panel.osb.7-16.4x8',
+      thickness: 0.0111125,
+      sheetWidth: 1.2192,
+      sheetHeight: 2.4384,
+      faces: 1,
+    },
+    drywall: {
+      materialCode: 'panel.gwb.1-2.4x8',
+      thickness: 0.0127,
+      sheetWidth: 1.2192,
+      sheetHeight: 2.4384,
+      faces: 1,
+    },
+    trim: {
+      enabled: true,
+      faces: 1,
+      casingWidth: 0.05715,
+      thickness: 0.015875,
+      materialCode: 'trim.casing.2-1-4',
+    },
+    openingFraming: {
+      kingStudsPerSide: 1,
+      jackStudsPerSide: 1,
+      headerBearingLength: 0.1016,
+      crippleSpacing: 0.4064,
+      sillMemberCount: 1,
+    },
+    uniformatCode: 'B2010',
+    masterformatCode: '06 11 00',
+  },
+  {
+    id: 'floor-slab-on-grade',
+    kind: 'floor',
+    name: 'Slab on Grade',
+    description: 'Placeholder floor assembly for future compiler passes.',
+    uniformatCode: 'A1030',
+    masterformatCode: '03 30 00',
+  },
+  {
+    id: 'roof-rafters-generic',
+    kind: 'roof',
+    name: 'Generic Rafter Roof',
+    description: 'Placeholder roof assembly for future compiler passes.',
+    uniformatCode: 'B1020',
+    masterformatCode: '07 31 13',
+  },
+  {
+    id: 'finish-generic',
+    kind: 'finish',
+    name: 'Generic Residential Finish Set',
+    description: 'Placeholder finish assembly for future compiler passes.',
+    uniformatCode: 'C3020',
+    masterformatCode: '09 00 00',
+  },
+  {
+    id: 'mep-generic',
+    kind: 'mep',
+    name: 'Generic Residential MEP Defaults',
+    description: 'Placeholder MEP assembly for future compiler passes.',
+    uniformatCode: 'D5000',
+    masterformatCode: '26 00 00',
+  },
+]
+
+export const DEFAULT_ASSEMBLY_CATALOG: AssemblyCatalog = Object.fromEntries(
+  DEFAULT_ASSEMBLIES.map((assembly) => [assembly.id, assembly]),
+)

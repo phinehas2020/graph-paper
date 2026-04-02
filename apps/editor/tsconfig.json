@@ -20,6 +20,8 @@
   "exclude": ["node_modules"],
   "references": [
     { "path": "../../packages/core" },
-    { "path": "../../packages/viewer" }
+    { "path": "../../packages/viewer" },
+    { "path": "../../packages/construction" },
+    { "path": "../../packages/editor" }
   ]
 }

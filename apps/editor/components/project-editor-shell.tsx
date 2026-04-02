@@ -1,5 +1,6 @@
 'use client'
 
+import { compileConstructionGraph } from '@pascal-app/construction'
 import { Editor, type SaveStatus, type SceneGraph } from '@pascal-app/editor'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -123,7 +124,7 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
       const { data, error } = await client
         .from('projects')
         .select(
-          'id, owner_id, name, description, scene_data, thumbnail_url, created_at, updated_at, last_opened_at',
+          'id, owner_id, name, description, scene_data, rule_pack, compiler_version, construction_snapshot, estimate_snapshot, thumbnail_url, created_at, updated_at, last_opened_at',
         )
         .eq('id', projectId)
         .single()
@@ -177,9 +178,21 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
       const client = supabase
 
       const timestamp = new Date().toISOString()
+      let constructionSnapshot: ReturnType<typeof compileConstructionGraph> | null = null
+
+      try {
+        constructionSnapshot = compileConstructionGraph(scene)
+      } catch {
+        constructionSnapshot = null
+      }
+
       const { error } = await client
         .from('projects')
         .update({
+          compiler_version: constructionSnapshot?.compilerVersion ?? null,
+          construction_snapshot: constructionSnapshot,
+          estimate_snapshot: constructionSnapshot?.estimate ?? null,
+          rule_pack: constructionSnapshot?.rulePackId ?? null,
           scene_data: scene,
           updated_at: timestamp,
         })
@@ -194,7 +207,11 @@ export function ProjectEditorShell({ projectId }: { projectId: string }) {
         current
           ? {
               ...current,
+              compiler_version: constructionSnapshot?.compilerVersion ?? null,
+              construction_snapshot: constructionSnapshot,
+              estimate_snapshot: constructionSnapshot?.estimate ?? null,
               scene_data: scene,
+              rule_pack: constructionSnapshot?.rulePackId ?? null,
               updated_at: timestamp,
             }
           : current,
