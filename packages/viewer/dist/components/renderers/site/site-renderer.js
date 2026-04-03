@@ -52,5 +52,5 @@ export const SiteRenderer = ({ node }) => {
     if (!(node && floorShape && lineGeometry)) {
         return null;
     }
-    return (_jsxs("group", { ref: ref, ...handlers, children: [node.children.map((child) => (_jsx(NodeRenderer, { nodeId: typeof child === 'string' ? child : child.id }, typeof child === 'string' ? child : child.id))), _jsxs("mesh", { position: [0, Y_OFFSET - 0.005, 0], receiveShadow: true, rotation: [-Math.PI / 2, 0, 0], children: [_jsx("shapeGeometry", { args: [floorShape] }), _jsx("shadowMaterial", { opacity: 0.75, transparent: true })] }), _jsx("line", { frustumCulled: false, geometry: lineGeometry, renderOrder: 9, children: _jsx("lineBasicMaterial", { color: "#f59e0b", linewidth: 2, opacity: 0.6, transparent: true }) })] }));
+    return (_jsxs("group", { ref: ref, ...handlers, children: [node.children.map((childId) => (_jsx(NodeRenderer, { nodeId: childId }, childId))), _jsxs("mesh", { position: [0, Y_OFFSET - 0.005, 0], receiveShadow: true, rotation: [-Math.PI / 2, 0, 0], children: [_jsx("shapeGeometry", { args: [floorShape] }), _jsx("shadowMaterial", { opacity: 0.75, transparent: true })] }), _jsx("line", { frustumCulled: false, geometry: lineGeometry, renderOrder: 9, children: _jsx("lineBasicMaterial", { color: "#f59e0b", linewidth: 2, opacity: 0.6, transparent: true }) })] }));
 };

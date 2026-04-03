@@ -58,7 +58,7 @@ declare const useViewer: import("zustand").UseBoundStore<Omit<import("zustand").
         setOptions: (options: Partial<import("zustand/middleware").PersistOptions<ViewerState, {
             cameraMode: "perspective" | "orthographic";
             theme: "light" | "dark";
-            levelMode: "stacked" | "exploded" | "solo" | "manual";
+            levelMode: "manual" | "stacked" | "exploded" | "solo";
             wallMode: "up" | "cutaway" | "down";
             projectPreferences: Record<string, {
                 showScans?: boolean;
@@ -75,7 +75,7 @@ declare const useViewer: import("zustand").UseBoundStore<Omit<import("zustand").
         getOptions: () => Partial<import("zustand/middleware").PersistOptions<ViewerState, {
             cameraMode: "perspective" | "orthographic";
             theme: "light" | "dark";
-            levelMode: "stacked" | "exploded" | "solo" | "manual";
+            levelMode: "manual" | "stacked" | "exploded" | "solo";
             wallMode: "up" | "cutaway" | "down";
             projectPreferences: Record<string, {
                 showScans?: boolean;

@@ -68,10 +68,10 @@ export const SiteRenderer = ({ node }: { node: SiteNode }) => {
   return (
     <group ref={ref} {...handlers}>
       {/* Render children (buildings and items) */}
-      {node.children.map((child) => (
+      {node.children.map((childId) => (
         <NodeRenderer
-          key={typeof child === 'string' ? child : child.id}
-          nodeId={typeof child === 'string' ? child : child.id}
+          key={childId}
+          nodeId={childId}
         />
       ))}
 

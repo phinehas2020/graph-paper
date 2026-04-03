@@ -11,6 +11,11 @@ import {
 
 import { useViewer } from '@pascal-app/viewer'
 import { useEffect, useRef } from 'react'
+import {
+  EDITOR_SELECTION_EVENT_TYPES,
+  isConstructionNodeType,
+  isStructureNodeType,
+} from '../ui/panels/construction-node-utils'
 import useEditor from './../../store/use-editor'
 
 const isNodeInCurrentLevel = (node: AnyNode): boolean => {
@@ -19,6 +24,9 @@ const isNodeInCurrentLevel = (node: AnyNode): boolean => {
   const nodeLevelId = resolveLevelId(node, useScene.getState().nodes)
   return nodeLevelId === currentLevelId
 }
+
+const isStructureElementType = (type: string) =>
+  (isStructureNodeType(type) && type !== 'item' && type !== 'zone') || isConstructionNodeType(type)
 
 type SelectableNodeType =
   | 'wall'
@@ -128,12 +136,7 @@ const SELECTION_STRATEGIES: Record<string, SelectionStrategy> = {
         if (node.type === 'zone') return true
         return false
       }
-      if (
-        node.type === 'wall' ||
-        node.type === 'slab' ||
-        node.type === 'ceiling' ||
-        node.type === 'roof'
-      )
+      if (isStructureElementType(node.type))
         return true
       if (node.type === 'item') {
         return (
@@ -230,14 +233,7 @@ export const SelectionManager = () => {
       // Auto-switch between structure and furnish phases when clicking elements on the same level
       if (currentPhase === 'structure' || currentPhase === 'furnish') {
         if (isNodeInCurrentLevel(node)) {
-          if (
-            node.type === 'wall' ||
-            node.type === 'slab' ||
-            node.type === 'ceiling' ||
-            node.type === 'roof' ||
-            node.type === 'window' ||
-            node.type === 'door'
-          ) {
+          if (isStructureElementType(node.type)) {
             targetPhase = 'structure'
           } else if (node.type === 'item') {
             const item = node as ItemNode
@@ -272,17 +268,7 @@ export const SelectionManager = () => {
       }
     }
 
-    const allTypes = [
-      'wall',
-      'item',
-      'building',
-      'zone',
-      'slab',
-      'ceiling',
-      'roof',
-      'window',
-      'door',
-    ]
+    const allTypes = [...EDITOR_SELECTION_EVENT_TYPES]
     allTypes.forEach((type) => {
       emitter.on(`${type}:click` as any, onClick as any)
     })
@@ -354,14 +340,7 @@ export const SelectionManager = () => {
         if (node.type === 'building') {
           targetPhase = 'structure'
         }
-      } else if (
-        node.type === 'wall' ||
-        node.type === 'slab' ||
-        node.type === 'ceiling' ||
-        node.type === 'roof' ||
-        node.type === 'window' ||
-        node.type === 'door'
-      ) {
+      } else if (isStructureElementType(node.type)) {
         targetPhase = 'structure'
       } else if (node.type === 'item') {
         const item = node as ItemNode
@@ -392,18 +371,7 @@ export const SelectionManager = () => {
       }
     }
 
-    const allTypes = [
-      'wall',
-      'item',
-      'building',
-      'slab',
-      'ceiling',
-      'roof',
-      'window',
-      'door',
-      'zone',
-      'site',
-    ]
+    const allTypes = [...EDITOR_SELECTION_EVENT_TYPES]
     allTypes.forEach((type) => {
       emitter.on(`${type}:enter` as any, onEnter as any)
       emitter.on(`${type}:leave` as any, onLeave as any)

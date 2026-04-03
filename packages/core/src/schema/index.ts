@@ -7,6 +7,36 @@ export { type Collection, type CollectionId, generateCollectionId } from './coll
 export { BuildingNode } from './nodes/building'
 export { CeilingNode } from './nodes/ceiling'
 export { DoorNode, DoorSegment } from './nodes/door'
+export {
+  CircuitKind,
+  CircuitNode,
+  DeviceBoxKind,
+  DeviceBoxNode,
+  ElectricalPanelNode,
+  LightFixtureKind,
+  LightFixtureNode,
+  RunPathMode,
+  SwitchLegNode,
+  WireRunNode,
+} from './nodes/electrical'
+export {
+  BeamLineNode,
+  BlockingKind,
+  BlockingRunNode,
+  FloorFramingKind,
+  FloorOpeningNode,
+  FloorSystemNode,
+  RimMode,
+  SupportPostNode,
+} from './nodes/floor-system'
+export {
+  ColumnNode,
+  FootingRunNode,
+  FoundationKind,
+  FoundationSystemNode,
+  PierNode,
+  StemWallNode,
+} from './nodes/foundation'
 export { GuideNode } from './nodes/guide'
 export type {
   AnimationEffect,
@@ -22,7 +52,21 @@ export type {
 } from './nodes/item'
 export { getScaledDimensions, ItemNode } from './nodes/item'
 export { LevelNode } from './nodes/level'
+export {
+  DrainRunNode,
+  PlumbingFixtureKind,
+  PlumbingFixtureNode,
+  PlumbingSystemKind,
+  SupplyRunNode,
+  VentRunNode,
+} from './nodes/plumbing'
 export { RoofNode } from './nodes/roof'
+export {
+  RafterSetNode,
+  RoofFramingMode,
+  RoofPlaneNode,
+  TrussArrayNode,
+} from './nodes/roof-plane'
 export { RoofSegmentNode, RoofType } from './nodes/roof-segment'
 export { ScanNode } from './nodes/scan'
 // Nodes
@@ -30,11 +74,14 @@ export { SiteNode } from './nodes/site'
 export { SlabNode } from './nodes/slab'
 export {
   DEFAULT_WALL_HEIGHT,
+  DEFAULT_WALL_THICKNESS,
   getWallGuideLocalY,
   getWallHeight,
   getWallLength,
+  WallCornerStyle,
   WallGuide,
   WallGuideReference,
+  WallIntersectionStyle,
   WallNode,
 } from './nodes/wall'
 export { WindowNode } from './nodes/window'

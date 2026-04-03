@@ -20,7 +20,7 @@ export declare const RoofNode: z.ZodObject<{
     type: z.ZodDefault<z.ZodLiteral<"roof">>;
     position: z.ZodDefault<z.ZodTuple<[z.ZodNumber, z.ZodNumber, z.ZodNumber], null>>;
     rotation: z.ZodDefault<z.ZodNumber>;
-    children: z.ZodDefault<z.ZodArray<z.ZodDefault<z.ZodTemplateLiteral<`rseg_${string}`>>>>;
+    children: z.ZodDefault<z.ZodArray<z.ZodUnion<readonly [z.ZodDefault<z.ZodTemplateLiteral<`rseg_${string}`>>, z.ZodDefault<z.ZodTemplateLiteral<`rplane_${string}`>>, z.ZodDefault<z.ZodTemplateLiteral<`truss_${string}`>>, z.ZodDefault<z.ZodTemplateLiteral<`rafter_${string}`>>]>>>;
 }, z.core.$strip>;
 export type RoofNode = z.infer<typeof RoofNode>;
 //# sourceMappingURL=roof.d.ts.map

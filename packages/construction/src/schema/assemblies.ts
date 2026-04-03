@@ -1,4 +1,4 @@
-export type QuantityUnit = 'ea' | 'lf' | 'sf' | 'sheet'
+export type QuantityUnit = 'ea' | 'lf' | 'sf' | 'sheet' | 'cf'
 
 export type AssemblyKind = 'wall' | 'floor' | 'roof' | 'finish' | 'mep'
 

@@ -3,6 +3,7 @@ import { type StoreApi, type UseBoundStore } from 'zustand';
 import type { Collection, CollectionId } from '../schema/collections';
 import type { AnyNode, AnyNodeId } from '../schema/types';
 export type SceneState = {
+    sceneSchemaVersion: number;
     nodes: Record<AnyNodeId, AnyNode>;
     rootNodeIds: AnyNodeId[];
     dirtyNodes: Set<AnyNodeId>;
@@ -10,7 +11,7 @@ export type SceneState = {
     loadScene: () => void;
     clearScene: () => void;
     unloadScene: () => void;
-    setScene: (nodes: Record<AnyNodeId, AnyNode>, rootNodeIds: AnyNodeId[]) => void;
+    setScene: (nodes: Record<AnyNodeId, AnyNode>, rootNodeIds: AnyNodeId[], sceneSchemaVersion?: number) => void;
     markDirty: (id: AnyNodeId) => void;
     clearDirty: (id: AnyNodeId) => void;
     createNode: (node: AnyNode, parentId?: AnyNodeId) => void;

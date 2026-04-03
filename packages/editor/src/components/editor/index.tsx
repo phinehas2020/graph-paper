@@ -16,6 +16,7 @@ import {
 import { initSFXBus } from '../../lib/sfx-bus'
 import useEditor from '../../store/use-editor'
 import { CeilingSystem } from '../systems/ceiling/ceiling-system'
+import { ConstructionOverlaySystem } from '../systems/construction/construction-overlay-system'
 import { ZoneLabelEditorSystem } from '../systems/zone/zone-label-editor-system'
 import { ZoneSystem } from '../systems/zone/zone-system'
 import { ToolManager } from '../tools/tool-manager'
@@ -47,9 +48,12 @@ initSpaceDetectionSync(useScene, useEditor)
 const sceneNodes = useScene.getState().nodes as Record<string, any>
 const sceneRootIds = useScene.getState().rootNodeIds
 const siteNode = sceneRootIds[0] ? sceneNodes[sceneRootIds[0]] : null
-const resolve = (child: any) => (typeof child === 'string' ? sceneNodes[child] : child)
-const firstBuilding = siteNode?.children?.map(resolve).find((n: any) => n?.type === 'building')
-const firstLevel = firstBuilding?.children?.map(resolve).find((n: any) => n?.type === 'level')
+const firstBuilding = siteNode?.children
+  ?.map((childId: string) => sceneNodes[childId])
+  .find((n: any) => n?.type === 'building')
+const firstLevel = firstBuilding?.children
+  ?.map((childId: string) => sceneNodes[childId])
+  .find((n: any) => n?.type === 'level')
 
 if (firstBuilding && firstLevel) {
   useViewer.getState().setSelection({
@@ -235,6 +239,7 @@ export default function Editor({
             <CeilingSystem />
             {!isPreviewMode && <Grid cellColor="#aaa" fadeDistance={500} sectionColor="#ccc" />}
             {!isPreviewMode && <ToolManager />}
+            {!isPreviewMode && <ConstructionOverlaySystem />}
             <CustomCameraControls />
             <ThumbnailGenerator onThumbnailCapture={onThumbnailCapture} />
             <PresetThumbnailGenerator />

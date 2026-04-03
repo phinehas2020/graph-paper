@@ -18,7 +18,7 @@ export declare const CeilingNode: z.ZodObject<{
     metadata: z.ZodDefault<z.ZodOptional<z.ZodJSONSchema>>;
     id: z.ZodDefault<z.ZodTemplateLiteral<`ceiling_${string}`>>;
     type: z.ZodDefault<z.ZodLiteral<"ceiling">>;
-    children: z.ZodDefault<z.ZodArray<z.ZodDefault<z.ZodTemplateLiteral<`item_${string}`>>>>;
+    children: z.ZodDefault<z.ZodArray<z.ZodUnion<readonly [z.ZodDefault<z.ZodTemplateLiteral<`item_${string}`>>, z.ZodDefault<z.ZodTemplateLiteral<`fixture_${string}`>>]>>>;
     polygon: z.ZodArray<z.ZodTuple<[z.ZodNumber, z.ZodNumber], null>>;
     holes: z.ZodDefault<z.ZodArray<z.ZodArray<z.ZodTuple<[z.ZodNumber, z.ZodNumber], null>>>>;
     height: z.ZodDefault<z.ZodNumber>;

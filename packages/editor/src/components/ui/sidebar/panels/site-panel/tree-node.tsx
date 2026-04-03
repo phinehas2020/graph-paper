@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { forwardRef, useEffect, useRef } from 'react'
 import { cn } from './../../../../../lib/utils'
+import { isConstructionNodeType } from '../../../../ui/panels/construction-node-utils'
 
 export function handleTreeSelection(
   e: React.MouseEvent,
@@ -51,6 +52,7 @@ export function handleTreeSelection(
 }
 
 import { BuildingTreeNode } from './building-tree-node'
+import { ConstructionTreeNode } from './construction-tree-node'
 import { CeilingTreeNode } from './ceiling-tree-node'
 import { DoorTreeNode } from './door-tree-node'
 import { ItemTreeNode } from './item-tree-node'
@@ -94,7 +96,9 @@ export function TreeNode({ nodeId, depth = 0, isLast }: TreeNodeProps) {
     case 'zone':
       return <ZoneTreeNode depth={depth} isLast={isLast} node={node as any} />
     default:
-      return null
+      return isConstructionNodeType(node.type) ? (
+        <ConstructionTreeNode depth={depth} isLast={isLast} node={node as any} />
+      ) : null
   }
 }
 

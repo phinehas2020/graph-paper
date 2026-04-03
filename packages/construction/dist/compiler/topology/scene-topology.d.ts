@@ -1,4 +1,4 @@
-import { type AnyNode, migrateSceneGraph, type SceneGraph } from '@pascal-app/core/construction-interop';
+import { type AnyNode, type SceneGraph, migrateSceneGraph } from '@pascal-app/core/construction-interop';
 import type { AssemblyDefinition } from '../../schema/assemblies';
 import type { ConstructionDiagnostic } from '../../schema/diagnostics';
 import type { ConstructionTopology, SystemsSummaryRoom } from '../../schema/construction-graph';

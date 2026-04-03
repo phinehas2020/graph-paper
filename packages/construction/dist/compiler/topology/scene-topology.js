@@ -1,4 +1,5 @@
 import { DEFAULT_WALL_HEIGHT, DEFAULT_WALL_THICKNESS, getScaledDimensions, migrateSceneGraph, resolveLevelId, } from '@pascal-app/core/construction-interop';
+import { lineLength, pathLength, polygonArea, polygonPerimeter } from '../shared';
 const OPENING_EPSILON = 0.001;
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
@@ -6,9 +7,13 @@ function clamp(value, min, max) {
 function getWallLength(wall) {
     return Math.hypot(wall.end[0] - wall.start[0], wall.end[1] - wall.start[1]);
 }
-function getLevelNode(nodes, wall) {
-    const parent = wall.parentId ? nodes[wall.parentId] : undefined;
-    return parent?.type === 'level' ? parent : null;
+function getLevelNode(nodes, node) {
+    if (node.type === 'level') {
+        return node;
+    }
+    const levelId = resolveLevelId(node, nodes);
+    const level = levelId ? nodes[levelId] : undefined;
+    return level?.type === 'level' ? level : null;
 }
 function getBuildingAndSiteIds(nodes, levelId) {
     const buildingNode = levelId ? nodes[nodes[levelId]?.parentId ?? ''] : undefined;
@@ -19,8 +24,9 @@ function getBuildingAndSiteIds(nodes, levelId) {
 }
 function getWallAssemblyId(wall, levelNode, assemblies, rulePack) {
     const wallAssemblyIds = new Set(assemblies.filter((assembly) => assembly.kind === 'wall').map((assembly) => assembly.id));
+    const levelDefaultWallAssemblyId = levelNode?.defaultWallAssemblyId;
     const preferredId = wall.assemblyId ??
-        levelNode?.defaultWallAssemblyId ??
+        levelDefaultWallAssemblyId ??
         (wall.isExterior
             ? rulePack.defaults.exteriorWallAssemblyId
             : rulePack.defaults.interiorWallAssemblyId);
@@ -29,6 +35,17 @@ function getWallAssemblyId(wall, levelNode, assemblies, rulePack) {
         : wall.isExterior
             ? rulePack.defaults.exteriorWallAssemblyId
             : rulePack.defaults.interiorWallAssemblyId;
+}
+function buildTopologyBase(node, nodes, assemblyId) {
+    const levelNode = getLevelNode(nodes, node);
+    const { buildingId, siteId } = getBuildingAndSiteIds(nodes, levelNode?.id ?? null);
+    return {
+        sourceNodeId: node.id,
+        levelId: levelNode?.id ?? null,
+        buildingId,
+        siteId,
+        assemblyId,
+    };
 }
 function resolveOpeningVerticals(opening, type, rulePack) {
     const hasExplicitCenter = opening.position[1] > 0;
@@ -106,41 +123,18 @@ function extractWallOpenings(wall, wallLength, wallHeight, nodes, rulePack, diag
             });
             continue;
         }
-        const type = child.type;
         const opening = child.type === 'door' ? child : child;
         const minCenter = opening.width / 2;
         const maxCenter = Math.max(minCenter, wallLength - opening.width / 2);
         const centerOffset = clamp(opening.position[0], minCenter, maxCenter);
-        const verticals = resolveOpeningVerticals(opening, type, rulePack);
+        const verticals = resolveOpeningVerticals(opening, child.type, rulePack);
         const sillHeight = clamp(verticals.sillHeight, 0, wallHeight);
         const headHeight = clamp(verticals.headHeight, 0, wallHeight);
-        if (verticals.usedFallback) {
-            diagnostics.push({
-                id: `opening-height-fallback:${opening.id}`,
-                level: 'info',
-                code: 'construction.opening.height_fallback',
-                message: `Opening ${opening.id} used a baseline sill-height fallback because its authored center height was unset.`,
-                sourceNodeId: opening.id,
-                wallId: wall.id,
-                openingId: opening.id,
-            });
-        }
-        if (Math.abs(centerOffset - opening.position[0]) > OPENING_EPSILON) {
-            diagnostics.push({
-                id: `opening-clamped:${opening.id}`,
-                level: 'warning',
-                code: 'construction.opening.clamped_to_wall',
-                message: `Opening ${opening.id} extends beyond wall ${wall.id} and was clamped for takeoff.`,
-                sourceNodeId: opening.id,
-                wallId: wall.id,
-                openingId: opening.id,
-            });
-        }
         openings.push({
             openingId: opening.id,
             wallId: wall.id,
             sourceNodeId: opening.id,
-            type,
+            type: child.type,
             centerOffset,
             width: opening.width,
             height: Math.max(0, headHeight - sillHeight),
@@ -189,18 +183,9 @@ export function buildConstructionTopology(sceneInput, assemblies, rulePack) {
         const height = wall.height ?? DEFAULT_WALL_HEIGHT;
         const thickness = wall.thickness ?? DEFAULT_WALL_THICKNESS;
         const assemblyId = getWallAssemblyId(wall, levelNode, assemblies, rulePack);
-        if (length <= OPENING_EPSILON) {
-            diagnostics.push({
-                id: `wall-zero-length:${wall.id}`,
-                level: 'warning',
-                code: 'construction.wall.zero_length',
-                message: `Wall ${wall.id} has near-zero length and will not generate meaningful framing.`,
-                sourceNodeId: wall.id,
-                wallId: wall.id,
-            });
-        }
         const openings = extractWallOpenings(wall, length, height, nodes, rulePack, diagnostics);
         return {
+            sourceNodeId: wall.id,
             wallId: wall.id,
             levelId: levelNode?.id ?? null,
             buildingId,
@@ -216,6 +201,300 @@ export function buildConstructionTopology(sceneInput, assemblies, rulePack) {
             openings,
         };
     });
+    const floorSystems = Object.values(nodes)
+        .filter((node) => node.type === 'floor-system')
+        .map((node) => {
+        const base = buildTopologyBase(node, nodes, node.assemblyId ?? rulePack.defaults.floorAssemblyId);
+        return {
+            ...base,
+            floorSystemId: node.id,
+            polygon: node.polygon,
+            area: polygonArea(node.polygon),
+            perimeter: polygonPerimeter(node.polygon),
+            derivedFromSlabId: node.derivedFromSlabId,
+            framingKind: node.framingKind,
+            joistAngle: node.joistAngle,
+            joistSpacing: node.joistSpacing,
+            memberDepth: node.memberDepth,
+            rimMode: node.rimMode,
+            elevation: node.elevation,
+            sheathingThickness: node.sheathingThickness,
+            openingIds: node.children.filter((childId) => nodes[childId]?.type === 'floor-opening'),
+            blockingIds: node.children.filter((childId) => nodes[childId]?.type === 'blocking-run'),
+        };
+    });
+    const floorOpenings = Object.values(nodes)
+        .filter((node) => node.type === 'floor-opening')
+        .map((node) => {
+        const base = buildTopologyBase(node, nodes, rulePack.defaults.floorAssemblyId);
+        return {
+            ...base,
+            floorOpeningId: node.id,
+            parentFloorSystemId: node.parentId && nodes[node.parentId]?.type === 'floor-system' ? node.parentId : null,
+            polygon: node.polygon,
+            area: polygonArea(node.polygon),
+            perimeter: polygonPerimeter(node.polygon),
+            curbHeight: node.curbHeight,
+        };
+    });
+    const blockingRuns = Object.values(nodes)
+        .filter((node) => node.type === 'blocking-run')
+        .map((node) => {
+        const base = buildTopologyBase(node, nodes, rulePack.defaults.floorAssemblyId);
+        return {
+            ...base,
+            blockingRunId: node.id,
+            parentFloorSystemId: node.parentId && nodes[node.parentId]?.type === 'floor-system' ? node.parentId : null,
+            start: node.start,
+            end: node.end,
+            length: lineLength(node.start, node.end),
+            kind: node.kind,
+            spacing: node.spacing,
+            materialCode: node.materialCode,
+        };
+    });
+    const beamLines = Object.values(nodes)
+        .filter((node) => node.type === 'beam-line')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.floorAssemblyId),
+        beamLineId: node.id,
+        supportFloorSystemId: node.supportFloorSystemId,
+        start: node.start,
+        end: node.end,
+        length: lineLength(node.start, node.end),
+        width: node.width,
+        depth: node.depth,
+        materialCode: node.materialCode,
+    }));
+    const supportPosts = Object.values(nodes)
+        .filter((node) => node.type === 'support-post')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.floorAssemblyId),
+        supportPostId: node.id,
+        center: node.center,
+        width: node.width,
+        depth: node.depth,
+        height: node.height,
+        materialCode: node.materialCode,
+    }));
+    const roofPlanes = Object.values(nodes)
+        .filter((node) => node.type === 'roof-plane')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, node.assemblyId ?? rulePack.defaults.roofAssemblyId),
+        roofPlaneId: node.id,
+        polygon: node.polygon,
+        area: polygonArea(node.polygon),
+        perimeter: polygonPerimeter(node.polygon),
+        pitch: node.pitch,
+        overhang: node.overhang,
+        plateHeight: node.plateHeight,
+        heelHeight: node.heelHeight,
+        sheathingThickness: node.sheathingThickness,
+        roofingThickness: node.roofingThickness,
+        framingMode: node.framingMode,
+        trussArrayIds: node.children.filter((childId) => nodes[childId]?.type === 'truss-array'),
+        rafterSetIds: node.children.filter((childId) => nodes[childId]?.type === 'rafter-set'),
+    }));
+    const trussArrays = Object.values(nodes)
+        .filter((node) => node.type === 'truss-array')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, node.assemblyId ?? rulePack.defaults.roofAssemblyId),
+        trussArrayId: node.id,
+        roofPlaneId: node.roofPlaneId ?? (node.parentId && nodes[node.parentId]?.type === 'roof-plane' ? node.parentId : null),
+        start: node.start,
+        end: node.end,
+        length: lineLength(node.start, node.end),
+        spacing: node.spacing,
+        heelHeight: node.heelHeight,
+        overhang: node.overhang,
+    }));
+    const rafterSets = Object.values(nodes)
+        .filter((node) => node.type === 'rafter-set')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, node.assemblyId ?? rulePack.defaults.roofAssemblyId),
+        rafterSetId: node.id,
+        roofPlaneId: node.roofPlaneId ?? (node.parentId && nodes[node.parentId]?.type === 'roof-plane' ? node.parentId : null),
+        start: node.start,
+        end: node.end,
+        length: lineLength(node.start, node.end),
+        spacing: node.spacing,
+        ridgeBoardDepth: node.ridgeBoardDepth,
+        overhang: node.overhang,
+    }));
+    const electricalPanels = Object.values(nodes)
+        .filter((node) => node.type === 'electrical-panel')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.mepAssemblyId),
+        electricalPanelId: node.id,
+        position: node.position,
+        amperage: node.amperage,
+        voltage: node.voltage,
+        mainBreakerAmps: node.mainBreakerAmps,
+        circuitIds: node.children.filter((childId) => nodes[childId]?.type === 'circuit'),
+    }));
+    const circuits = Object.values(nodes)
+        .filter((node) => node.type === 'circuit')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.mepAssemblyId),
+        circuitId: node.id,
+        panelId: node.parentId && nodes[node.parentId]?.type === 'electrical-panel' ? node.parentId : null,
+        label: node.label,
+        breakerAmps: node.breakerAmps,
+        voltage: node.voltage,
+        circuitType: node.circuitType,
+        runIds: node.children.filter((childId) => {
+            const child = nodes[childId];
+            return child?.type === 'wire-run' || child?.type === 'switch-leg';
+        }),
+    }));
+    const deviceBoxes = Object.values(nodes)
+        .filter((node) => node.type === 'device-box')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.mepAssemblyId),
+        deviceBoxId: node.id,
+        position: node.position,
+        deviceType: node.deviceType,
+        wallId: node.wallId,
+        circuitId: node.circuitId,
+        mountHeight: node.mountHeight,
+        voltage: node.voltage,
+        wireType: node.wireType,
+    }));
+    const lightFixtures = Object.values(nodes)
+        .filter((node) => node.type === 'light-fixture')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.mepAssemblyId),
+        lightFixtureId: node.id,
+        position: node.position,
+        fixtureType: node.fixtureType,
+        circuitId: node.circuitId,
+        mountHeight: node.mountHeight,
+    }));
+    const wireRuns = Object.values(nodes)
+        .filter((node) => node.type === 'wire-run')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.mepAssemblyId),
+        wireRunId: node.id,
+        circuitId: node.circuitId,
+        path: node.path,
+        length: pathLength(node.path),
+        wireType: node.wireType,
+        homerun: node.homerun,
+        pathMode: node.pathMode,
+    }));
+    const switchLegs = Object.values(nodes)
+        .filter((node) => node.type === 'switch-leg')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.mepAssemblyId),
+        switchLegId: node.id,
+        circuitId: node.circuitId,
+        path: node.path,
+        length: pathLength(node.path),
+        wireType: node.wireType,
+    }));
+    const plumbingFixtures = Object.values(nodes)
+        .filter((node) => node.type === 'plumbing-fixture')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.mepAssemblyId),
+        plumbingFixtureId: node.id,
+        position: node.position,
+        fixtureType: node.fixtureType,
+        roomType: node.roomType,
+        pipeMaterial: node.pipeMaterial,
+        drainDiameter: node.drainDiameter,
+    }));
+    const supplyRuns = Object.values(nodes)
+        .filter((node) => node.type === 'supply-run')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.mepAssemblyId),
+        supplyRunId: node.id,
+        path: node.path,
+        length: pathLength(node.path),
+        systemKind: node.systemKind,
+        pipeMaterial: node.pipeMaterial,
+        diameter: node.diameter,
+    }));
+    const drainRuns = Object.values(nodes)
+        .filter((node) => node.type === 'drain-run')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.mepAssemblyId),
+        drainRunId: node.id,
+        path: node.path,
+        length: pathLength(node.path),
+        pipeMaterial: node.pipeMaterial,
+        diameter: node.diameter,
+        slope: node.slope,
+    }));
+    const ventRuns = Object.values(nodes)
+        .filter((node) => node.type === 'vent-run')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, rulePack.defaults.mepAssemblyId),
+        ventRunId: node.id,
+        path: node.path,
+        length: pathLength(node.path),
+        pipeMaterial: node.pipeMaterial,
+        diameter: node.diameter,
+    }));
+    const foundationSystems = Object.values(nodes)
+        .filter((node) => node.type === 'foundation-system')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, 'foundation-generic'),
+        foundationSystemId: node.id,
+        foundationKind: node.foundationKind,
+        footingWidth: node.footingWidth,
+        footingDepth: node.footingDepth,
+        stemWallThickness: node.stemWallThickness,
+        rebarProfile: node.rebarProfile,
+        childIds: node.children,
+    }));
+    const footingRuns = Object.values(nodes)
+        .filter((node) => node.type === 'footing-run')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, 'foundation-generic'),
+        footingRunId: node.id,
+        parentFoundationSystemId: node.parentId && nodes[node.parentId]?.type === 'foundation-system' ? node.parentId : null,
+        start: node.start,
+        end: node.end,
+        length: lineLength(node.start, node.end),
+        width: node.width,
+        depth: node.depth,
+        thickness: node.thickness,
+    }));
+    const stemWalls = Object.values(nodes)
+        .filter((node) => node.type === 'stem-wall')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, 'foundation-generic'),
+        stemWallId: node.id,
+        parentFoundationSystemId: node.parentId && nodes[node.parentId]?.type === 'foundation-system' ? node.parentId : null,
+        start: node.start,
+        end: node.end,
+        length: lineLength(node.start, node.end),
+        thickness: node.thickness,
+        height: node.height,
+    }));
+    const piers = Object.values(nodes)
+        .filter((node) => node.type === 'pier')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, 'foundation-generic'),
+        pierId: node.id,
+        parentFoundationSystemId: node.parentId && nodes[node.parentId]?.type === 'foundation-system' ? node.parentId : null,
+        center: node.center,
+        width: node.width,
+        depth: node.depth,
+        height: node.height,
+    }));
+    const columns = Object.values(nodes)
+        .filter((node) => node.type === 'column')
+        .map((node) => ({
+        ...buildTopologyBase(node, nodes, 'foundation-generic'),
+        columnId: node.id,
+        parentFoundationSystemId: node.parentId && nodes[node.parentId]?.type === 'foundation-system' ? node.parentId : null,
+        center: node.center,
+        width: node.width,
+        depth: node.depth,
+        height: node.height,
+        materialCode: node.materialCode,
+    }));
     Object.values(nodes)
         .filter((node) => node.type === 'roof-segment')
         .forEach((segment) => {
@@ -235,7 +514,53 @@ export function buildConstructionTopology(sceneInput, assemblies, rulePack) {
         levelIds,
         wallIds: walls.map((wall) => wall.wallId),
         openingIds: walls.flatMap((wall) => wall.openings.map((opening) => opening.openingId)),
+        floorSystemIds: floorSystems.map((entry) => entry.floorSystemId),
+        floorOpeningIds: floorOpenings.map((entry) => entry.floorOpeningId),
+        blockingRunIds: blockingRuns.map((entry) => entry.blockingRunId),
+        beamLineIds: beamLines.map((entry) => entry.beamLineId),
+        supportPostIds: supportPosts.map((entry) => entry.supportPostId),
+        roofPlaneIds: roofPlanes.map((entry) => entry.roofPlaneId),
+        trussArrayIds: trussArrays.map((entry) => entry.trussArrayId),
+        rafterSetIds: rafterSets.map((entry) => entry.rafterSetId),
+        electricalPanelIds: electricalPanels.map((entry) => entry.electricalPanelId),
+        circuitIds: circuits.map((entry) => entry.circuitId),
+        deviceBoxIds: deviceBoxes.map((entry) => entry.deviceBoxId),
+        lightFixtureIds: lightFixtures.map((entry) => entry.lightFixtureId),
+        wireRunIds: wireRuns.map((entry) => entry.wireRunId),
+        switchLegIds: switchLegs.map((entry) => entry.switchLegId),
+        plumbingFixtureIds: plumbingFixtures.map((entry) => entry.plumbingFixtureId),
+        supplyRunIds: supplyRuns.map((entry) => entry.supplyRunId),
+        drainRunIds: drainRuns.map((entry) => entry.drainRunId),
+        ventRunIds: ventRuns.map((entry) => entry.ventRunId),
+        foundationSystemIds: foundationSystems.map((entry) => entry.foundationSystemId),
+        footingRunIds: footingRuns.map((entry) => entry.footingRunId),
+        stemWallIds: stemWalls.map((entry) => entry.stemWallId),
+        pierIds: piers.map((entry) => entry.pierId),
+        columnIds: columns.map((entry) => entry.columnId),
         walls,
+        floorSystems,
+        floorOpenings,
+        blockingRuns,
+        beamLines,
+        supportPosts,
+        roofPlanes,
+        trussArrays,
+        rafterSets,
+        electricalPanels,
+        circuits,
+        deviceBoxes,
+        lightFixtures,
+        wireRuns,
+        switchLegs,
+        plumbingFixtures,
+        supplyRuns,
+        drainRuns,
+        ventRuns,
+        foundationSystems,
+        footingRuns,
+        stemWalls,
+        piers,
+        columns,
     };
     const rooms = Object.values(nodes)
         .filter((node) => node.type === 'zone')

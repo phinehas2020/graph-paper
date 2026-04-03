@@ -1,6 +1,6 @@
 export { migrateSceneGraph } from './schema/scene-graph';
 export { getScaledDimensions } from './schema/nodes/item';
-export { DEFAULT_WALL_HEIGHT, DEFAULT_WALL_THICKNESS } from './systems/wall/wall-footprint';
+export { DEFAULT_WALL_HEIGHT, DEFAULT_WALL_THICKNESS } from './schema/nodes/wall';
 export function resolveLevelId(node, nodes) {
     if (node.type === 'level') {
         return node.id;

@@ -23,17 +23,41 @@ export type Mode = 'select' | 'edit' | 'delete' | 'build'
 // Structure mode tools (building elements)
 export type StructureTool =
   | 'wall'
+  | 'wall-guide'
+  | 'measure'
   | 'room'
   | 'custom-room'
   | 'slab'
   | 'ceiling'
   | 'roof'
-  | 'column'
   | 'stair'
   | 'item'
   | 'zone'
   | 'window'
   | 'door'
+  | 'floor-system'
+  | 'beam-line'
+  | 'support-post'
+  | 'floor-opening'
+  | 'blocking-run'
+  | 'roof-plane'
+  | 'truss-array'
+  | 'rafter-set'
+  | 'electrical-panel'
+  | 'circuit'
+  | 'device-box'
+  | 'light-fixture'
+  | 'wire-run'
+  | 'switch-leg'
+  | 'plumbing-fixture'
+  | 'supply-run'
+  | 'drain-run'
+  | 'vent-run'
+  | 'foundation-system'
+  | 'footing-run'
+  | 'stem-wall'
+  | 'pier'
+  | 'column'
 
 // Furnish mode tools (items and decoration)
 export type FurnishTool = 'item'
@@ -52,7 +76,17 @@ export type CatalogCategory =
   | 'door'
 
 export type StructureLayer = 'zones' | 'elements'
-export type ConstructionView = 'framing' | 'estimate' | 'reports'
+export type ConstructionWorkspace =
+  | 'walls'
+  | 'floors'
+  | 'roof'
+  | 'electrical'
+  | 'plumbing'
+  | 'foundation'
+  | 'estimate'
+  | 'reports'
+export type ConstructionOverlay = 'authored' | 'generated' | 'diagnostics' | 'quantities'
+export type RegenerationMode = 'live' | 'manual'
 
 // Combined tool type
 export type Tool = SiteTool | StructureTool | FurnishTool
@@ -97,9 +131,16 @@ type EditorState = {
   // First-person walkthrough mode (street view)
   isFirstPersonMode: boolean
   setFirstPersonMode: (enabled: boolean) => void
-  // Derived construction compiler UI
-  constructionView: ConstructionView
-  setConstructionView: (view: ConstructionView) => void
+  constructionWorkspace: ConstructionWorkspace
+  setConstructionWorkspace: (workspace: ConstructionWorkspace) => void
+  constructionTool: StructureTool | null
+  setConstructionTool: (tool: StructureTool | null) => void
+  constructionOverlay: ConstructionOverlay
+  setConstructionOverlay: (overlay: ConstructionOverlay) => void
+  regenerationMode: RegenerationMode
+  setRegenerationMode: (mode: RegenerationMode) => void
+  constructionRefreshVersion: number
+  requestConstructionRegenerate: () => void
 }
 
 export type PersistedEditorUiState = Pick<
@@ -371,8 +412,55 @@ const useEditor = create<EditorState>()(
           set({ isFirstPersonMode: false })
         }
       },
-      constructionView: 'framing',
-      setConstructionView: (constructionView) => set({ constructionView }),
+      constructionWorkspace: 'walls',
+      setConstructionWorkspace: (constructionWorkspace) => {
+        set({ constructionWorkspace })
+
+        const defaultToolByWorkspace: Partial<Record<ConstructionWorkspace, StructureTool>> = {
+          walls: 'wall',
+          floors: 'floor-system',
+          roof: 'roof-plane',
+          electrical: 'device-box',
+          plumbing: 'plumbing-fixture',
+          foundation: 'footing-run',
+        }
+
+        const defaultTool = defaultToolByWorkspace[constructionWorkspace]
+        if (!defaultTool) {
+          set({
+            tool: null,
+            mode: 'select',
+            constructionTool: null,
+          })
+          return
+        }
+
+        set({
+          phase: 'structure',
+          structureLayer: 'elements',
+          mode: 'build',
+          tool: defaultTool,
+          constructionTool: defaultTool,
+        })
+      },
+      constructionTool: 'wall',
+      setConstructionTool: (constructionTool) =>
+        set({
+          phase: 'structure',
+          structureLayer: 'elements',
+          mode: 'build',
+          constructionTool,
+          tool: constructionTool,
+        }),
+      constructionOverlay: 'generated',
+      setConstructionOverlay: (constructionOverlay) => set({ constructionOverlay }),
+      regenerationMode: 'live',
+      setRegenerationMode: (regenerationMode) => set({ regenerationMode }),
+      constructionRefreshVersion: 0,
+      requestConstructionRegenerate: () =>
+        set((state) => ({
+          constructionRefreshVersion: state.constructionRefreshVersion + 1,
+        })),
     }),
     {
       name: 'pascal-editor-ui-preferences',

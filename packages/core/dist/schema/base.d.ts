@@ -6,6 +6,7 @@ import { z } from 'zod';
 export declare const Material: z.ZodOptional<z.ZodString>;
 export declare const generateId: <T extends string>(prefix: T) => `${T}_${string}`;
 export declare const objectId: <T extends string>(prefix: T) => z.ZodDefault<z.ZodTemplateLiteral<`${`${T}_` extends infer T_1 ? T_1 extends `${T}_` ? T_1 extends string | number | bigint | boolean | null | undefined ? `${T_1 extends infer T_2 ? T_2 extends T_1 ? T_2 extends undefined ? "" : T_2 : never : never}` : T_1 extends z.core.$ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>> ? `${z.core.output<T_1> extends infer T_3 extends string | number | bigint | boolean | null | undefined ? T_3 extends undefined ? "" : T_3 : never}` : never : never : never}${string}`>>;
+export declare const childRef: <T extends string>(idSchema: z.ZodType<`${T}_${string}`>) => z.ZodPipe<z.ZodTransform<unknown, unknown>, z.ZodType<`${T}_${string}`, unknown, z.core.$ZodTypeInternals<`${T}_${string}`, unknown>>>;
 export declare const nodeType: <T extends string>(type: T) => z.ZodDefault<z.ZodLiteral<T>>;
 export declare const BaseNode: z.ZodObject<{
     object: z.ZodDefault<z.ZodLiteral<"node">>;

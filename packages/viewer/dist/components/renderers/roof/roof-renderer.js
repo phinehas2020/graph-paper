@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useRegistry } from '@pascal-app/core';
+import { useScene } from '@pascal-app/core';
 import { useRef } from 'react';
 import { useNodeEvents } from '../../../hooks/use-node-events';
 import useViewer from '../../../store/use-viewer';
@@ -7,8 +8,11 @@ import { NodeRenderer } from '../node-renderer';
 import { roofDebugMaterials, roofMaterials } from './roof-materials';
 export const RoofRenderer = ({ node }) => {
     const ref = useRef(null);
+    const nodes = useScene((state) => state.nodes);
     useRegistry(node.id, 'roof', ref);
     const handlers = useNodeEvents(node, 'roof');
     const debugColors = useViewer((s) => s.debugColors);
-    return (_jsxs("group", { position: node.position, ref: ref, "rotation-y": node.rotation, visible: node.visible, ...handlers, children: [_jsx("mesh", { castShadow: true, material: debugColors ? roofDebugMaterials : roofMaterials, name: "merged-roof", receiveShadow: true, children: _jsx("boxGeometry", { args: [0, 0, 0] }) }), _jsx("group", { name: "segments-wrapper", visible: false, children: (node.children ?? []).map((childId) => (_jsx(NodeRenderer, { nodeId: childId }, childId))) })] }));
+    const segmentChildren = (node.children ?? []).filter((childId) => nodes[childId]?.type === 'roof-segment');
+    const authoredChildren = (node.children ?? []).filter((childId) => nodes[childId]?.type !== 'roof-segment');
+    return (_jsxs("group", { position: node.position, ref: ref, "rotation-y": node.rotation, visible: node.visible, ...handlers, children: [_jsx("mesh", { castShadow: true, material: debugColors ? roofDebugMaterials : roofMaterials, name: "merged-roof", receiveShadow: true, children: _jsx("boxGeometry", { args: [0, 0, 0] }) }), _jsx("group", { name: "segments-wrapper", visible: false, children: segmentChildren.map((childId) => (_jsx(NodeRenderer, { nodeId: childId }, childId))) }), authoredChildren.map((childId) => (_jsx(NodeRenderer, { nodeId: childId }, childId)))] }));
 };

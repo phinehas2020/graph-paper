@@ -1,12 +1,16 @@
 import dedent from 'dedent'
 import { z } from 'zod'
 import { BaseNode, generateId, nodeType, objectId } from '../base'
+import { DeviceBoxNode } from './electrical'
 import { ItemNode } from './item'
-// import { DoorNode } from "./door";
-// import { ItemNode } from "./item";
-// import { WindowNode } from "./window";
+import { PlumbingFixtureNode } from './plumbing'
+import { DoorNode } from './door'
+import { WindowNode } from './window'
 
 export const DEFAULT_WALL_HEIGHT = 2.5
+export const DEFAULT_WALL_THICKNESS = 0.1143
+export const WallCornerStyle = z.enum(['standard', 'ladder', 'california'])
+export const WallIntersectionStyle = z.enum(['standard', 't-post', 'open'])
 
 export const WallGuideReference = z.enum(['bottom', 'top'])
 
@@ -20,10 +24,29 @@ export const WallGuide = z.object({
 export const WallNode = BaseNode.extend({
   id: objectId('wall'),
   type: nodeType('wall'),
-  children: z.array(ItemNode.shape.id).default([]),
+  children: z
+    .array(
+      z.union([
+        ItemNode.shape.id,
+        DoorNode.shape.id,
+        WindowNode.shape.id,
+        DeviceBoxNode.shape.id,
+        PlumbingFixtureNode.shape.id,
+      ]),
+    )
+    .default([]),
   // Specific props
-  thickness: z.number().optional(),
+  thickness: z.number().default(DEFAULT_WALL_THICKNESS),
   height: z.number().optional(),
+  assemblyId: z.string().optional(),
+  isExterior: z.boolean().default(false),
+  isBearing: z.boolean().default(false),
+  studSpacing: z.number().optional(),
+  plateCount: z.number().optional(),
+  cornerStyle: WallCornerStyle.default('standard'),
+  intersectionStyle: WallIntersectionStyle.default('t-post'),
+  sheathingAssemblyId: z.string().optional(),
+  finishAssemblyId: z.string().optional(),
   // e.g., start/end points for path
   start: z.tuple([z.number(), z.number()]),
   end: z.tuple([z.number(), z.number()]),
@@ -47,6 +70,8 @@ export const WallNode = BaseNode.extend({
 export type WallNode = z.infer<typeof WallNode>
 export type WallGuide = z.infer<typeof WallGuide>
 export type WallGuideReference = z.infer<typeof WallGuideReference>
+export type WallCornerStyle = z.infer<typeof WallCornerStyle>
+export type WallIntersectionStyle = z.infer<typeof WallIntersectionStyle>
 
 export const getWallHeight = (wall: Pick<WallNode, 'height'>): number =>
   wall.height ?? DEFAULT_WALL_HEIGHT

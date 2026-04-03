@@ -25,7 +25,15 @@ export type SystemsSummaryRoom = {
     fixtureProfile: string | null;
     levelId: string | null;
 };
+export type ConstructionTopologyNodeBase = {
+    sourceNodeId: string;
+    levelId: string | null;
+    buildingId: string | null;
+    siteId: string | null;
+    assemblyId: string;
+};
 export type ConstructionTopologyWall = {
+    sourceNodeId: string;
     wallId: string;
     levelId: string | null;
     buildingId: string | null;
@@ -40,16 +48,275 @@ export type ConstructionTopologyWall = {
     thickness: number;
     openings: WallOpening[];
 };
+export type ConstructionTopologyFloorOpening = ConstructionTopologyNodeBase & {
+    floorOpeningId: string;
+    parentFloorSystemId: string | null;
+    polygon: Vec2[];
+    area: number;
+    perimeter: number;
+    curbHeight: number;
+};
+export type ConstructionTopologyBlockingRun = ConstructionTopologyNodeBase & {
+    blockingRunId: string;
+    parentFloorSystemId: string | null;
+    start: Vec2;
+    end: Vec2;
+    length: number;
+    kind: 'solid' | 'bridging';
+    spacing: number;
+    materialCode: string;
+};
+export type ConstructionTopologyFloorSystem = ConstructionTopologyNodeBase & {
+    floorSystemId: string;
+    polygon: Vec2[];
+    area: number;
+    perimeter: number;
+    derivedFromSlabId: string | null;
+    framingKind: 'dimensional-lumber' | 'i-joist' | 'floor-truss';
+    joistAngle: number;
+    joistSpacing: number;
+    memberDepth: number;
+    rimMode: 'rim-board' | 'solid-blocking' | 'open-web';
+    elevation: number;
+    sheathingThickness: number;
+    openingIds: string[];
+    blockingIds: string[];
+};
+export type ConstructionTopologyBeamLine = ConstructionTopologyNodeBase & {
+    beamLineId: string;
+    supportFloorSystemId: string | null;
+    start: Vec2;
+    end: Vec2;
+    length: number;
+    width: number;
+    depth: number;
+    materialCode: string;
+};
+export type ConstructionTopologySupportPost = ConstructionTopologyNodeBase & {
+    supportPostId: string;
+    center: Vec2;
+    width: number;
+    depth: number;
+    height: number;
+    materialCode: string;
+};
+export type ConstructionTopologyRoofPlane = ConstructionTopologyNodeBase & {
+    roofPlaneId: string;
+    polygon: Vec2[];
+    area: number;
+    perimeter: number;
+    pitch: number;
+    overhang: number;
+    plateHeight: number;
+    heelHeight: number;
+    sheathingThickness: number;
+    roofingThickness: number;
+    framingMode: 'truss-array' | 'rafter-set';
+    trussArrayIds: string[];
+    rafterSetIds: string[];
+};
+export type ConstructionTopologyTrussArray = ConstructionTopologyNodeBase & {
+    trussArrayId: string;
+    roofPlaneId: string | null;
+    start: Vec2;
+    end: Vec2;
+    length: number;
+    spacing: number;
+    heelHeight: number;
+    overhang: number;
+};
+export type ConstructionTopologyRafterSet = ConstructionTopologyNodeBase & {
+    rafterSetId: string;
+    roofPlaneId: string | null;
+    start: Vec2;
+    end: Vec2;
+    length: number;
+    spacing: number;
+    ridgeBoardDepth: number;
+    overhang: number;
+};
+export type ConstructionTopologyElectricalPanel = ConstructionTopologyNodeBase & {
+    electricalPanelId: string;
+    position: Vec3;
+    amperage: number;
+    voltage: number;
+    mainBreakerAmps: number;
+    circuitIds: string[];
+};
+export type ConstructionTopologyCircuit = ConstructionTopologyNodeBase & {
+    circuitId: string;
+    panelId: string | null;
+    label: string;
+    breakerAmps: number;
+    voltage: number;
+    circuitType: 'lighting' | 'general' | 'appliance' | 'low-voltage';
+    runIds: string[];
+};
+export type ConstructionTopologyDeviceBox = ConstructionTopologyNodeBase & {
+    deviceBoxId: string;
+    position: Vec3;
+    deviceType: 'outlet' | 'switch' | 'smoke-co' | 'data' | 'dedicated';
+    wallId: string | null;
+    circuitId: string | null;
+    mountHeight: number;
+    voltage: number;
+    wireType: string;
+};
+export type ConstructionTopologyLightFixture = ConstructionTopologyNodeBase & {
+    lightFixtureId: string;
+    position: Vec3;
+    fixtureType: 'ceiling-light' | 'fan' | 'recessed' | 'exterior-light';
+    circuitId: string | null;
+    mountHeight: number;
+};
+export type ConstructionTopologyWireRun = ConstructionTopologyNodeBase & {
+    wireRunId: string;
+    circuitId: string | null;
+    path: Vec3[];
+    length: number;
+    wireType: string;
+    homerun: boolean;
+    pathMode: 'manual' | 'assisted';
+};
+export type ConstructionTopologySwitchLeg = ConstructionTopologyNodeBase & {
+    switchLegId: string;
+    circuitId: string | null;
+    path: Vec3[];
+    length: number;
+    wireType: string;
+};
+export type ConstructionTopologyPlumbingFixture = ConstructionTopologyNodeBase & {
+    plumbingFixtureId: string;
+    position: Vec3;
+    fixtureType: 'sink' | 'toilet' | 'shower' | 'tub' | 'lavatory' | 'washer' | 'water-heater';
+    roomType: string;
+    pipeMaterial: string;
+    drainDiameter: number;
+};
+export type ConstructionTopologySupplyRun = ConstructionTopologyNodeBase & {
+    supplyRunId: string;
+    path: Vec3[];
+    length: number;
+    systemKind: 'hot' | 'cold';
+    pipeMaterial: string;
+    diameter: number;
+};
+export type ConstructionTopologyDrainRun = ConstructionTopologyNodeBase & {
+    drainRunId: string;
+    path: Vec3[];
+    length: number;
+    pipeMaterial: string;
+    diameter: number;
+    slope: number;
+};
+export type ConstructionTopologyVentRun = ConstructionTopologyNodeBase & {
+    ventRunId: string;
+    path: Vec3[];
+    length: number;
+    pipeMaterial: string;
+    diameter: number;
+};
+export type ConstructionTopologyFoundationSystem = ConstructionTopologyNodeBase & {
+    foundationSystemId: string;
+    foundationKind: 'slab-on-grade' | 'crawlspace' | 'basement';
+    footingWidth: number;
+    footingDepth: number;
+    stemWallThickness: number;
+    rebarProfile: string;
+    childIds: string[];
+};
+export type ConstructionTopologyFootingRun = ConstructionTopologyNodeBase & {
+    footingRunId: string;
+    parentFoundationSystemId: string | null;
+    start: Vec2;
+    end: Vec2;
+    length: number;
+    width: number;
+    depth: number;
+    thickness: number;
+};
+export type ConstructionTopologyStemWall = ConstructionTopologyNodeBase & {
+    stemWallId: string;
+    parentFoundationSystemId: string | null;
+    start: Vec2;
+    end: Vec2;
+    length: number;
+    thickness: number;
+    height: number;
+};
+export type ConstructionTopologyPier = ConstructionTopologyNodeBase & {
+    pierId: string;
+    parentFoundationSystemId: string | null;
+    center: Vec2;
+    width: number;
+    depth: number;
+    height: number;
+};
+export type ConstructionTopologyColumn = ConstructionTopologyNodeBase & {
+    columnId: string;
+    parentFoundationSystemId: string | null;
+    center: Vec2;
+    width: number;
+    depth: number;
+    height: number;
+    materialCode: string;
+};
 export type ConstructionTopology = {
     siteIds: string[];
     buildingIds: string[];
     levelIds: string[];
     wallIds: string[];
     openingIds: string[];
+    floorSystemIds: string[];
+    floorOpeningIds: string[];
+    blockingRunIds: string[];
+    beamLineIds: string[];
+    supportPostIds: string[];
+    roofPlaneIds: string[];
+    trussArrayIds: string[];
+    rafterSetIds: string[];
+    electricalPanelIds: string[];
+    circuitIds: string[];
+    deviceBoxIds: string[];
+    lightFixtureIds: string[];
+    wireRunIds: string[];
+    switchLegIds: string[];
+    plumbingFixtureIds: string[];
+    supplyRunIds: string[];
+    drainRunIds: string[];
+    ventRunIds: string[];
+    foundationSystemIds: string[];
+    footingRunIds: string[];
+    stemWallIds: string[];
+    pierIds: string[];
+    columnIds: string[];
     walls: ConstructionTopologyWall[];
+    floorSystems: ConstructionTopologyFloorSystem[];
+    floorOpenings: ConstructionTopologyFloorOpening[];
+    blockingRuns: ConstructionTopologyBlockingRun[];
+    beamLines: ConstructionTopologyBeamLine[];
+    supportPosts: ConstructionTopologySupportPost[];
+    roofPlanes: ConstructionTopologyRoofPlane[];
+    trussArrays: ConstructionTopologyTrussArray[];
+    rafterSets: ConstructionTopologyRafterSet[];
+    electricalPanels: ConstructionTopologyElectricalPanel[];
+    circuits: ConstructionTopologyCircuit[];
+    deviceBoxes: ConstructionTopologyDeviceBox[];
+    lightFixtures: ConstructionTopologyLightFixture[];
+    wireRuns: ConstructionTopologyWireRun[];
+    switchLegs: ConstructionTopologySwitchLeg[];
+    plumbingFixtures: ConstructionTopologyPlumbingFixture[];
+    supplyRuns: ConstructionTopologySupplyRun[];
+    drainRuns: ConstructionTopologyDrainRun[];
+    ventRuns: ConstructionTopologyVentRun[];
+    foundationSystems: ConstructionTopologyFoundationSystem[];
+    footingRuns: ConstructionTopologyFootingRun[];
+    stemWalls: ConstructionTopologyStemWall[];
+    piers: ConstructionTopologyPier[];
+    columns: ConstructionTopologyColumn[];
 };
-export type ConstructionMemberType = 'plate' | 'stud' | 'king-stud' | 'jack-stud' | 'header' | 'cripple-stud' | 'blocking' | 'sheathing' | 'drywall' | 'trim';
-export type ConstructionMemberCategory = 'framing' | 'envelope' | 'finish';
+export type ConstructionMemberType = 'plate' | 'stud' | 'king-stud' | 'jack-stud' | 'header' | 'cripple-stud' | 'blocking' | 'sheathing' | 'drywall' | 'trim' | 'joist' | 'rim-board' | 'subfloor' | 'beam' | 'post' | 'truss' | 'rafter' | 'roof-sheathing' | 'roofing' | 'panelboard' | 'circuit' | 'device' | 'light-fixture' | 'wire' | 'switch-leg' | 'plumbing-fixture' | 'pipe' | 'footing' | 'stem-wall' | 'pier' | 'column' | 'concrete';
+export type ConstructionMemberCategory = 'framing' | 'envelope' | 'finish' | 'systems' | 'foundation';
 export type ConstructionMemberGeometry = {
     kind: 'box';
     face: ConstructionWallFace;
@@ -97,9 +364,29 @@ export type WallCompileResult = ConstructionPassResult & {
     summary: WallCompileSummary;
 };
 export type WallFramingResult = WallCompileResult;
+export type ConstructionComponentDiscipline = 'floor' | 'roof' | 'electrical' | 'plumbing' | 'foundation';
+export type ConstructionComponentSummary = {
+    memberCount: number;
+    quantityCount: number;
+    estimatedCost: number;
+};
+export type ConstructionComponentResult = ConstructionPassResult & {
+    sourceNodeId: string;
+    sourceNodeType: string;
+    discipline: ConstructionComponentDiscipline;
+    levelId: string | null;
+    assemblyId: string;
+    summary: ConstructionComponentSummary;
+};
 export type ConstructionCompileSummary = {
     wallCount: number;
     openingCount: number;
+    floorSystemCount: number;
+    roofPlaneCount: number;
+    electricalCount: number;
+    plumbingCount: number;
+    foundationCount: number;
+    componentCount: number;
     memberCount: number;
     quantityCount: number;
     totalEstimatedCost: number;
@@ -113,6 +400,8 @@ export type ConstructionCompileResult = ConstructionPassResult & {
     topology: ConstructionTopology;
     wallResults: WallCompileResult[];
     wallsById: Record<string, WallCompileResult>;
+    componentResults: ConstructionComponentResult[];
+    componentsById: Record<string, ConstructionComponentResult>;
     rooms: SystemsSummaryRoom[];
     summary: ConstructionCompileSummary;
 };

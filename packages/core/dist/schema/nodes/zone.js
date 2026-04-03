@@ -7,6 +7,8 @@ export const ZoneNode = BaseNode.extend({
     name: z.string(),
     // Polygon boundary - array of [x, z] coordinates defining the zone
     polygon: z.array(z.tuple([z.number(), z.number()])),
+    roomType: z.string().default('general'),
+    fixtureProfile: z.string().nullable().default(null),
     // Visual styling
     color: z.string().default('#3b82f6'), // Default blue
     metadata: z.json().optional().default({}),

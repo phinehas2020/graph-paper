@@ -17,6 +17,8 @@ export declare const ZoneNode: z.ZodObject<{
     type: z.ZodDefault<z.ZodLiteral<"zone">>;
     name: z.ZodString;
     polygon: z.ZodArray<z.ZodTuple<[z.ZodNumber, z.ZodNumber], null>>;
+    roomType: z.ZodDefault<z.ZodString>;
+    fixtureProfile: z.ZodDefault<z.ZodNullable<z.ZodString>>;
     color: z.ZodDefault<z.ZodString>;
     metadata: z.ZodDefault<z.ZodOptional<z.ZodJSONSchema>>;
 }, z.core.$strip>;

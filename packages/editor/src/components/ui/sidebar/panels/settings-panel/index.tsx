@@ -45,34 +45,11 @@ type SceneGraphValue = {
   detachedNodes?: SceneGraphNode[]
 }
 
-const isSceneNode = (value: unknown): value is SceneNode => {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'id' in value &&
-    typeof (value as { id: unknown }).id === 'string'
-  )
-}
-
 const getChildIdsFromNode = (node: SceneNode): string[] => {
   if (!Array.isArray(node.children)) {
     return []
   }
-
-  const childIds = new Set<string>()
-
-  for (const child of node.children) {
-    if (typeof child === 'string') {
-      childIds.add(child)
-      continue
-    }
-
-    if (isSceneNode(child)) {
-      childIds.add(child.id as string)
-    }
-  }
-
-  return Array.from(childIds)
+  return node.children.filter((child): child is string => typeof child === 'string')
 }
 
 const buildSceneGraphValue = (

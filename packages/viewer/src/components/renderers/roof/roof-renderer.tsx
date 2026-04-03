@@ -1,4 +1,5 @@
 import { type RoofNode, useRegistry } from '@pascal-app/core'
+import { useScene } from '@pascal-app/core'
 import { useRef } from 'react'
 import type * as THREE from 'three'
 import { useNodeEvents } from '../../../hooks/use-node-events'
@@ -8,11 +9,14 @@ import { roofDebugMaterials, roofMaterials } from './roof-materials'
 
 export const RoofRenderer = ({ node }: { node: RoofNode }) => {
   const ref = useRef<THREE.Group>(null!)
+  const nodes = useScene((state) => state.nodes)
 
   useRegistry(node.id, 'roof', ref)
 
   const handlers = useNodeEvents(node, 'roof')
   const debugColors = useViewer((s) => s.debugColors)
+  const segmentChildren = (node.children ?? []).filter((childId) => nodes[childId]?.type === 'roof-segment')
+  const authoredChildren = (node.children ?? []).filter((childId) => nodes[childId]?.type !== 'roof-segment')
 
   return (
     <group
@@ -31,10 +35,13 @@ export const RoofRenderer = ({ node }: { node: RoofNode }) => {
         <boxGeometry args={[0, 0, 0]} />
       </mesh>
       <group name="segments-wrapper" visible={false}>
-        {(node.children ?? []).map((childId) => (
+        {segmentChildren.map((childId) => (
           <NodeRenderer key={childId} nodeId={childId} />
         ))}
       </group>
+      {authoredChildren.map((childId) => (
+        <NodeRenderer key={childId} nodeId={childId} />
+      ))}
     </group>
   )
 }

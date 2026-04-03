@@ -1,5 +1,16 @@
 import { z } from 'zod';
 export declare const DEFAULT_WALL_HEIGHT = 2.5;
+export declare const DEFAULT_WALL_THICKNESS = 0.1143;
+export declare const WallCornerStyle: z.ZodEnum<{
+    standard: "standard";
+    ladder: "ladder";
+    california: "california";
+}>;
+export declare const WallIntersectionStyle: z.ZodEnum<{
+    standard: "standard";
+    "t-post": "t-post";
+    open: "open";
+}>;
 export declare const WallGuideReference: z.ZodEnum<{
     bottom: "bottom";
     top: "top";
@@ -32,9 +43,26 @@ export declare const WallNode: z.ZodObject<{
     metadata: z.ZodDefault<z.ZodOptional<z.ZodJSONSchema>>;
     id: z.ZodDefault<z.ZodTemplateLiteral<`wall_${string}`>>;
     type: z.ZodDefault<z.ZodLiteral<"wall">>;
-    children: z.ZodDefault<z.ZodArray<z.ZodDefault<z.ZodTemplateLiteral<`item_${string}`>>>>;
-    thickness: z.ZodOptional<z.ZodNumber>;
+    children: z.ZodDefault<z.ZodArray<z.ZodUnion<readonly [z.ZodDefault<z.ZodTemplateLiteral<`item_${string}`>>, z.ZodDefault<z.ZodTemplateLiteral<`door_${string}`>>, z.ZodDefault<z.ZodTemplateLiteral<`window_${string}`>>, z.ZodDefault<z.ZodTemplateLiteral<`device_${string}`>>, z.ZodDefault<z.ZodTemplateLiteral<`pfixture_${string}`>>]>>>;
+    thickness: z.ZodDefault<z.ZodNumber>;
     height: z.ZodOptional<z.ZodNumber>;
+    assemblyId: z.ZodOptional<z.ZodString>;
+    isExterior: z.ZodDefault<z.ZodBoolean>;
+    isBearing: z.ZodDefault<z.ZodBoolean>;
+    studSpacing: z.ZodOptional<z.ZodNumber>;
+    plateCount: z.ZodOptional<z.ZodNumber>;
+    cornerStyle: z.ZodDefault<z.ZodEnum<{
+        standard: "standard";
+        ladder: "ladder";
+        california: "california";
+    }>>;
+    intersectionStyle: z.ZodDefault<z.ZodEnum<{
+        standard: "standard";
+        "t-post": "t-post";
+        open: "open";
+    }>>;
+    sheathingAssemblyId: z.ZodOptional<z.ZodString>;
+    finishAssemblyId: z.ZodOptional<z.ZodString>;
     start: z.ZodTuple<[z.ZodNumber, z.ZodNumber], null>;
     end: z.ZodTuple<[z.ZodNumber, z.ZodNumber], null>;
     frontSide: z.ZodDefault<z.ZodEnum<{
@@ -60,6 +88,8 @@ export declare const WallNode: z.ZodObject<{
 export type WallNode = z.infer<typeof WallNode>;
 export type WallGuide = z.infer<typeof WallGuide>;
 export type WallGuideReference = z.infer<typeof WallGuideReference>;
+export type WallCornerStyle = z.infer<typeof WallCornerStyle>;
+export type WallIntersectionStyle = z.infer<typeof WallIntersectionStyle>;
 export declare const getWallHeight: (wall: Pick<WallNode, "height">) => number;
 export declare const getWallLength: (wall: Pick<WallNode, "start" | "end">) => number;
 export declare const getWallGuideLocalY: (wall: Pick<WallNode, "height">, guide: Pick<WallGuide, "offset" | "reference">) => number;

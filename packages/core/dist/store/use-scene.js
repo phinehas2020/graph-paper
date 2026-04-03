@@ -3,55 +3,13 @@ import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { BuildingNode } from '../schema';
 import { generateCollectionId } from '../schema/collections';
+import { createSceneGraphSnapshot, migrateSceneGraph, SCENE_SCHEMA_VERSION, } from '../schema/scene-graph';
 import { LevelNode } from '../schema/nodes/level';
 import { SiteNode } from '../schema/nodes/site';
 import * as nodeActions from './actions/node-actions';
-function migrateNodes(nodes) {
-    const patchedNodes = { ...nodes };
-    for (const [id, node] of Object.entries(patchedNodes)) {
-        // 1. Item scale migration
-        if (node.type === 'item' && !('scale' in node)) {
-            patchedNodes[id] = { ...node, scale: [1, 1, 1] };
-        }
-        // 1b. Wall guide migration
-        if (node.type === 'wall' && !('guides' in node)) {
-            patchedNodes[id] = { ...node, guides: [] };
-        }
-        // 2. Old roof to new roof + segment migration
-        if (node.type === 'roof' && !('children' in node)) {
-            const oldRoof = node;
-            const suffix = id.includes('_') ? id.split('_')[1] : Math.random().toString(36).slice(2);
-            const segmentId = `rseg_${suffix}`;
-            const segment = {
-                object: 'node',
-                id: segmentId,
-                type: 'roof-segment',
-                parentId: id,
-                visible: oldRoof.visible ?? true,
-                metadata: {},
-                position: [0, 0, 0],
-                rotation: 0,
-                roofType: 'gable',
-                width: oldRoof.length ?? 8,
-                depth: (oldRoof.leftWidth ?? 2.2) + (oldRoof.rightWidth ?? 2.2),
-                wallHeight: 0,
-                roofHeight: oldRoof.height ?? 2.5,
-                wallThickness: 0.1,
-                deckThickness: 0.1,
-                overhang: 0.3,
-                shingleThickness: 0.05,
-            };
-            patchedNodes[segmentId] = segment;
-            patchedNodes[id] = {
-                ...oldRoof,
-                children: [segmentId],
-            };
-        }
-    }
-    return patchedNodes;
-}
 const useScene = create()(temporal((set, get) => ({
     // 1. Flat dictionary of all nodes
+    sceneSchemaVersion: SCENE_SCHEMA_VERSION,
     nodes: {},
     // 2. Root node IDs
     rootNodeIds: [],
@@ -61,6 +19,7 @@ const useScene = create()(temporal((set, get) => ({
     collections: {},
     unloadScene: () => {
         set({
+            sceneSchemaVersion: SCENE_SCHEMA_VERSION,
             nodes: {},
             rootNodeIds: [],
             dirtyNodes: new Set(),
@@ -71,16 +30,16 @@ const useScene = create()(temporal((set, get) => ({
         get().unloadScene();
         get().loadScene(); // Default scene
     },
-    setScene: (nodes, rootNodeIds) => {
-        // Apply backward compatibility migrations
-        const patchedNodes = migrateNodes(nodes);
+    setScene: (nodes, rootNodeIds, sceneSchemaVersion = SCENE_SCHEMA_VERSION) => {
+        const migratedScene = migrateSceneGraph(createSceneGraphSnapshot(nodes, rootNodeIds, sceneSchemaVersion));
         set({
-            nodes: patchedNodes,
-            rootNodeIds,
+            sceneSchemaVersion: migratedScene.sceneSchemaVersion,
+            nodes: migratedScene.nodes,
+            rootNodeIds: migratedScene.rootNodeIds,
             dirtyNodes: new Set(),
         });
         // Mark all nodes as dirty to trigger re-validation
-        Object.values(patchedNodes).forEach((node) => {
+        Object.values(migratedScene.nodes).forEach((node) => {
             get().markDirty(node.id);
         });
     },
@@ -101,7 +60,7 @@ const useScene = create()(temporal((set, get) => ({
             children: [level0.id],
         });
         const site = SiteNode.parse({
-            children: [building],
+            children: [building.id],
         });
         // Define all nodes flat
         const nodes = {
@@ -111,7 +70,7 @@ const useScene = create()(temporal((set, get) => ({
         };
         // Site is the root
         const rootNodeIds = [site.id];
-        set({ nodes, rootNodeIds });
+        set({ sceneSchemaVersion: SCENE_SCHEMA_VERSION, nodes, rootNodeIds });
     },
     markDirty: (id) => {
         get().dirtyNodes.add(id);

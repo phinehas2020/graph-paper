@@ -1468,10 +1468,7 @@ export function SitePanel({ projectId, onUploadAsset, onDeleteAsset }: SitePanel
 
   const siteNode = rootNodeIds[0] ? nodes[rootNodeIds[0]] : null
   const buildings = (siteNode?.type === 'site' ? siteNode.children : [])
-    .map((child) => {
-      const id = typeof child === 'string' ? child : child.id
-      return nodes[id] as BuildingNode | undefined
-    })
+    .map((childId) => nodes[childId] as BuildingNode | undefined)
     .filter((node): node is BuildingNode => node?.type === 'building')
 
   return (

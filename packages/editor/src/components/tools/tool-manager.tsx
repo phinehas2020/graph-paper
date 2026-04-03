@@ -1,14 +1,20 @@
 import { type AnyNodeId, type CeilingNode, type SlabNode, useScene } from '@pascal-app/core'
 import { useViewer } from '@pascal-app/viewer'
 import useEditor, { type Phase, type Tool } from '../../store/use-editor'
+import { BeamTool } from './beam/beam-tool'
 import { CeilingBoundaryEditor } from './ceiling/ceiling-boundary-editor'
 import { CeilingHoleEditor } from './ceiling/ceiling-hole-editor'
 import { CeilingTool } from './ceiling/ceiling-tool'
+import { ElectricalTool } from './electrical/electrical-tool'
 import { DoorTool } from './door/door-tool'
+import { FloorTool } from './floor/floor-tool'
+import { FoundationTool } from './foundation/foundation-tool'
 import { ItemTool } from './item/item-tool'
 import { MoveTool } from './item/move-tool'
 import { MeasureTool } from './measure/measure-tool'
+import { PlumbingTool } from './plumbing/plumbing-tool'
 import { RoofTool } from './roof/roof-tool'
+import { RoofFramingTool } from './roof-framing/roof-framing-tool'
 import { SiteBoundaryEditor } from './site/site-boundary-editor'
 import { SlabBoundaryEditor } from './slab/slab-boundary-editor'
 import { SlabHoleEditor } from './slab/slab-hole-editor'
@@ -34,6 +40,28 @@ const tools: Record<Phase, Partial<Record<Tool, React.FC>>> = {
     item: ItemTool,
     zone: ZoneTool,
     window: WindowTool,
+    'floor-system': FloorTool,
+    'beam-line': BeamTool,
+    'support-post': BeamTool,
+    'floor-opening': FloorTool,
+    'blocking-run': FloorTool,
+    'roof-plane': RoofFramingTool,
+    'truss-array': RoofFramingTool,
+    'rafter-set': RoofFramingTool,
+    'electrical-panel': ElectricalTool,
+    'device-box': ElectricalTool,
+    'light-fixture': ElectricalTool,
+    'wire-run': ElectricalTool,
+    'switch-leg': ElectricalTool,
+    'plumbing-fixture': PlumbingTool,
+    'supply-run': PlumbingTool,
+    'drain-run': PlumbingTool,
+    'vent-run': PlumbingTool,
+    'foundation-system': FoundationTool,
+    'footing-run': FoundationTool,
+    'stem-wall': FoundationTool,
+    pier: FoundationTool,
+    column: FoundationTool,
   },
   furnish: {
     item: ItemTool,

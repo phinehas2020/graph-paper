@@ -5,8 +5,14 @@ import { buildEstimate } from '../estimate/build-estimate'
 import { aggregateQuantityLines } from '../quantities/aggregate-quantities'
 import { CONSTRUCTION_COMPILER_VERSION, DEFAULT_RULE_PACK } from '../rulepacks/default-rulepack'
 import type { AssemblyCatalog, AssemblyDefinition } from '../schema/assemblies'
-import type { ConstructionCompileResult } from '../schema/construction-graph'
+import type {
+  ConstructionCompileResult,
+} from '../schema/construction-graph'
 import type { RulePack } from '../schema/rulepacks'
+import { compileFloorFraming } from './floor-framing'
+import { compileFoundationSystems } from './foundation'
+import { compileMepSystems } from './mep'
+import { compileRoofFraming } from './roof-framing'
 import { buildConstructionTopology } from './topology/scene-topology'
 import { compileWallFraming } from './wall-framing/compile-wall-framing'
 
@@ -58,13 +64,28 @@ export function compileConstructionGraph(
   })
 
   const wallsById = Object.fromEntries(wallResults.map((result) => [result.wallId, result]))
-  const members = wallResults.flatMap((result) => result.members)
-  const quantities = aggregateQuantityLines(wallResults.flatMap((result) => result.quantities))
+  const componentResults = [
+    ...compileFloorFraming(topology, rulePack),
+    ...compileRoofFraming(topology, rulePack),
+    ...compileMepSystems(topology, rulePack),
+    ...compileFoundationSystems(topology, rulePack),
+  ]
+
+  const members = [
+    ...wallResults.flatMap((result) => result.members),
+    ...componentResults.flatMap((result) => result.members),
+  ]
+  const quantities = aggregateQuantityLines([
+    ...wallResults.flatMap((result) => result.quantities),
+    ...componentResults.flatMap((result) => result.quantities),
+  ])
   const estimate = buildEstimate(quantities, rulePack.currency)
   const diagnostics = sortDiagnostics([
     ...topologyDiagnostics,
     ...wallResults.flatMap((result) => result.diagnostics),
+    ...componentResults.flatMap((result) => result.diagnostics),
   ])
+  const componentsById = Object.fromEntries(componentResults.map((result) => [result.sourceNodeId, result]))
 
   return {
     sceneSchemaVersion: scene.sceneSchemaVersion,
@@ -75,6 +96,8 @@ export function compileConstructionGraph(
     topology,
     wallResults,
     wallsById,
+    componentResults,
+    componentsById,
     members,
     quantities,
     estimate,
@@ -83,6 +106,27 @@ export function compileConstructionGraph(
     summary: {
       wallCount: topology.walls.length,
       openingCount: topology.openingIds.length,
+      floorSystemCount: topology.floorSystemIds.length,
+      roofPlaneCount: topology.roofPlaneIds.length,
+      electricalCount:
+        topology.electricalPanelIds.length +
+        topology.circuitIds.length +
+        topology.deviceBoxIds.length +
+        topology.lightFixtureIds.length +
+        topology.wireRunIds.length +
+        topology.switchLegIds.length,
+      plumbingCount:
+        topology.plumbingFixtureIds.length +
+        topology.supplyRunIds.length +
+        topology.drainRunIds.length +
+        topology.ventRunIds.length,
+      foundationCount:
+        topology.foundationSystemIds.length +
+        topology.footingRunIds.length +
+        topology.stemWallIds.length +
+        topology.pierIds.length +
+        topology.columnIds.length,
+      componentCount: componentResults.length,
       memberCount: members.length,
       quantityCount: quantities.length,
       totalEstimatedCost: estimate.summary.total,
