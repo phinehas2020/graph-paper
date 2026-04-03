@@ -3,7 +3,9 @@ import type { QuantityLine } from '../schema/quantities'
 import type { RulePack } from '../schema/rulepacks'
 
 function getFallbackWasteFactor(member: ConstructionMember, rulePack: RulePack) {
-  if (member.type === 'sheathing') return rulePack.wasteFactors.sheathing
+  if (member.type === 'sheathing' || member.type === 'subfloor-panel') {
+    return rulePack.wasteFactors.sheathing
+  }
   if (member.type === 'drywall') return rulePack.wasteFactors.drywall
   if (member.type === 'trim') return rulePack.wasteFactors.trim
   return rulePack.wasteFactors.framing
@@ -43,8 +45,9 @@ export function buildQuantityLines(
         uniformatCode: costRule?.uniformatCode ?? 'B2010',
         masterformatCode: costRule?.masterformatCode ?? '06 11 00',
         estimatedUnitCost: costRule?.unitCost,
-        estimatedTotalCost:
-          costRule ? member.quantity * (1 + wasteFactor) * costRule.unitCost : undefined,
+        estimatedTotalCost: costRule
+          ? member.quantity * (1 + wasteFactor) * costRule.unitCost
+          : undefined,
         currency: costRule?.currency ?? rulePack.currency,
       })
       continue

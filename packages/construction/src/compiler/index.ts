@@ -7,6 +7,7 @@ import { CONSTRUCTION_COMPILER_VERSION, DEFAULT_RULE_PACK } from '../rulepacks/d
 import type { AssemblyCatalog, AssemblyDefinition } from '../schema/assemblies'
 import type { ConstructionCompileResult } from '../schema/construction-graph'
 import type { RulePack } from '../schema/rulepacks'
+import { compileFloorFraming } from './floor-framing'
 import { buildConstructionTopology } from './topology/scene-topology'
 import { compileWallFraming } from './wall-framing/compile-wall-framing'
 
@@ -36,11 +37,12 @@ export function compileConstructionGraph(
   const rulePack = options.rulePack ?? DEFAULT_RULE_PACK
   const assemblyCatalog = resolveAssemblyCatalog(options.assemblies)
   const assemblies = Object.values(assemblyCatalog)
-  const { scene, topology, diagnostics: topologyDiagnostics, rooms } = buildConstructionTopology(
-    sceneGraph,
-    assemblies,
-    rulePack,
-  )
+  const {
+    scene,
+    topology,
+    diagnostics: topologyDiagnostics,
+    rooms,
+  } = buildConstructionTopology(sceneGraph, assemblies, rulePack)
 
   const wallResults = topology.walls.flatMap((wall) => {
     const assembly = assemblyCatalog[wall.assemblyId]
@@ -57,13 +59,36 @@ export function compileConstructionGraph(
     ]
   })
 
+  const floorResults = topology.floors.flatMap((floor) => {
+    const assembly = assemblyCatalog[floor.assemblyId]
+    if (!(assembly && assembly.kind === 'floor')) {
+      return []
+    }
+
+    return [
+      compileFloorFraming({
+        floor,
+        assembly,
+        rulePack,
+      }),
+    ]
+  })
+
   const wallsById = Object.fromEntries(wallResults.map((result) => [result.wallId, result]))
-  const members = wallResults.flatMap((result) => result.members)
-  const quantities = aggregateQuantityLines(wallResults.flatMap((result) => result.quantities))
+  const floorsById = Object.fromEntries(floorResults.map((result) => [result.floorId, result]))
+  const members = [
+    ...wallResults.flatMap((result) => result.members),
+    ...floorResults.flatMap((result) => result.members),
+  ]
+  const quantities = aggregateQuantityLines([
+    ...wallResults.flatMap((result) => result.quantities),
+    ...floorResults.flatMap((result) => result.quantities),
+  ])
   const estimate = buildEstimate(quantities, rulePack.currency)
   const diagnostics = sortDiagnostics([
     ...topologyDiagnostics,
     ...wallResults.flatMap((result) => result.diagnostics),
+    ...floorResults.flatMap((result) => result.diagnostics),
   ])
 
   return {
@@ -74,7 +99,9 @@ export function compileConstructionGraph(
     assemblies: assemblies.length > 0 ? assemblies : DEFAULT_ASSEMBLIES,
     topology,
     wallResults,
+    floorResults,
     wallsById,
+    floorsById,
     members,
     quantities,
     estimate,
@@ -82,6 +109,7 @@ export function compileConstructionGraph(
     rooms,
     summary: {
       wallCount: topology.walls.length,
+      floorCount: topology.floors.length,
       openingCount: topology.openingIds.length,
       memberCount: members.length,
       quantityCount: quantities.length,

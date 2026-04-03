@@ -19,11 +19,9 @@ export type ToolConfig = {
 
 export const tools: ToolConfig[] = [
   { id: 'wall', iconSrc: '/icons/wall.png', label: 'Wall' },
-  { id: 'wall-guide', iconSrc: '/icons/wall-guide.svg', label: 'Guide' },
-  { id: 'measure', iconSrc: '/icons/measure.svg', label: 'Measure' },
   // { id: 'room', iconSrc: '/icons/room.png', label: 'Room' },
   // { id: 'custom-room', iconSrc: '/icons/custom-room.png', label: 'Custom Room' },
-  { id: 'slab', iconSrc: '/icons/floor.png', label: 'Slab' },
+  { id: 'slab', iconSrc: '/icons/floor.png', label: 'Floor' },
   { id: 'ceiling', iconSrc: '/icons/ceiling.png', label: 'Ceiling' },
   { id: 'roof', iconSrc: '/icons/roof.png', label: 'Gable Roof' },
   { id: 'door', iconSrc: '/icons/door.png', label: 'Door' },
@@ -53,6 +51,7 @@ export function StructureTools() {
         const isActive =
           activeTool === tool.id &&
           (tool.catalogCategory ? catalogCategory === tool.catalogCategory : true)
+
         const isContextual = contextualTools.includes(tool.id)
 
         return (
@@ -61,10 +60,7 @@ export function StructureTools() {
               'rounded-lg duration-300',
               isActive
                 ? 'z-10 scale-110 bg-black/40 hover:bg-black/40'
-                : cn(
-                    'scale-95 bg-transparent opacity-60 grayscale hover:bg-black/20 hover:opacity-100 hover:grayscale-0',
-                    isContextual && 'opacity-90 grayscale-0',
-                  ),
+                : 'scale-95 bg-transparent opacity-60 grayscale hover:bg-black/20 hover:opacity-100 hover:grayscale-0',
             )}
             key={`${tool.id}-${tool.catalogCategory ?? index}`}
             label={tool.label}

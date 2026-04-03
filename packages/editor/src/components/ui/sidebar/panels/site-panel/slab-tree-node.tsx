@@ -2,10 +2,9 @@ import type { SlabNode } from '@pascal-app/core'
 import { useViewer } from '@pascal-app/viewer'
 import Image from 'next/image'
 import { useState } from 'react'
-import { formatAreaImperial } from './../../../../../lib/units'
 import useEditor from './../../../../../store/use-editor'
 import { InlineRenameInput } from './inline-rename-input'
-import { handleTreeSelection, TreeNodeWrapper } from './tree-node'
+import { focusTreeNode, handleTreeSelection, TreeNodeWrapper } from './tree-node'
 import { TreeNodeActions } from './tree-node-actions'
 
 interface SlabTreeNodeProps {
@@ -31,7 +30,7 @@ export function SlabTreeNode({ node, depth, isLast }: SlabTreeNodeProps) {
   }
 
   const handleDoubleClick = () => {
-    setIsEditing(true)
+    focusTreeNode(node.id)
   }
 
   const handleMouseEnter = () => {
@@ -43,8 +42,8 @@ export function SlabTreeNode({ node, depth, isLast }: SlabTreeNodeProps) {
   }
 
   // Calculate approximate area from polygon
-  const area = calculatePolygonArea(node.polygon)
-  const defaultName = `Slab (${formatAreaImperial(area, 1)})`
+  const area = calculatePolygonArea(node.polygon).toFixed(1)
+  const defaultName = `Floor (${area}m²)`
 
   return (
     <TreeNodeWrapper
@@ -89,8 +88,12 @@ function calculatePolygonArea(polygon: Array<[number, number]>): number {
 
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n
-    area += polygon[i]![0] * polygon[j]![1]
-    area -= polygon[j]![0] * polygon[i]![1]
+    const pi = polygon[i]
+    const pj = polygon[j]
+    if (pi && pj) {
+      area += pi[0] * pj[1]
+      area -= pj[0] * pi[1]
+    }
   }
 
   return Math.abs(area) / 2

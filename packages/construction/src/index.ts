@@ -11,6 +11,15 @@ export {
   type CompileConstructionOptions,
 } from './compiler'
 export {
+  buildFloorLayoutPreview,
+  resolveFloorJoistAxis,
+} from './compiler/floor-framing'
+export type {
+  FloorLayoutInput,
+  FloorLayoutPreview,
+  FloorLayoutSegment,
+} from './compiler/floor-framing'
+export {
   CONSTRUCTION_COMPILER_VERSION,
   DEFAULT_CONSTRUCTION_RULEPACK,
   DEFAULT_RULE_PACK,
@@ -40,8 +49,11 @@ export type {
   ConstructionMemberType,
   ConstructionPassResult,
   ConstructionTopology,
+  ConstructionTopologyFloor,
+  ConstructionTopologyFloorSupportLine,
   ConstructionTopologyWall,
   ConstructionWallFace,
+  FloorCompileResult,
   Vec2,
   Vec3,
   WallCompileResult,
@@ -67,9 +79,7 @@ export type {
   CostRule,
   RulePack,
 } from './schema/rulepacks'
-export type {
-  ConstructionWorkspace,
-} from './store/use-construction'
+export type { ConstructionWorkspace } from './store/use-construction'
 export {
   buildEstimate,
   createEmptyEstimate,
@@ -79,9 +89,7 @@ export {
   aggregateQuantities,
   aggregateQuantityLines,
 } from './quantities/aggregate-quantities'
-export {
-  buildQuantityLines,
-} from './quantities/build-quantity-lines'
+export { buildQuantityLines } from './quantities/build-quantity-lines'
 export {
   createDiagnostic,
   sortDiagnostics,

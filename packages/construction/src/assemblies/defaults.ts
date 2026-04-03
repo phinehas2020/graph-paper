@@ -128,6 +128,14 @@ export const DEFAULT_ASSEMBLIES: AssemblyDefinition[] = [
     masterformatCode: '03 30 00',
   },
   {
+    id: 'floor-2x10-joists',
+    kind: 'floor',
+    name: '2x10 Platform Floor',
+    description: 'Authored joist floor with rim boards, support beams, and subfloor panels.',
+    uniformatCode: 'B1010',
+    masterformatCode: '06 11 00',
+  },
+  {
     id: 'roof-rafters-generic',
     kind: 'roof',
     name: 'Generic Rafter Roof',

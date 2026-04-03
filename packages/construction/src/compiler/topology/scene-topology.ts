@@ -10,6 +10,7 @@ import {
   resolveLevelId,
   type RoofSegmentNode,
   type SceneGraph,
+  type SlabNode,
   type WallNode,
   type WindowNode,
   type ZoneNode,
@@ -18,6 +19,7 @@ import type { AssemblyDefinition } from '../../schema/assemblies'
 import type { ConstructionDiagnostic } from '../../schema/diagnostics'
 import type {
   ConstructionTopology,
+  ConstructionTopologyFloor,
   ConstructionTopologyWall,
   SystemsSummaryRoom,
   WallOpening,
@@ -36,8 +38,11 @@ function getWallLength(wall: WallNode) {
   return Math.hypot(wall.end[0] - wall.start[0], wall.end[1] - wall.start[1])
 }
 
-function getLevelNode(nodes: Record<string, AnyNode>, wall: WallNode): LevelNode | null {
-  const parent = wall.parentId ? nodes[wall.parentId] : undefined
+function getLevelNode(
+  nodes: Record<string, AnyNode>,
+  node: { parentId: string | null },
+): LevelNode | null {
+  const parent = node.parentId ? nodes[node.parentId] : undefined
   return parent?.type === 'level' ? parent : null
 }
 
@@ -71,6 +76,52 @@ function getWallAssemblyId(
     : wall.isExterior
       ? rulePack.defaults.exteriorWallAssemblyId
       : rulePack.defaults.interiorWallAssemblyId
+}
+
+function getPolygonArea(polygon: Array<[number, number]>) {
+  if (polygon.length < 3) {
+    return 0
+  }
+
+  let area = 0
+
+  for (let index = 0; index < polygon.length; index += 1) {
+    const [x1, z1] = polygon[index]!
+    const [x2, z2] = polygon[(index + 1) % polygon.length]!
+    area += x1 * z2 - x2 * z1
+  }
+
+  return Math.abs(area) / 2
+}
+
+function getFloorAssemblyId(
+  slab: SlabNode,
+  levelNode: LevelNode | null,
+  assemblies: AssemblyDefinition[],
+  rulePack: RulePack,
+) {
+  const floorAssemblyIds = new Set(
+    assemblies.filter((assembly) => assembly.kind === 'floor').map((assembly) => assembly.id),
+  )
+  const slabOnGradeFallback = 'floor-slab-on-grade'
+  const preferredId =
+    slab.assemblyId ??
+    levelNode?.defaultFloorAssemblyId ??
+    (slab.framingStrategy === 'slab-on-grade'
+      ? slabOnGradeFallback
+      : rulePack.defaults.floorAssemblyId)
+
+  if (floorAssemblyIds.has(preferredId)) {
+    return preferredId
+  }
+
+  if (slab.framingStrategy === 'slab-on-grade' && floorAssemblyIds.has(slabOnGradeFallback)) {
+    return slabOnGradeFallback
+  }
+
+  return floorAssemblyIds.has(rulePack.defaults.floorAssemblyId)
+    ? rulePack.defaults.floorAssemblyId
+    : slabOnGradeFallback
 }
 
 function resolveOpeningVerticals(
@@ -295,7 +346,8 @@ export function buildConstructionTopology(
         buildingId,
         siteId,
         assemblyId,
-        isExterior: wall.isExterior || wall.frontSide === 'exterior' || wall.backSide === 'exterior',
+        isExterior:
+          wall.isExterior || wall.frontSide === 'exterior' || wall.backSide === 'exterior',
         isBearing: wall.isBearing,
         start: wall.start,
         end: wall.end,
@@ -303,6 +355,50 @@ export function buildConstructionTopology(
         height,
         thickness,
         openings,
+      }
+    })
+
+  const floors: ConstructionTopologyFloor[] = Object.values(nodes)
+    .filter((node): node is SlabNode => node.type === 'slab')
+    .map((slab) => {
+      const levelNode = getLevelNode(nodes, slab)
+      const { buildingId, siteId } = getBuildingAndSiteIds(nodes, levelNode?.id ?? null)
+      const assemblyId = getFloorAssemblyId(slab, levelNode, assemblies, rulePack)
+      const grossArea = getPolygonArea(slab.polygon)
+      const openingArea = (slab.holes ?? []).reduce(
+        (sum: number, hole: Array<[number, number]>) => sum + getPolygonArea(hole),
+        0,
+      )
+      const netArea = Math.max(0, grossArea - openingArea)
+
+      if (grossArea <= OPENING_EPSILON) {
+        diagnostics.push({
+          id: `floor-zero-area:${slab.id}`,
+          level: 'warning',
+          code: 'construction.floor.zero_area',
+          message: `Floor ${slab.id} has near-zero area and will not generate meaningful framing.`,
+          sourceNodeId: slab.id,
+        })
+      }
+
+      return {
+        floorId: slab.id,
+        levelId: levelNode?.id ?? null,
+        buildingId,
+        siteId,
+        assemblyId,
+        polygon: slab.polygon,
+        holes: slab.holes ?? [],
+        elevation: slab.elevation ?? 0.05,
+        netArea,
+        framingStrategy: slab.framingStrategy ?? 'slab-on-grade',
+        joistDirection: slab.joistDirection ?? 'auto',
+        joistSystem: slab.joistSystem ?? 'dimensional-lumber',
+        joistSpacing: slab.joistSpacing ?? 0.4064,
+        joistStock: slab.joistStock ?? '2x10',
+        beamStock: slab.beamStock ?? '2x10',
+        stockLength: slab.stockLength ?? 4.8768,
+        supportLines: slab.supportLines ?? [],
       }
     })
 
@@ -325,8 +421,10 @@ export function buildConstructionTopology(
     buildingIds,
     levelIds,
     wallIds: walls.map((wall) => wall.wallId),
+    floorIds: floors.map((floor) => floor.floorId),
     openingIds: walls.flatMap((wall) => wall.openings.map((opening) => opening.openingId)),
     walls,
+    floors,
   }
 
   const rooms: SystemsSummaryRoom[] = Object.values(nodes)

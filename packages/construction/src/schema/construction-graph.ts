@@ -48,13 +48,43 @@ export type ConstructionTopologyWall = {
   openings: WallOpening[]
 }
 
+export type ConstructionTopologyFloorSupportLine = {
+  id: string
+  axis: 'x' | 'z'
+  kind: 'beam' | 'bearing-line'
+  offset: number
+  stock: '2x8' | '2x10'
+}
+
+export type ConstructionTopologyFloor = {
+  floorId: string
+  levelId: string | null
+  buildingId: string | null
+  siteId: string | null
+  assemblyId: string
+  polygon: Vec2[]
+  holes: Vec2[][]
+  elevation: number
+  netArea: number
+  framingStrategy: 'slab-on-grade' | 'joists' | 'engineered'
+  joistDirection: 'x' | 'z' | 'auto'
+  joistSystem: 'dimensional-lumber' | 'i-joist' | 'open-web'
+  joistSpacing: number
+  joistStock: '2x8' | '2x10'
+  beamStock: '2x8' | '2x10'
+  stockLength: number
+  supportLines: ConstructionTopologyFloorSupportLine[]
+}
+
 export type ConstructionTopology = {
   siteIds: string[]
   buildingIds: string[]
   levelIds: string[]
   wallIds: string[]
+  floorIds: string[]
   openingIds: string[]
   walls: ConstructionTopologyWall[]
+  floors: ConstructionTopologyFloor[]
 }
 
 export type ConstructionMemberType =
@@ -68,6 +98,10 @@ export type ConstructionMemberType =
   | 'sheathing'
   | 'drywall'
   | 'trim'
+  | 'joist'
+  | 'rim-board'
+  | 'beam'
+  | 'subfloor-panel'
 
 export type ConstructionMemberCategory = 'framing' | 'envelope' | 'finish'
 
@@ -124,8 +158,26 @@ export type WallCompileResult = ConstructionPassResult & {
 
 export type WallFramingResult = WallCompileResult
 
+export type FloorCompileSummary = {
+  supportLineCount: number
+  openingCount: number
+  joistCount: number
+  memberCount: number
+  quantityCount: number
+  estimatedCost: number
+}
+
+export type FloorCompileResult = ConstructionPassResult & {
+  floorId: string
+  levelId: string | null
+  assemblyId: string
+  floor: ConstructionTopologyFloor
+  summary: FloorCompileSummary
+}
+
 export type ConstructionCompileSummary = {
   wallCount: number
+  floorCount: number
   openingCount: number
   memberCount: number
   quantityCount: number
@@ -140,7 +192,9 @@ export type ConstructionCompileResult = ConstructionPassResult & {
   assemblies: AssemblyDefinition[]
   topology: ConstructionTopology
   wallResults: WallCompileResult[]
+  floorResults: FloorCompileResult[]
   wallsById: Record<string, WallCompileResult>
+  floorsById: Record<string, FloorCompileResult>
   rooms: SystemsSummaryRoom[]
   summary: ConstructionCompileSummary
 }

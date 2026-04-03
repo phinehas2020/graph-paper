@@ -1,7 +1,7 @@
 'use client'
 
 import { useViewer } from '@pascal-app/viewer'
-import { Moon, Sun } from 'lucide-react'
+import { Hammer, Moon, Sun } from 'lucide-react'
 import { motion } from 'motion/react'
 import { type ReactNode, useEffect, useState } from 'react'
 import {
@@ -11,7 +11,7 @@ import {
 } from './../../../components/ui/primitives/tooltip'
 import { cn } from './../../../lib/utils'
 
-export type PanelId = 'site' | 'settings'
+export type PanelId = 'site' | 'construction' | 'settings'
 
 interface IconRailProps {
   activePanel: PanelId
@@ -20,14 +20,17 @@ interface IconRailProps {
   className?: string
 }
 
-const panels: { id: PanelId; iconSrc: string; label: string }[] = [
+const panels: Array<{ id: PanelId; icon?: typeof Hammer; iconSrc?: string; label: string }> = [
   { id: 'site', iconSrc: '/icons/level.png', label: 'Site' },
+  { id: 'construction', icon: Hammer, label: 'Construction' },
   { id: 'settings', iconSrc: '/icons/settings.png', label: 'Settings' },
 ]
 
 export function IconRail({ activePanel, onPanelChange, appMenuButton, className }: IconRailProps) {
   const theme = useViewer((state) => state.theme)
   const setTheme = useViewer((state) => state.setTheme)
+  const unit = useViewer((state) => state.unit)
+  const setUnit = useViewer((state) => state.setUnit)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -60,14 +63,23 @@ export function IconRail({ activePanel, onPanelChange, appMenuButton, className 
                 onClick={() => onPanelChange(panel.id)}
                 type="button"
               >
-                <img
-                  alt={panel.label}
-                  className={cn(
-                    'h-6 w-6 object-contain transition-all',
-                    !isActive && 'opacity-50 saturate-0',
-                  )}
-                  src={panel.iconSrc}
-                />
+                {panel.icon ? (
+                  <panel.icon
+                    className={cn(
+                      'h-4.5 w-4.5 transition-all',
+                      !isActive && 'opacity-55',
+                    )}
+                  />
+                ) : (
+                  <img
+                    alt={panel.label}
+                    className={cn(
+                      'h-6 w-6 object-contain transition-all',
+                      !isActive && 'opacity-50 saturate-0',
+                    )}
+                    src={panel.iconSrc}
+                  />
+                )}
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">{panel.label}</TooltipContent>
@@ -77,6 +89,24 @@ export function IconRail({ activePanel, onPanelChange, appMenuButton, className 
 
       {/* Spacer */}
       <div className="flex-1" />
+
+      {/* Unit Toggle */}
+      {mounted && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              className="mb-1 flex h-9 w-9 items-center justify-center rounded-lg border border-border/50 bg-accent/40 text-foreground transition-all hover:bg-accent"
+              onClick={() => setUnit(unit === 'metric' ? 'imperial' : 'metric')}
+              type="button"
+            >
+              <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 font-medium text-[10px] leading-none">
+                {unit === 'metric' ? 'm' : 'ft'}
+              </div>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Toggle units (metric/imperial)</TooltipContent>
+        </Tooltip>
+      )}
 
       {/* Theme Toggle */}
       {mounted && (
