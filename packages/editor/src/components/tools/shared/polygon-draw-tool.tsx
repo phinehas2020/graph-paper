@@ -19,6 +19,14 @@ type PolygonDrawToolProps = {
   onCommit: (points: Array<[number, number]>, levelY: number) => void
 }
 
+function dedupeConsecutivePoints(points: Array<[number, number]>) {
+  return points.filter((point, index) => {
+    if (index === 0) return true
+    const previous = points[index - 1]!
+    return point[0] !== previous[0] || point[1] !== previous[1]
+  })
+}
+
 function buildPreviewGeometry(points: Array<[number, number]>) {
   if (points.length < 3) {
     return new BufferGeometry()
@@ -43,7 +51,9 @@ export const PolygonDrawTool = ({
   const lineRef = useRef<Line>(null!)
   const fillRef = useRef<Mesh>(null!)
   const [points, setPoints] = useState<Array<[number, number]>>([])
+  const pointsRef = useRef<Array<[number, number]>>([])
   const [cursorPosition, setCursorPosition] = useState<[number, number]>([0, 0])
+  const cursorPositionRef = useRef<[number, number]>([0, 0])
   const levelYRef = useRef(0)
 
   useEffect(() => {
@@ -53,38 +63,48 @@ export const PolygonDrawTool = ({
         Math.round(event.position[2] * 2) / 2,
       ]
       levelYRef.current = event.position[1]
+      cursorPositionRef.current = nextPoint
       setCursorPosition(nextPoint)
       cursorRef.current?.position.set(nextPoint[0], event.position[1], nextPoint[1])
     }
 
     const onGridClick = () => {
-      setPoints((current) => {
-        if (current.length >= minPoints) {
-          const [firstX, firstZ] = current[0]!
-          const dx = cursorPosition[0] - firstX
-          const dz = cursorPosition[1] - firstZ
-          if (Math.hypot(dx, dz) < 0.35) {
-            onCommit(current, levelYRef.current)
-            return []
-          }
-        }
+      const currentPoints = pointsRef.current
+      const currentCursor = cursorPositionRef.current
 
-        return [...current, cursorPosition]
-      })
+      if (currentPoints.length >= minPoints) {
+        const [firstX, firstZ] = currentPoints[0]!
+        const dx = currentCursor[0] - firstX
+        const dz = currentCursor[1] - firstZ
+        if (Math.hypot(dx, dz) < 0.35) {
+          const polygon = dedupeConsecutivePoints(currentPoints)
+          if (polygon.length >= minPoints) {
+            pointsRef.current = []
+            setPoints([])
+            onCommit(polygon, levelYRef.current)
+          }
+          return
+        }
+      }
+
+      const nextPoints = [...currentPoints, currentCursor]
+      pointsRef.current = nextPoints
+      setPoints(nextPoints)
     }
 
     const onGridDoubleClick = () => {
-      setPoints((current) => {
-        if (current.length < minPoints) {
-          return current
-        }
+      const polygon = dedupeConsecutivePoints(pointsRef.current)
+      if (polygon.length < minPoints) {
+        return
+      }
 
-        onCommit(current, levelYRef.current)
-        return []
-      })
+      pointsRef.current = []
+      setPoints([])
+      onCommit(polygon, levelYRef.current)
     }
 
     const onCancel = () => {
+      pointsRef.current = []
       setPoints([])
     }
 
@@ -99,7 +119,7 @@ export const PolygonDrawTool = ({
       emitter.off('grid:double-click', onGridDoubleClick)
       emitter.off('tool:cancel', onCancel)
     }
-  }, [cursorPosition, minPoints, onCommit])
+  }, [minPoints, onCommit])
 
   useEffect(() => {
     if (!lineRef.current) return

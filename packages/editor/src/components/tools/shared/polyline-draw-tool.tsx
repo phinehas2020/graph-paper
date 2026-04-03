@@ -10,6 +10,16 @@ type PolylineDrawToolProps = {
   onCommit: (path: Array<[number, number, number]>) => void
 }
 
+function dedupeConsecutivePoints(path: Array<[number, number, number]>) {
+  return path.filter((point, index) => {
+    if (index === 0) return true
+    const previous = path[index - 1]!
+    return (
+      point[0] !== previous[0] || point[1] !== previous[1] || point[2] !== previous[2]
+    )
+  })
+}
+
 export const PolylineDrawTool = ({
   color = '#60a5fa',
   minPoints = 2,
@@ -18,6 +28,7 @@ export const PolylineDrawTool = ({
   const cursorRef = useRef<Group>(null)
   const lineRef = useRef<Line>(null!)
   const [points, setPoints] = useState<Array<[number, number, number]>>([])
+  const pointsRef = useRef<Array<[number, number, number]>>([])
   const cursorPositionRef = useRef<[number, number, number]>([0, 0, 0])
 
   useEffect(() => {
@@ -32,20 +43,24 @@ export const PolylineDrawTool = ({
     }
 
     const onGridClick = () => {
-      setPoints((current) => [...current, cursorPositionRef.current])
+      const nextPoints = [...pointsRef.current, cursorPositionRef.current]
+      pointsRef.current = nextPoints
+      setPoints(nextPoints)
     }
 
     const onGridDoubleClick = () => {
-      setPoints((current) => {
-        if (current.length < minPoints) {
-          return current
-        }
-        onCommit(current)
-        return []
-      })
+      const committedPath = dedupeConsecutivePoints(pointsRef.current)
+      if (committedPath.length < minPoints) {
+        return
+      }
+
+      pointsRef.current = []
+      setPoints([])
+      onCommit(committedPath)
     }
 
     const onCancel = () => {
+      pointsRef.current = []
       setPoints([])
     }
 
