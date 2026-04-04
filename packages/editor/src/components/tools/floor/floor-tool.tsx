@@ -3,31 +3,13 @@ import {
   FloorOpeningNode,
   FloorSystemNode,
   type AnyNodeId,
-  resolveLevelId,
   useScene,
 } from '@pascal-app/core'
 import { useViewer } from '@pascal-app/viewer'
 import useEditor from '../../../store/use-editor'
 import { PolygonDrawTool } from '../shared/polygon-draw-tool'
 import { SegmentDrawTool } from '../shared/segment-draw-tool'
-
-function getActiveFloorSystem(levelId: string | null) {
-  if (!levelId) return null
-
-  const { nodes } = useScene.getState()
-  const selectedIds = useViewer.getState().selection.selectedIds
-
-  const selectedFloor = selectedIds
-    .map((id) => nodes[id as AnyNodeId])
-    .find((node) => node?.type === 'floor-system')
-  if (selectedFloor?.type === 'floor-system') {
-    return selectedFloor
-  }
-
-  return Object.values(nodes).find(
-    (node) => node?.type === 'floor-system' && resolveLevelId(node, nodes) === levelId,
-  )
-}
+import { getActiveFloorSystem } from './floor-tool-utils'
 
 export const FloorTool: React.FC = () => {
   const constructionTool = useEditor((state) => state.constructionTool)

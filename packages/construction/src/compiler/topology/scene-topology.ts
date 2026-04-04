@@ -347,10 +347,23 @@ export function buildConstructionTopology(
     .filter((node) => node.type === 'floor-opening')
     .map((node) => {
       const base = buildTopologyBase(node, nodes, rulePack.defaults.floorAssemblyId)
+      const parentFloorSystemId =
+        node.parentId && nodes[node.parentId]?.type === 'floor-system' ? node.parentId : null
+
+      if (!parentFloorSystemId) {
+        diagnostics.push({
+          id: `floor-opening-parent-missing:${node.id}`,
+          level: 'warning',
+          code: 'construction.floor.opening_parent_missing',
+          message: `Floor opening ${node.id} is not attached to a floor system and will not cut framing.`,
+          sourceNodeId: node.id,
+        })
+      }
+
       return {
         ...base,
         floorOpeningId: node.id,
-        parentFloorSystemId: node.parentId && nodes[node.parentId]?.type === 'floor-system' ? node.parentId : null,
+        parentFloorSystemId,
         polygon: node.polygon,
         area: polygonArea(node.polygon),
         perimeter: polygonPerimeter(node.polygon),
@@ -362,10 +375,23 @@ export function buildConstructionTopology(
     .filter((node) => node.type === 'blocking-run')
     .map((node) => {
       const base = buildTopologyBase(node, nodes, rulePack.defaults.floorAssemblyId)
+      const parentFloorSystemId =
+        node.parentId && nodes[node.parentId]?.type === 'floor-system' ? node.parentId : null
+
+      if (!parentFloorSystemId) {
+        diagnostics.push({
+          id: `blocking-parent-missing:${node.id}`,
+          level: 'warning',
+          code: 'construction.floor.blocking_parent_missing',
+          message: `Blocking run ${node.id} is not attached to a floor system and may miss joist coordination.`,
+          sourceNodeId: node.id,
+        })
+      }
+
       return {
         ...base,
         blockingRunId: node.id,
-        parentFloorSystemId: node.parentId && nodes[node.parentId]?.type === 'floor-system' ? node.parentId : null,
+        parentFloorSystemId,
         start: node.start,
         end: node.end,
         length: lineLength(node.start, node.end),

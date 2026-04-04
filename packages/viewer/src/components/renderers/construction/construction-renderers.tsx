@@ -58,6 +58,74 @@ function createPlanExtrusionGeometry(
   return geometry
 }
 
+
+function polygonBounds(polygon: Array<[number, number]>) {
+  if (polygon.length === 0) return null
+
+  let minX = polygon[0]![0]
+  let minZ = polygon[0]![1]
+  let maxX = polygon[0]![0]
+  let maxZ = polygon[0]![1]
+
+  for (const [x, z] of polygon) {
+    minX = Math.min(minX, x)
+    minZ = Math.min(minZ, z)
+    maxX = Math.max(maxX, x)
+    maxZ = Math.max(maxZ, z)
+  }
+
+  return { minX, maxX, minZ, maxZ }
+}
+
+function FloorJoistDirectionOverlay({
+  joistAngle,
+  memberDepth,
+  polygon,
+}: {
+  joistAngle: number
+  memberDepth: number
+  polygon: Array<[number, number]>
+}) {
+  const bounds = useMemo(() => polygonBounds(polygon), [polygon])
+
+  const geometry = useMemo(() => {
+    const nextGeometry = new BufferGeometry()
+    if (!bounds) return nextGeometry
+
+    const centerX = (bounds.minX + bounds.maxX) / 2
+    const centerZ = (bounds.minZ + bounds.maxZ) / 2
+    const directionLength = Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ, 0.5) * 0.4
+    const directionX = Math.cos(joistAngle)
+    const directionZ = Math.sin(joistAngle)
+
+    nextGeometry.setAttribute(
+      'position',
+      new Float32BufferAttribute(
+        [
+          centerX - directionX * directionLength,
+          0,
+          centerZ - directionZ * directionLength,
+          centerX + directionX * directionLength,
+          0,
+          centerZ + directionZ * directionLength,
+        ],
+        3,
+      ),
+    )
+
+    return nextGeometry
+  }, [bounds, joistAngle])
+
+  if (!bounds) return null
+
+  return (
+    <line position={[0, memberDepth + 0.03, 0]}>
+      <primitive attach="geometry" object={geometry} />
+      <lineBasicMaterial color="#fde68a" depthTest={false} />
+    </line>
+  )
+}
+
 function SegmentMesh({
   color,
   depth,
@@ -174,6 +242,11 @@ export const FloorSystemRenderer = ({ node }: { node: FloorSystemNode }) => {
       {...handlers}
     >
       <meshStandardMaterial color={node.color ?? '#d4b483'} opacity={0.72} transparent />
+      <FloorJoistDirectionOverlay
+        joistAngle={node.joistAngle}
+        memberDepth={node.memberDepth}
+        polygon={node.polygon}
+      />
       {node.children.map((childId) => (
         <NodeRenderer key={childId} nodeId={childId as any} />
       ))}
